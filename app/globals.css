@@ -1,9 +1,16 @@
 @import "tailwindcss";
+@import "tailwindcss";
+@plugin "@tailwindcss/typography"; /* 新加这一行，激活排版魔法 */
 
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --font-scale: 1;
 }
+
+html[data-font-size="small"] { --font-scale: 0.9; }
+html[data-font-size="medium"] { --font-scale: 1; }
+html[data-font-size="large"] { --font-scale: 1.1; }
 
 @theme inline {
   --color-background: var(--background);
@@ -17,6 +24,10 @@
     --background: #0a0a0a;
     --foreground: #ededed;
   }
+}
+
+html {
+  font-size: calc(16px * var(--font-scale));
 }
 
 body {

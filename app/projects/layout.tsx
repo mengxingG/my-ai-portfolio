@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FontSizeSwitcher } from "@/app/components/FontSizeSwitcher";
 
 export default function ProjectsLayout({
   children,
@@ -7,7 +8,7 @@ export default function ProjectsLayout({
 }) {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200">
-      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <header className="flex items-center justify-between border-b border-white/10 pb-6">
           <Link
             href="/"
@@ -16,11 +17,14 @@ export default function ProjectsLayout({
           >
             ← 返回首页
           </Link>
-          <div
-            className="text-xs font-mono uppercase tracking-[0.2em] text-slate-500"
-            style={{ fontFamily: '"IBM Plex Mono", "SF Mono", monospace' }}
-          >
-            Projects
+          <div className="flex items-center gap-4">
+            <div
+              className="text-xs font-mono uppercase tracking-[0.2em] text-slate-500"
+              style={{ fontFamily: '"IBM Plex Mono", "SF Mono", monospace' }}
+            >
+              Projects
+            </div>
+            <FontSizeSwitcher />
           </div>
         </header>
         <main className="py-10">{children}</main>
