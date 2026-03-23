@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useCallback, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AINewsWidget } from "@/app/components/AINewsWidget";
 import type { AINews } from "@/utils/notion";
 
@@ -68,6 +69,7 @@ type Particle = {
 import { FontSizeSwitcher } from "@/app/components/FontSizeSwitcher";
 
 export default function HomePageClient({ news }: { news: AINews[] }) {
+  const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cursorRef = useRef<HTMLDivElement>(null);
   const [projectOpen, setProjectOpen] = useState(false);
@@ -105,6 +107,15 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
     fetchArticles();
     return () => { cancelled = true; };
   }, []);
+
+  /** 列表加载后预取详情路由，首点更快；配合服务端缓存与并行拉块 */
+  useEffect(() => {
+    if (!articles.length) return;
+    const limit = 12;
+    articles.slice(0, limit).forEach((a) => {
+      router.prefetch(`/articles/${a.id}`);
+    });
+  }, [articles, router]);
 
   useEffect(() => {
     const cursorEl = cursorRef.current;
@@ -643,6 +654,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                 <Link
                   key={article.id}
                   href={`/articles/${article.id}`}
+                  prefetch
                   className="holo-card group block rounded-2xl border border-cyan-500/20 bg-black/20 p-6 backdrop-blur-xl transition hover:border-cyan-400/30"
                 >
                   <h3 className="text-lg font-semibold text-slate-50 group-hover:text-cyan-300" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>

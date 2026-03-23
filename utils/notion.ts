@@ -1,6 +1,3 @@
-import { Client } from '@notionhq/client';
-import { NotionToMarkdown } from 'notion-to-md';
-
 // 1. 首页列表：彻底抛弃有 Bug 的 SDK，使用原生 Fetch 直连 Notion 官方 API
 export async function fetchPublishedArticlesFromNotion() {
   const url = `https://api.notion.com/v1/databases/${process.env.NOTION_DATABASE_ID}/query`;
@@ -44,66 +41,91 @@ export async function fetchPublishedArticlesFromNotion() {
   }
 }
 
-// 2. 详情页：暂留 SDK 配合 Markdown 解析器（因为它是单例）
-// 获取文章正文详情（原生 Fetch 版）
-// utils/notion.ts 里的详情函数
-export async function getArticleDetail(pageId: string) {
-  const url = `https://api.notion.com/v1/pages/${pageId}`;
-  const options = {
-    method: 'GET',
+const MAX_BLOCK_DEPTH = 20;
+
+/** 同一层级内并行拉取所有 has_children 的子 blocks，显著减少串行 RTT */
+async function flattenBlocksParallel(
+  input: any[],
+  depth: number,
+  fetchChildren: (blockId: string) => Promise<any[]>
+): Promise<any[]> {
+  if (depth > MAX_BLOCK_DEPTH || !input?.length) return [];
+
+  const withChildren = input.filter((b) => b?.has_children);
+  const childrenLists = await Promise.all(
+    withChildren.map((b) => fetchChildren(b.id))
+  );
+
+  let childIdx = 0;
+  const out: any[] = [];
+  for (const b of input) {
+    out.push(b);
+    if (b?.has_children) {
+      const children = childrenLists[childIdx++];
+      if (children?.length) {
+        out.push(
+          ...(await flattenBlocksParallel(children, depth + 1, fetchChildren))
+        );
+      }
+    }
+  }
+  return out;
+}
+
+/** 文章详情用的 Notion fetch：带 tag，便于 POST /api/revalidate 按需失效（发布后立即更新） */
+function articleNotionFetchInit(pageId: string) {
+  return {
     headers: {
-      'Authorization': `Bearer ${process.env.NOTION_API_KEY}`,
-      'Notion-Version': '2022-06-28',
+      Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
+      "Notion-Version": "2022-06-28",
+    },
+    next: {
+      tags: [`article-${pageId}`, "articles"],
+      /** 不设时间窗，只靠 revalidateTag；长期命中缓存 = 极快 */
+      revalidate: false as const,
     },
   };
+}
 
+async function fetchArticleDetailFromNotion(pageId: string) {
+  const url = `https://api.notion.com/v1/pages/${pageId}`;
+  const init = articleNotionFetchInit(pageId);
+
+  const res = await fetch(url, { method: "GET", ...init });
+  const page: any = await res.json();
+
+  const fetchChildren = async (blockId: string) => {
+    const blocksUrl = `https://api.notion.com/v1/blocks/${blockId}/children`;
+    const blocksRes = await fetch(blocksUrl, { method: "GET", ...init });
+    const blocksData = await blocksRes.json();
+    return blocksData.results || [];
+  };
+
+  const topBlocksUrl = `https://api.notion.com/v1/blocks/${pageId}/children`;
+  const topBlocksRes = await fetch(topBlocksUrl, { method: "GET", ...init });
+  const topBlocksData = await topBlocksRes.json();
+  const topBlocks: any[] = topBlocksData.results || [];
+
+  const blocks = await flattenBlocksParallel(topBlocks, 0, fetchChildren);
+
+  return {
+    id: page.id,
+    title:
+      page.properties.Title?.title?.[0]?.plain_text ||
+      page.properties.Name?.title?.[0]?.plain_text ||
+      "未命名文章",
+    created_at: page.created_time,
+    blocks,
+  };
+}
+
+/**
+ * 文章详情：并行抓取 + Next fetch 数据缓存（tag 控制）
+ * 发布后调用 POST /api/revalidate 传入对应 pageId 即可立即刷新，仍保持缓存命中时极快。
+ */
+export async function getArticleDetail(pageId: string) {
   try {
-    const res = await fetch(url, options);
-    const page: any = await res.json();
-
-    const MAX_DEPTH = 20;
-
-    const fetchChildren = async (blockId: string, depth: number) => {
-      if (depth > MAX_DEPTH) return [];
-      const blocksUrl = `https://api.notion.com/v1/blocks/${blockId}/children`;
-      const blocksRes = await fetch(blocksUrl, options);
-      const blocksData = await blocksRes.json();
-      return blocksData.results || [];
-    };
-
-    // 递归将 blocks 展开到最底层（按 Notion 展示顺序：父在前，子在后）
-    const flattenBlocks = async (input: any[], depth: number): Promise<any[]> => {
-      const out: any[] = [];
-      for (const b of input) {
-        out.push(b);
-        if (b?.has_children) {
-          const children = await fetchChildren(b.id, depth + 1);
-          if (children?.length) {
-            const flattened = await flattenBlocks(children, depth + 1);
-            out.push(...flattened);
-          }
-        }
-      }
-      return out;
-    };
-
-    const topBlocksUrl = `https://api.notion.com/v1/blocks/${pageId}/children`;
-    const topBlocksRes = await fetch(topBlocksUrl, options);
-    const topBlocksData = await topBlocksRes.json();
-    const topBlocks: any[] = topBlocksData.results || [];
-
-    const blocks = await flattenBlocks(topBlocks, 0);
-
-    return {
-      id: page.id,
-      title:
-        page.properties.Title?.title?.[0]?.plain_text ||
-        page.properties.Name?.title?.[0]?.plain_text ||
-        "未命名文章",
-      created_at: page.created_time,
-      // 将递归展开后的 blocks 传给前端
-      blocks,
-    };
+    return await fetchArticleDetailFromNotion(pageId);
   } catch (error) {
     console.error("获取详情失败:", error);
     throw error;
