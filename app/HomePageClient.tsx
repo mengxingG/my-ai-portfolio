@@ -516,18 +516,84 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
 
         <section id="hero" className="scroll-mt-20 py-16 sm:py-20">
           <h1 className="text-3xl font-semibold leading-tight tracking-tight text-slate-50 sm:text-4xl md:text-5xl" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
-            用 AI 重新定义产品边界
+            4年经验 AI 项目经理 | Vibe Coding 重度实践者
           </h1>
           <p className="mt-4 max-w-xl text-base leading-relaxed text-slate-400">
-            专注 RAG、AI Agents 及底层技术架构的硬核技术产品经理。把复杂业务规则与数据约束，转译成可落地、可审计、可扩展的 AI 系统。
+            擅长利用 AI Agent 构建商业级闭环，极低成本验证产品假设。
           </p>
-          <p className="mt-2 text-sm text-slate-500">Your vision, my execution.</p>
+          <p className="mt-2 text-sm text-slate-500">Agentic Workflow · Rapid Validation · Production-ready Delivery</p>
           <div className="mt-10 flex flex-wrap gap-4">
-            <a href="/resume.pdf" className="glow-btn glow-btn--primary">查看简历</a>
+            <a href="/resume.pdf" className="glow-btn glow-btn--primary glow-btn--resume">查看简历</a>
             <a href="/#projects" className="glow-btn glow-btn--secondary">核心项目</a>
             <a href="/#featured" className="glow-btn glow-btn--secondary">特色项目</a>
             <a href="/#knowledge" className="glow-btn glow-btn--secondary">AI知识沉淀</a>
             <a href="/#insights" className="glow-btn glow-btn--secondary">资讯收集</a>
+          </div>
+          <div className="mt-6 rounded-2xl border border-cyan-500/20 bg-black/20 p-3 backdrop-blur-xl">
+            <div className="mb-2 text-[11px] font-mono uppercase tracking-widest text-cyan-300/90">
+              Latest Tech Stack
+            </div>
+            <div className="stack-marquee">
+              <div className="stack-marquee-track">
+                {["Claude Code (CC)", "OpenClaw", "Cursor", "Vercel", "Windsurf", "LangChain", "Next.js App Router", "Tailwind CSS"].map((s) => (
+                  <span key={`a-${s}`} className="tech-tag">{s}</span>
+                ))}
+                {["Claude Code (CC)", "OpenClaw", "Cursor", "Vercel", "Windsurf", "LangChain", "Next.js App Router", "Tailwind CSS"].map((s) => (
+                  <span key={`b-${s}`} className="tech-tag">{s}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="about" className="scroll-mt-20 py-12">
+          <h2 className="text-xl font-semibold text-slate-50" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
+            关于我
+          </h2>
+          <p className="mt-2 text-sm text-slate-500">About · New Paradigm</p>
+          <div className="holo-card mt-6 rounded-2xl border border-cyan-500/20 bg-black/20 p-6 backdrop-blur-xl">
+            <p className="text-sm leading-relaxed text-slate-400">
+              我专注将 Agentic Workflow 与业务闭环深度结合，持续用 Vibe Coding + Rapid Validation 模式，把复杂想法快速转化为可运行、可验证、可迭代的商业级 AI 产品。
+            </p>
+            <div className="mt-6 grid gap-4 sm:grid-cols-3">
+              <div className="rounded-xl border border-cyan-500/15 bg-black/20 p-4">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">Vibe Coding 深度实践</h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                  能熟练利用 Claude Code (CC) 与 Cursor 完成产品从 0 到 1 的全流程。独立完成需求梳理、UI 设计、前后端开发及 Vercel 自动化部署。
+                </p>
+              </div>
+              <div className="rounded-xl border border-cyan-500/15 bg-black/20 p-4">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">AI Agent 提效专家</h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                  深度使用 OpenClaw、Claude Code 等前沿 Agent 工具优化业务流。具备通过 AI 自动化工作流提升团队 5-10 倍交付效率的实战经验。
+                </p>
+              </div>
+              <div className="rounded-xl border border-cyan-500/15 bg-black/20 p-4">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">快速原型验证</h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                  拥有在 24 小时内将商业想法转化为可运行产品的“极速交付”能力，快速验证需求与价值闭环。
+                </p>
+              </div>
+            </div>
+            <div className="mt-6 rounded-xl border border-cyan-500/15 bg-black/20 p-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">AI-Native Stack</h3>
+              <p className="mt-2 text-sm text-slate-400">
+                Tools
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {["Claude Code (CC)", "OpenClaw", "Cursor", "Vercel", "Windsurf"].map((item) => (
+                  <span key={item} className="tech-tag">{item}</span>
+                ))}
+              </div>
+              <p className="mt-4 text-sm text-slate-400">
+                Frameworks
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {["LangChain", "Next.js (App Router)", "Tailwind CSS"].map((item) => (
+                  <span key={item} className="tech-tag">{item}</span>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
 
@@ -583,6 +649,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
               </p>
               <div className="border-t border-white/10 px-6 py-4 sm:px-8">
                 <div className="flex flex-wrap gap-2">
+                  <span className="tech-tag">Built with AI Agent</span>
                   <span className="tech-tag">NotebookLM-inspired</span>
                   <span className="tech-tag">RAG</span>
                   <span className="tech-tag">LLMOps</span>
@@ -610,6 +677,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                 多源资料导入、结构化知识图与 RAG pipeline 的端到端产品化实践，输出可复用的工作流模板。
               </p>
               <div className="mt-4 flex flex-wrap gap-1.5">
+                <span className="tech-tag">Built with AI Agent</span>
                 <span className="tech-tag">NotebookLM</span>
                 <span className="tech-tag">RAG</span>
               </div>
@@ -625,6 +693,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                 多工具、多角色、多阶段的 Agent 决策图设计，兼顾自动化执行与可解释、可审计的边界控制。
               </p>
               <div className="mt-4 flex flex-wrap gap-1.5">
+                <span className="tech-tag">Built with AI Agent</span>
                 <span className="tech-tag">Agents</span>
                 <span className="tech-tag">Workflow</span>
               </div>
@@ -678,21 +747,6 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           <AINewsWidget news={news} />
         </section>
 
-        <section id="about" className="scroll-mt-20 py-12 pb-20">
-          <h2 className="text-xl font-semibold text-slate-50" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
-            关于我
-          </h2>
-          <p className="mt-2 text-sm text-slate-500">About</p>
-          <div className="holo-card mt-6 rounded-2xl border border-cyan-500/20 bg-black/20 p-6 backdrop-blur-xl">
-            <p className="text-sm leading-relaxed text-slate-400">
-              我从业务问题与约束出发，偏好先画清楚「可为 / 不可为」的边界，再落到 RAG pipeline、Agent graph 与数据流设计上。习惯用结构化文档、决策日志与指标，保证 AI 产品从一开始就是「可解释、可监控、可演化」的系统。
-            </p>
-            <p className="mt-4 text-sm leading-relaxed text-slate-400">
-              能力栈：AI 原生产品重构 · 复杂 Agent 编排与边界控制 · RAG 链路调优 · LLMOps 与自动化部署 (CI/CD) · 金融合规域业务建模。
-            </p>
-          </div>
-        </section>
-
         <footer className="border-t border-white/10 pt-6 text-xs text-slate-500">
           © {new Date().getFullYear()} 龚梦星 Gong Mengxing · AI 产品经理
         </footer>
@@ -729,6 +783,14 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           box-shadow: 0 0 0 1px rgba(6,182,212,0.2), 0 0 20px rgba(6,182,212,0.15);
         }
         .glow-btn--primary:hover { box-shadow: 0 0 0 1px rgba(6,182,212,0.5), 0 0 28px rgba(6,182,212,0.35); }
+        .glow-btn--resume {
+          box-shadow: 0 0 0 1px rgba(6,182,212,0.45), 0 0 30px rgba(6,182,212,0.35), 0 0 50px rgba(176,38,255,0.2);
+          animation: resume-pulse 1.8s ease-in-out infinite;
+        }
+        @keyframes resume-pulse {
+          0%, 100% { box-shadow: 0 0 0 1px rgba(6,182,212,0.45), 0 0 30px rgba(6,182,212,0.35), 0 0 50px rgba(176,38,255,0.2); }
+          50% { box-shadow: 0 0 0 1px rgba(6,182,212,0.7), 0 0 38px rgba(6,182,212,0.5), 0 0 66px rgba(176,38,255,0.28); }
+        }
         .glow-btn--secondary {
           background: rgba(0,0,0,0.3); border: 1px solid rgba(176,38,255,0.4); color: rgb(226 232 240);
           box-shadow: 0 0 0 1px rgba(176,38,255,0.15), 0 0 16px rgba(176,38,255,0.1);
@@ -746,6 +808,22 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           display: inline-block; padding: 0.25rem 0.75rem; font-size: 0.75rem;
           font-family: "IBM Plex Mono", "SF Mono", monospace;
           color: rgb(165 243 252); background: rgba(6,182,212,0.06); border: 1px solid rgba(6,182,212,0.25); border-radius: 9999px;
+        }
+        .stack-marquee {
+          position: relative;
+          overflow: hidden;
+          mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+          -webkit-mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+        }
+        .stack-marquee-track {
+          display: flex;
+          gap: 0.5rem;
+          width: max-content;
+          animation: stack-scroll 24s linear infinite;
+        }
+        @keyframes stack-scroll {
+          from { transform: translateX(0); }
+          to { transform: translateX(-50%); }
         }
         .status-badge {
           display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.25rem 0.75rem; font-size: 0.75rem; font-weight: 600;

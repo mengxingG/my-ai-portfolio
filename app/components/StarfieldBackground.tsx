@@ -331,6 +331,8 @@ export default function StarfieldBackground() {
       rafId = requestAnimationFrame(tick);
     };
 
+    // 首帧强制渲染，避免用户在首个 requestAnimationFrame 延迟前看到“空白背景”
+    tick(0);
     rafId = requestAnimationFrame(tick);
 
     const onVisibility = () => {
