@@ -143,13 +143,12 @@ export type ArticleDetail = {
 /** AI News Radar：与 Notion 数据库字段一一对应 */
 export type AINews = {
   id: string;
-  source: "X" | "YouTube";
+  source: string;
   author: string;
   title: string;
   originalText: string;
   date: string;
   url: string;
-  tags: string[];
 };
 
 function newsRichTextPlain(prop: any): string {
@@ -164,12 +163,6 @@ function newsTitlePlain(prop: any): string {
   return t[0]?.plain_text ?? "";
 }
 
-function newsMultiSelectNames(prop: any): string[] {
-  const ms = prop?.multi_select;
-  if (!Array.isArray(ms)) return [];
-  return ms.map((x: { name?: string }) => x?.name).filter(Boolean) as string[];
-}
-
 function normalizeNewsSource(selectName: string): "X" | "YouTube" {
   const n = (selectName || "").trim().toLowerCase();
   if (n === "x" || n === "twitter") return "X";
@@ -181,7 +174,11 @@ function mapNotionPageToAINews(page: any): AINews | null {
   const url = props.URL?.url;
   if (!url || typeof url !== "string") return null;
 
-  const sourceName = props.Source?.select?.name ?? "";
+  const sourceName =
+    props.Source?.select?.name ??
+    newsRichTextPlain(props.Source) ??
+    newsTitlePlain(props.Source) ??
+    "";
   const author =
     newsRichTextPlain(props.Author) ||
     newsTitlePlain(props.Author) ||
@@ -211,7 +208,6 @@ function mapNotionPageToAINews(page: any): AINews | null {
     originalText,
     date,
     url,
-    tags: newsMultiSelectNames(props.Tags),
   };
 }
 
@@ -240,13 +236,12 @@ export async function fetchAINewsRadarFromNotion(): Promise<AINews[]> {
       throw new Error("Notion database has no data_sources; cannot query AI News Radar");
     }
 
-    const response = await notion.dataSources.query({
+    const baseQuery = {
       data_source_id: dataSourceId,
-      filter: {
-        property: "Status",
-        select: { equals: "Published" },
-      },
-      sorts: [{ property: "Date", direction: "descending" }],
+      sorts: [{ property: "Date", direction: "descending" as const }],
+    };
+    const response = await notion.dataSources.query({
+      ...baseQuery,
     });
 
     const rows = (response.results ?? []) as any[];

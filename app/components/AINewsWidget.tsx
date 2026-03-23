@@ -7,7 +7,7 @@ import type { AINews } from "@/utils/notion";
 export type { AINews };
 
 export function AINewsWidget({ news }: { news: AINews[] }) {
-  const displayNews = news.slice(0, 3);
+  const displayNews = news.slice(0, 6);
 
   return (
     <div className="mt-8">
@@ -24,12 +24,22 @@ export function AINewsWidget({ news }: { news: AINews[] }) {
       {displayNews.length === 0 ? (
         <p className="text-sm text-slate-500">暂无已发布的资讯，请稍后再来。</p>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {displayNews.map((item) => (
-            <div
+            <a
               key={item.id}
-              className="group flex flex-col justify-between rounded-xl border border-white/10 bg-white/5 p-5 transition-all hover:-translate-y-1 hover:border-cyan-500/50 hover:bg-white/10"
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="查看原文"
+              className="group relative flex flex-col justify-between rounded-xl border border-white/10 bg-white/5 p-5 transition-all hover:-translate-y-1 hover:border-cyan-500/50 hover:bg-white/10"
             >
+              {/* 悬停提示：查看原文 */}
+              <div className="pointer-events-none absolute right-3 bottom-3 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/30 px-2 py-1 text-[11px] text-slate-200 opacity-0 backdrop-blur transition-all group-hover:opacity-100 group-hover:translate-y-0.5">
+                <span>查看原文</span>
+                <ExternalLink className="h-3 w-3 text-cyan-300" />
+              </div>
+
               <div>
                 <div className="mb-3 flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -42,21 +52,11 @@ export function AINewsWidget({ news }: { news: AINews[] }) {
                   </div>
                   <span className="text-[10px] text-slate-500">{item.date || "—"}</span>
                 </div>
-                <h4 className="mb-2 line-clamp-2 text-sm font-medium leading-relaxed text-slate-100">
+                <h4 className="line-clamp-4 text-sm font-medium leading-relaxed text-slate-100">
                   {item.title}
                 </h4>
               </div>
-              <div className="mt-4 flex flex-wrap gap-1">
-                {item.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded bg-cyan-500/10 px-1.5 py-0.5 text-[10px] text-cyan-400"
-                  >
-                    #{tag}
-                  </span>
-                ))}
-              </div>
-            </div>
+            </a>
           ))}
         </div>
       )}
