@@ -3,6 +3,13 @@
 import React, { useEffect, useRef, useCallback, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import {
+  motion,
+  useMotionTemplate,
+  useReducedMotion,
+  useScroll,
+  useTransform,
+} from "framer-motion";
 import { AINewsWidget } from "@/app/components/AINewsWidget";
 import type { AINews } from "@/utils/notion";
 
@@ -68,7 +75,15 @@ type Particle = {
 
 import { FontSizeSwitcher } from "@/app/components/FontSizeSwitcher";
 
+const HERO_HEADLINE = "4年经验 AI 项目经理 | Vibe Coding 重度实践者";
+
+/** 发布会式标题分词：保留空格与竖线，便于逐段 stagger */
+function splitHeadlineForStagger(text: string): string[] {
+  return text.split(/(\s+)/).filter((p) => p.length > 0);
+}
+
 export default function HomePageClient({ news }: { news: AINews[] }) {
+  const prefersReducedMotion = useReducedMotion();
   const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cursorRef = useRef<HTMLDivElement>(null);
@@ -116,6 +131,51 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
       router.prefetch(`/articles/${a.id}`);
     });
   }, [articles, router]);
+
+  // 轻量级视差滚动：为标记 data-parallax 的区块增加微位移
+  useEffect(() => {
+    const els = Array.from(
+      document.querySelectorAll<HTMLElement>("[data-parallax]")
+    );
+    if (!els.length) return;
+    const onScroll = () => {
+      const y = window.scrollY;
+      els.forEach((el) => {
+        const speed = Number(el.dataset.parallax ?? "0.04");
+        el.style.transform = `translateY(${y * speed}px)`;
+      });
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Magnetic buttons：下载简历/联系我按钮微吸附
+  useEffect(() => {
+    const btns = Array.from(
+      document.querySelectorAll<HTMLElement>(".magnetic-btn")
+    );
+    if (!btns.length) return;
+    const cleanups: Array<() => void> = [];
+    btns.forEach((btn) => {
+      const move = (e: PointerEvent) => {
+        const rect = btn.getBoundingClientRect();
+        const dx = (e.clientX - (rect.left + rect.width / 2)) / rect.width;
+        const dy = (e.clientY - (rect.top + rect.height / 2)) / rect.height;
+        btn.style.transform = `translate3d(${dx * 10}px, ${dy * 8}px, 0)`;
+      };
+      const leave = () => {
+        btn.style.transform = "translate3d(0,0,0)";
+      };
+      btn.addEventListener("pointermove", move);
+      btn.addEventListener("pointerleave", leave);
+      cleanups.push(() => {
+        btn.removeEventListener("pointermove", move);
+        btn.removeEventListener("pointerleave", leave);
+      });
+    });
+    return () => cleanups.forEach((fn) => fn());
+  }, []);
 
   useEffect(() => {
     const cursorEl = cursorRef.current;
@@ -455,6 +515,85 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
     };
   }, [runCanvas]);
 
+  const sectionVariants = {
+    hidden: { opacity: 0, y: prefersReducedMotion ? 0 : 26 },
+    show: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: prefersReducedMotion ? 0 : 0.65,
+        ease: [0.22, 1, 0.36, 1] as const,
+        staggerChildren: prefersReducedMotion ? 0 : 0.08,
+        delayChildren: prefersReducedMotion ? 0 : 0.06,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: prefersReducedMotion ? 0 : 18, scale: prefersReducedMotion ? 1 : 0.985 },
+    show: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: { type: "spring" as const, stiffness: 120, damping: 20, mass: 0.7 },
+    },
+  };
+
+  /** 滚动联动导航：背景不透明度 + 模糊强度（发布会式「愈滚愈沉」） */
+  const { scrollY } = useScroll();
+  const navBgAlpha = useTransform(scrollY, [0, 72, 160], [0.62, 0.78, 0.88]);
+  const navBlurPx = useTransform(scrollY, [0, 120], [18, 28]);
+  const navBorderAlpha = useTransform(scrollY, [0, 100], [0.08, 0.16]);
+  const navShadowAlpha = useTransform(scrollY, [0, 100], [0.06, 0.14]);
+  const navBackground = useMotionTemplate`rgba(17, 17, 17, ${navBgAlpha})`;
+  const navBackdrop = useMotionTemplate`blur(${navBlurPx}px) saturate(180%)`;
+  const navBorder = useMotionTemplate`1px solid rgba(255, 255, 255, ${navBorderAlpha})`;
+  const navShadow = useMotionTemplate`0 12px 40px rgba(0, 0, 0, ${navShadowAlpha})`;
+
+  const headlineParts = React.useMemo(
+    () => splitHeadlineForStagger(HERO_HEADLINE),
+    []
+  );
+
+  const headlineContainerVariants = {
+    hidden: {},
+    show: {
+      transition: {
+        staggerChildren: prefersReducedMotion ? 0 : 0.042,
+        delayChildren: prefersReducedMotion ? 0 : 0.08,
+      },
+    },
+  };
+
+  const headlineWordVariants = {
+    hidden: {
+      opacity: 0,
+      y: prefersReducedMotion ? 0 : 20,
+      filter: prefersReducedMotion ? "blur(0px)" : "blur(12px)",
+    },
+    show: {
+      opacity: 1,
+      y: 0,
+      filter: "blur(0px)",
+      transition: { type: "spring" as const, stiffness: 95, damping: 19, mass: 0.72 },
+    },
+  };
+
+  /** 卡片进入视口：模糊 → 清晰 + spring */
+  const cardRevealVariants = {
+    hidden: {
+      opacity: 0,
+      y: prefersReducedMotion ? 0 : 28,
+      filter: prefersReducedMotion ? "blur(0px)" : "blur(16px)",
+    },
+    show: {
+      opacity: 1,
+      y: 0,
+      filter: "blur(0px)",
+      transition: { type: "spring" as const, stiffness: 88, damping: 20, mass: 0.75 },
+    },
+  };
+
   return (
     <main className="gmx-main relative min-h-screen text-slate-100 antialiased">
       <canvas
@@ -463,16 +602,35 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
         style={{ pointerEvents: "none" }}
         aria-hidden
       />
+      <div className="fixed inset-0 z-[-5] bg-black/35 pointer-events-none" aria-hidden />
       {/* 星尘样式鼠标光标：默认小且偏暗；悬停到可点击元素时放大并提亮 */}
       <div ref={cursorRef} className="cursor-star" aria-hidden />
 
       <div className="relative z-10 mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        <header className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-6">
+        <motion.header
+          initial={{ opacity: 0, y: prefersReducedMotion ? 0 : -18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring" as const, stiffness: 140, damping: 20 }}
+          className="liquid-glass-nav sticky top-4 z-[45] flex flex-wrap items-center justify-between gap-4 rounded-2xl px-4 py-4 sm:px-5"
+          style={{
+            backgroundColor: navBackground,
+            backdropFilter: navBackdrop,
+            WebkitBackdropFilter: navBackdrop,
+            border: navBorder,
+            boxShadow: navShadow,
+          }}
+        >
           <a href="#hero" className="font-semibold tracking-tight text-slate-100" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
             龚梦星·Gong Mengxing
           </a>
           <div className="flex items-center gap-4">
-            <nav ref={navRef} className="flex items-center gap-6 text-sm font-medium text-slate-400">
+            <motion.nav
+              ref={navRef}
+              initial="hidden"
+              animate="show"
+              variants={sectionVariants}
+              className="flex items-center gap-6 text-sm font-medium text-slate-400"
+            >
               <a href="#hero" className="nav-link text-slate-300 hover:text-cyan-300">首页</a>
               <div className="nav-dropdown group relative">
                 <button
@@ -509,27 +667,53 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                 </div>
               </div>
               <a href="#about" className="nav-link text-slate-300 hover:text-cyan-300">关于我</a>
-            </nav>
+            </motion.nav>
             <FontSizeSwitcher />
           </div>
-        </header>
+        </motion.header>
 
-        <section id="hero" className="scroll-mt-20 py-16 sm:py-20">
-          <h1 className="text-3xl font-semibold leading-tight tracking-tight text-slate-50 sm:text-4xl md:text-5xl" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
-            4年经验 AI 项目经理 | Vibe Coding 重度实践者
-          </h1>
-          <p className="mt-4 max-w-xl text-base leading-relaxed text-slate-400">
-            擅长利用 AI Agent 构建商业级闭环，极低成本验证产品假设。
-          </p>
-          <p className="mt-2 text-sm text-slate-500">Agentic Workflow · Rapid Validation · Production-ready Delivery</p>
-          <div className="mt-10 flex flex-wrap gap-4">
-            <a href="/resume.pdf" className="glow-btn glow-btn--primary glow-btn--resume">查看简历</a>
+        <motion.section
+          id="hero"
+          className="scroll-mt-20 py-16 sm:py-24"
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.25 }}
+          variants={sectionVariants}
+        >
+          <motion.div variants={itemVariants} className="neon-purple-breath mb-4 inline-flex items-center rounded-full border border-purple-400/40 bg-purple-500/10 px-3 py-1 text-xs font-mono tracking-wide text-purple-200">
+            4-Year AI PM
+          </motion.div>
+          <motion.h1
+            className="text-3xl font-semibold leading-tight tracking-tight text-slate-50 sm:text-4xl md:text-5xl"
+            style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}
+            variants={headlineContainerVariants}
+            initial="hidden"
+            animate="show"
+          >
+            {headlineParts.map((part, i) => (
+              <motion.span
+                key={`${i}-${part === " " ? "sp" : part}`}
+                variants={headlineWordVariants}
+                className="inline-block"
+                style={{ whiteSpace: part.trim() === "" ? "pre" : undefined }}
+              >
+                {part}
+              </motion.span>
+            ))}
+          </motion.h1>
+          <motion.p variants={itemVariants} className="mt-4 max-w-2xl text-base leading-relaxed text-slate-300 sm:text-lg">
+            Deep practice in OpenClaw &amp; Claude Code (CC). Building AI-native agents for rapid business validation.
+          </motion.p>
+          <motion.p variants={itemVariants} className="mt-2 text-sm text-slate-500">Agentic Workflow · Rapid Validation · Production-ready Delivery</motion.p>
+          <motion.div variants={itemVariants} className="mt-10 flex flex-wrap gap-4">
+            <motion.a href="/resume.pdf" whileHover={prefersReducedMotion ? undefined : { scale: 1.03 }} whileTap={{ scale: 0.98 }} transition={{ type: "spring" as const, stiffness: 260, damping: 18 }} className="glow-btn glow-btn--primary glow-btn--resume magnetic-btn">查看简历</motion.a>
+            <motion.a href="#about" whileHover={prefersReducedMotion ? undefined : { scale: 1.02 }} whileTap={{ scale: 0.98 }} transition={{ type: "spring" as const, stiffness: 240, damping: 18 }} className="glow-btn glow-btn--secondary magnetic-btn">联系我</motion.a>
             <a href="/#projects" className="glow-btn glow-btn--secondary">核心项目</a>
             <a href="/#featured" className="glow-btn glow-btn--secondary">特色项目</a>
             <a href="/#knowledge" className="glow-btn glow-btn--secondary">AI知识沉淀</a>
             <a href="/#insights" className="glow-btn glow-btn--secondary">资讯收集</a>
-          </div>
-          <div className="mt-6 rounded-2xl border border-cyan-500/20 bg-black/20 p-3 backdrop-blur-xl">
+          </motion.div>
+          <motion.div variants={itemVariants} className="mt-8 rounded-2xl border border-cyan-500/20 bg-black/20 p-3 backdrop-blur-xl">
             <div className="mb-2 text-[11px] font-mono uppercase tracking-widest text-cyan-300/90">
               Latest Tech Stack
             </div>
@@ -543,15 +727,28 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                 ))}
               </div>
             </div>
-          </div>
-        </section>
+          </motion.div>
+        </motion.section>
 
-        <section id="about" className="scroll-mt-20 py-12">
+        <motion.section
+          id="about"
+          className="scroll-mt-20 py-16"
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={sectionVariants}
+        >
           <h2 className="text-xl font-semibold text-slate-50" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
             关于我
           </h2>
           <p className="mt-2 text-sm text-slate-500">About · New Paradigm</p>
-          <div className="holo-card mt-6 rounded-2xl border border-cyan-500/20 bg-black/20 p-6 backdrop-blur-xl">
+          <motion.div
+            variants={cardRevealVariants}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, amount: 0.22, margin: "-0px 0px -8% 0px" }}
+            className="holo-card mt-8 rounded-2xl border border-cyan-500/20 bg-black/20 p-7 backdrop-blur-xl sm:p-8"
+          >
             <p className="text-sm leading-relaxed text-slate-400">
               我专注将 Agentic Workflow 与业务闭环深度结合，持续用 Vibe Coding + Rapid Validation 模式，把复杂想法快速转化为可运行、可验证、可迭代的商业级 AI 产品。
             </p>
@@ -594,16 +791,31 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                 ))}
               </div>
             </div>
-          </div>
-        </section>
+          </motion.div>
+        </motion.section>
 
-        <section id="projects" className="scroll-mt-20 py-12">
+        <motion.section
+          id="projects"
+          className="scroll-mt-20 py-16"
+          data-parallax="0.018"
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={sectionVariants}
+        >
           <h2 className="text-xl font-semibold text-slate-50" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
             核心项目展示
           </h2>
           <p className="mt-2 text-sm text-slate-500">Flagship Projects</p>
-          <div className="mt-8 space-y-6">
-            <article className="holo-card rounded-2xl border border-cyan-500/20 bg-black/20 overflow-hidden backdrop-blur-xl">
+          <motion.div className="mt-8 space-y-6">
+            <motion.article
+              variants={cardRevealVariants}
+              initial="hidden"
+              whileInView="show"
+              viewport={{ once: true, amount: 0.18, margin: "-0px 0px -6% 0px" }}
+              whileHover={prefersReducedMotion ? undefined : { y: -6, transition: { type: "spring" as const, stiffness: 180, damping: 18 } }}
+              className="holo-card liquid-glass-card rounded-2xl border border-cyan-500/20 bg-black/20 overflow-hidden backdrop-blur-xl"
+            >
               <div className="p-6 sm:p-8">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
@@ -656,17 +868,32 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                   <span className="tech-tag">Vector DB</span>
                 </div>
               </div>
-            </article>
-          </div>
-        </section>
+            </motion.article>
+          </motion.div>
+        </motion.section>
 
-        <section id="featured" className="scroll-mt-20 py-12">
+        <motion.section
+          id="featured"
+          className="scroll-mt-20 py-16"
+          data-parallax="0.014"
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={sectionVariants}
+        >
           <h2 className="text-xl font-semibold text-slate-50" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
             特色项目展示
           </h2>
           <p className="mt-2 text-sm text-slate-500">Featured Projects</p>
-          <div className="mt-8 grid gap-6 sm:grid-cols-2">
-            <article className="holo-card rounded-2xl border border-cyan-500/20 bg-black/20 p-5 backdrop-blur-xl">
+          <motion.div className="mt-8 grid gap-6 sm:grid-cols-2">
+            <motion.article
+              variants={cardRevealVariants}
+              initial="hidden"
+              whileInView="show"
+              viewport={{ once: true, amount: 0.2, margin: "-0px 0px -8% 0px" }}
+              whileHover={prefersReducedMotion ? undefined : { y: -5, transition: { type: "spring" as const, stiffness: 180, damping: 18 } }}
+              className="holo-card liquid-glass-card rounded-2xl border border-cyan-500/20 bg-black/20 p-5 backdrop-blur-xl"
+            >
               <div className="flex items-start justify-between gap-3">
                 <h3 className="text-base font-semibold text-slate-50" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
                   NotebookLM 工作流实践
@@ -681,8 +908,15 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                 <span className="tech-tag">NotebookLM</span>
                 <span className="tech-tag">RAG</span>
               </div>
-            </article>
-            <article className="holo-card rounded-2xl border border-cyan-500/20 bg-black/20 p-5 backdrop-blur-xl">
+            </motion.article>
+            <motion.article
+              variants={cardRevealVariants}
+              initial="hidden"
+              whileInView="show"
+              viewport={{ once: true, amount: 0.2, margin: "-0px 0px -8% 0px" }}
+              whileHover={prefersReducedMotion ? undefined : { y: -5, transition: { type: "spring" as const, stiffness: 180, damping: 18 } }}
+              className="holo-card liquid-glass-card rounded-2xl border border-cyan-500/20 bg-black/20 p-5 backdrop-blur-xl"
+            >
               <div className="flex items-start justify-between gap-3">
                 <h3 className="text-base font-semibold text-slate-50" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
                   Agent 决策逻辑设计
@@ -697,34 +931,57 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                 <span className="tech-tag">Agents</span>
                 <span className="tech-tag">Workflow</span>
               </div>
-            </article>
-          </div>
-        </section>
+            </motion.article>
+          </motion.div>
+        </motion.section>
 
-        <section id="knowledge" className="scroll-mt-20 py-12">
+        <motion.section
+          id="knowledge"
+          className="scroll-mt-20 py-16"
+          data-parallax="0.01"
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={sectionVariants}
+        >
           <h2 className="text-xl font-semibold text-slate-50" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
             AI 知识沉淀
           </h2>
           <p className="mt-2 text-sm text-slate-500">Best Practices &amp; Curation</p>
-          <div className="mt-8 grid gap-6 sm:grid-cols-2">
+          <motion.div className="mt-8 grid gap-6 sm:grid-cols-2">
             {articlesLoading ? (
               <>
                 {[1, 2].map((i) => (
-                  <div key={i} className="holo-card rounded-2xl border border-cyan-500/20 bg-black/20 p-6 backdrop-blur-xl">
+                  <motion.div
+                    key={i}
+                    variants={cardRevealVariants}
+                    initial="hidden"
+                    whileInView="show"
+                    viewport={{ once: true, amount: 0.2, margin: "-0px 0px -8% 0px" }}
+                    whileHover={prefersReducedMotion ? undefined : { y: -5, transition: { type: "spring" as const, stiffness: 180, damping: 18 } }}
+                    className="holo-card liquid-glass-card rounded-2xl border border-cyan-500/20 bg-black/20 p-6 backdrop-blur-xl"
+                  >
                     <div className="knowledge-loading-skeleton h-6 w-3/4 rounded bg-slate-600/50" />
                     <div className="knowledge-loading-skeleton mt-3 h-4 w-full rounded bg-slate-600/40" />
                     <div className="knowledge-loading-skeleton mt-2 h-4 w-5/6 rounded bg-slate-600/40" />
                     <div className="knowledge-loading-skeleton mt-6 h-3 w-24 rounded bg-cyan-500/30" />
-                  </div>
+                  </motion.div>
                 ))}
               </>
             ) : (
               articles.map((article) => (
-                <Link
+                <motion.div
                   key={article.id}
+                  variants={cardRevealVariants}
+                  initial="hidden"
+                  whileInView="show"
+                  viewport={{ once: true, amount: 0.18, margin: "-0px 0px -8% 0px" }}
+                  whileHover={prefersReducedMotion ? undefined : { y: -5, transition: { type: "spring" as const, stiffness: 180, damping: 18 } }}
+                >
+                <Link
                   href={`/articles/${article.id}`}
                   prefetch
-                  className="holo-card group block rounded-2xl border border-cyan-500/20 bg-black/20 p-6 backdrop-blur-xl transition hover:border-cyan-400/30"
+                  className="holo-card liquid-glass-card group block rounded-2xl border border-cyan-500/20 bg-black/20 p-6 backdrop-blur-xl transition hover:border-cyan-400/30"
                 >
                   <h3 className="text-lg font-semibold text-slate-50 group-hover:text-cyan-300" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
                     {article.title}
@@ -734,20 +991,55 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                   </p>
                   <span className="mt-4 inline-block text-xs font-medium text-cyan-400/90">进入详情 →</span>
                 </Link>
+                </motion.div>
               ))
             )}
-          </div>
-        </section>
+          </motion.div>
+        </motion.section>
 
-        <section id="insights" className="scroll-mt-20 py-12">
+        <motion.section
+          id="insights"
+          className="scroll-mt-20 py-16"
+          data-parallax="0.008"
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={sectionVariants}
+        >
           <h2 className="text-xl font-semibold text-slate-50" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
             资讯收集
           </h2>
           <p className="mt-2 text-sm text-slate-500">Industry News &amp; Technical Radar</p>
-          <AINewsWidget news={news} />
-        </section>
+          <motion.div
+            variants={cardRevealVariants}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, amount: 0.15, margin: "-0px 0px -10% 0px" }}
+          >
+            <AINewsWidget news={news} />
+          </motion.div>
+        </motion.section>
 
-        <footer className="border-t border-white/10 pt-6 text-xs text-slate-500">
+        <motion.div
+          className="mt-12 overflow-hidden border-y border-white/10 py-3"
+          variants={cardRevealVariants}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.35 }}
+        >
+          <div className="stack-marquee">
+            <div className="stack-marquee-track">
+              {["OpenClaw", "Claude Code", "Vibe Coding", "Next.js", "Cursor"].map((s) => (
+                <span key={`bottom-a-${s}`} className="tech-tag">{s}</span>
+              ))}
+              {["OpenClaw", "Claude Code", "Vibe Coding", "Next.js", "Cursor"].map((s) => (
+                <span key={`bottom-b-${s}`} className="tech-tag">{s}</span>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+
+        <footer className="pt-6 text-xs text-slate-500">
           © {new Date().getFullYear()} 龚梦星 Gong Mengxing · AI 产品经理
         </footer>
       </div>
@@ -775,7 +1067,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
         .glow-btn {
           display: inline-flex; align-items: center; justify-content: center;
           padding: 0.625rem 1.25rem; font-size: 0.875rem; font-weight: 500; border-radius: 9999px;
-          transition: box-shadow 0.3s ease, border-color 0.2s ease;
+          transition: box-shadow 0.3s ease, border-color 0.2s ease, transform 0.2s ease;
           font-family: "IBM Plex Mono", "SF Mono", monospace;
         }
         .glow-btn--primary {
@@ -799,6 +1091,25 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
         .holo-card {
           box-shadow: 0 0 0 1px rgba(6,182,212,0.12), 0 0 0 1px rgba(176,38,255,0.08), 0 0 24px rgba(6,182,212,0.08), 0 0 48px rgba(176,38,255,0.05);
           animation: holo-pulse 4s ease-in-out infinite;
+        }
+        /* transform 由 Framer Motion whileHover 驱动，此处仅保留辉光与描边 */
+        .holo-card:hover {
+          border-color: rgba(168,85,247,0.55) !important;
+          box-shadow: 0 0 0 1px rgba(168,85,247,0.35), 0 0 28px rgba(168,85,247,0.24), 0 0 56px rgba(168,85,247,0.15);
+        }
+        .liquid-glass-card {
+          backdrop-filter: blur(20px) saturate(180%);
+          -webkit-backdrop-filter: blur(20px) saturate(180%);
+          background: rgba(17, 17, 17, 0.7);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .neon-purple-breath {
+          box-shadow: 0 0 0 1px rgba(168,85,247,0.35), 0 0 16px rgba(168,85,247,0.35), 0 0 30px rgba(168,85,247,0.2);
+          animation: purple-breath 2.2s ease-in-out infinite;
+        }
+        @keyframes purple-breath {
+          0%, 100% { box-shadow: 0 0 0 1px rgba(168,85,247,0.35), 0 0 16px rgba(168,85,247,0.35), 0 0 30px rgba(168,85,247,0.2); }
+          50% { box-shadow: 0 0 0 1px rgba(168,85,247,0.55), 0 0 24px rgba(168,85,247,0.5), 0 0 40px rgba(168,85,247,0.3); }
         }
         @keyframes holo-pulse {
           0%, 100% { box-shadow: 0 0 0 1px rgba(6,182,212,0.12), 0 0 0 1px rgba(176,38,255,0.08), 0 0 24px rgba(6,182,212,0.08), 0 0 48px rgba(176,38,255,0.05); }
