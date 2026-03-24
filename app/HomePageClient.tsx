@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useCallback, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   motion,
@@ -11,6 +12,8 @@ import {
   useTransform,
 } from "framer-motion";
 import { AINewsWidget } from "@/app/components/AINewsWidget";
+import { MagneticWrap } from "@/app/components/MagneticWrap";
+import { TiltCard } from "@/app/components/TiltCard";
 import type { AINews } from "@/utils/notion";
 
 type Article = {
@@ -30,9 +33,9 @@ const CORE_X = 2 / 3;
 const CORE_Y = 0.5;
 
 // 连线距离与核心半径（核心半径已 +40%）
-const LINK_DISTANCE_RATIO = 0.28;
-const CORE_RADIUS_RATIO = 0.196;
-const CORE_INNER_RATIO = 0.084;
+const LINK_DISTANCE_RATIO = 0.36;
+const CORE_RADIUS_RATIO = 0.28;
+const CORE_INNER_RATIO = 0.11;
 
 // 引力锚点：G, M, X 的抽象几何拓扑（归一化 0.25~0.75，占界面 1/2）
 function getGMXAnchors(): { x: number; y: number; w: number }[] {
@@ -75,10 +78,13 @@ type Particle = {
 
 import { FontSizeSwitcher } from "@/app/components/FontSizeSwitcher";
 
-const HERO_HEADLINE = "4年经验 AI 项目经理 | Vibe Coding 重度实践者";
+const HERO_SUBLINE = "4年经验 AI 项目经理 | Vibe Coding 重度实践者";
+/** 与 Hero 展示文案一致（仅去掉单独大标题「Mengxing」，其余保留） */
+const HERO_BODY =
+  "Deep practice in OpenClaw & Claude Code (CC). Building AI-native agents for rapid business validation.";
 
-/** 发布会式标题分词：保留空格与竖线，便于逐段 stagger */
-function splitHeadlineForStagger(text: string): string[] {
+/** 分词 stagger：保留空格与竖线 */
+function splitForStagger(text: string): string[] {
   return text.split(/(\s+)/).filter((p) => p.length > 0);
 }
 
@@ -150,32 +156,11 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Magnetic buttons：下载简历/联系我按钮微吸附
-  useEffect(() => {
-    const btns = Array.from(
-      document.querySelectorAll<HTMLElement>(".magnetic-btn")
-    );
-    if (!btns.length) return;
-    const cleanups: Array<() => void> = [];
-    btns.forEach((btn) => {
-      const move = (e: PointerEvent) => {
-        const rect = btn.getBoundingClientRect();
-        const dx = (e.clientX - (rect.left + rect.width / 2)) / rect.width;
-        const dy = (e.clientY - (rect.top + rect.height / 2)) / rect.height;
-        btn.style.transform = `translate3d(${dx * 10}px, ${dy * 8}px, 0)`;
-      };
-      const leave = () => {
-        btn.style.transform = "translate3d(0,0,0)";
-      };
-      btn.addEventListener("pointermove", move);
-      btn.addEventListener("pointerleave", leave);
-      cleanups.push(() => {
-        btn.removeEventListener("pointermove", move);
-        btn.removeEventListener("pointerleave", leave);
-      });
-    });
-    return () => cleanups.forEach((fn) => fn());
-  }, []);
+  /**
+   * 注意：不要对 fixed 全屏 canvas 做 CSS translate 视差——滚动时画布边缘会移出视口，
+   * 露出下层 body；在系统浅色主题下 body 为白底，就会出现一条灰白色横带。
+   * 纵深效果保留 data-parallax 区块微位移即可。
+   */
 
   useEffect(() => {
     const cursorEl = cursorRef.current;
@@ -254,16 +239,16 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
 
     const toX = (nx: number) => nx * w;
     const toY = (ny: number) => ny * h;
-    // 星座放大 40%，中心在 (CORE_X, CORE_Y)
+    // 星座进一步放大，视觉占比接近半屏
     const mapAnchor = (ax: number, ay: number) => ({
-      nx: Math.max(0.05, Math.min(0.98, CORE_X + (ax - 0.5) * 1.4)),
-      ny: Math.max(0.1, Math.min(0.9, CORE_Y + (ay - 0.5) * 1.4)),
+      nx: Math.max(0.02, Math.min(0.98, CORE_X + (ax - 0.5) * 1.75)),
+      ny: Math.max(0.04, Math.min(0.96, CORE_Y + (ay - 0.5) * 1.75)),
     });
 
     const particles: Particle[] = [];
-    const FAR_COUNT = 80;
-    const MID_COUNT = 55;
-    const CORE_COUNT = 45;
+    const FAR_COUNT = 110;
+    const MID_COUNT = 80;
+    const CORE_COUNT = 70;
 
     const rand = (a: number, b: number) => a + Math.random() * (b - a);
     const initParticles = () => {
@@ -345,10 +330,10 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
 
     const drawBg = () => {
       const g = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.max(w, h) * 0.8);
-      g.addColorStop(0, "#0c1222");
-      g.addColorStop(0.4, "#0a1628");
-      g.addColorStop(0.7, "#061018");
-      g.addColorStop(1, "#030508");
+      g.addColorStop(0, "#0f1930");
+      g.addColorStop(0.45, "#0b162a");
+      g.addColorStop(0.75, "#081120");
+      g.addColorStop(1, "#04070e");
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, w, h);
     };
@@ -434,7 +419,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
         const dx = a.x - b.x;
         const dy = a.y - b.y;
         const d = Math.hypot(dx, dy);
-        const alpha = (1 - d / linkDistance) * 0.38;
+        const alpha = (1 - d / linkDistance) * 0.55;
         if (alpha < 0.02) return;
         ctx.beginPath();
         ctx.moveTo(a.x, a.y);
@@ -444,19 +429,19 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
         grad.addColorStop(0.5, `rgba(124, 58, 237, ${alpha * 0.8})`);
         grad.addColorStop(1, `rgba(234, 179, 8, ${alpha * 0.6})`);
         ctx.strokeStyle = grad;
-        ctx.lineWidth = 0.6;
+        ctx.lineWidth = 0.85;
         ctx.stroke();
       });
 
       // 绘制粒子：远景闪烁（更密更亮），中景/近景发光
       particles.forEach((p) => {
-        const twinkle = p.layer === 0 ? 0.55 + 0.45 * Math.sin(time * 2.2 + p.twinklePhase) : 1;
-        const op = Math.max(0.15, Math.min(1, p.opacity * twinkle));
+        const twinkle = p.layer === 0 ? 0.6 + 0.5 * Math.sin(time * 2.2 + p.twinklePhase) : 1;
+        const op = Math.max(0.2, Math.min(1, p.opacity * twinkle));
 
         if (p.layer === 0) {
           ctx.fillStyle = `rgba(180, 220, 255, ${op})`;
           ctx.shadowColor = "rgba(6, 182, 212, 0.6)";
-          ctx.shadowBlur = p.r * 2;
+          ctx.shadowBlur = p.r * 3.2;
           ctx.beginPath();
           ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
           ctx.fill();
@@ -479,7 +464,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
         const hex = color === CYAN ? "6, 182, 212" : "124, 58, 237";
         ctx.fillStyle = `rgba(${hex}, ${op})`;
         ctx.shadowColor = color;
-        ctx.shadowBlur = p.layer === 2 ? 8 : 4;
+        ctx.shadowBlur = p.layer === 2 ? 12 : 6;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
         ctx.fill();
@@ -546,36 +531,59 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
   const navBorderAlpha = useTransform(scrollY, [0, 100], [0.08, 0.16]);
   const navShadowAlpha = useTransform(scrollY, [0, 100], [0.06, 0.14]);
   const navBackground = useMotionTemplate`rgba(17, 17, 17, ${navBgAlpha})`;
-  const navBackdrop = useMotionTemplate`blur(${navBlurPx}px) saturate(180%)`;
+  const navBackdrop = useMotionTemplate`blur(${navBlurPx}px) saturate(200%)`;
   const navBorder = useMotionTemplate`1px solid rgba(255, 255, 255, ${navBorderAlpha})`;
   const navShadow = useMotionTemplate`0 12px 40px rgba(0, 0, 0, ${navShadowAlpha})`;
 
-  const headlineParts = React.useMemo(
-    () => splitHeadlineForStagger(HERO_HEADLINE),
-    []
-  );
+  const sublineParts = React.useMemo(() => splitForStagger(HERO_SUBLINE), []);
 
-  const headlineContainerVariants = {
+  const staggerListContainer = {
     hidden: {},
     show: {
       transition: {
-        staggerChildren: prefersReducedMotion ? 0 : 0.042,
-        delayChildren: prefersReducedMotion ? 0 : 0.08,
+        staggerChildren: prefersReducedMotion ? 0 : 0.11,
+        delayChildren: prefersReducedMotion ? 0 : 0.06,
       },
     },
   };
 
-  const headlineWordVariants = {
+  const staggerListItem = {
     hidden: {
       opacity: 0,
-      y: prefersReducedMotion ? 0 : 20,
-      filter: prefersReducedMotion ? "blur(0px)" : "blur(12px)",
+      y: prefersReducedMotion ? 0 : 28,
+      scale: prefersReducedMotion ? 1 : 0.94,
+      filter: prefersReducedMotion ? "blur(0px)" : "blur(14px)",
+    },
+    show: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      filter: "blur(0px)",
+      transition: { type: "spring" as const, stiffness: 86, damping: 19, mass: 0.72 },
+    },
+  };
+
+  const sublineWordVariants = {
+    hidden: {
+      opacity: 0,
+      y: prefersReducedMotion ? 0 : 16,
+      filter: prefersReducedMotion ? "blur(0px)" : "blur(10px)",
     },
     show: {
       opacity: 1,
       y: 0,
       filter: "blur(0px)",
-      transition: { type: "spring" as const, stiffness: 95, damping: 19, mass: 0.72 },
+      transition: { type: "spring" as const, stiffness: 100, damping: 20, mass: 0.65 },
+    },
+  };
+
+  const sublineContainerVariants = {
+    hidden: {},
+    show: {
+      transition: {
+        staggerChildren: prefersReducedMotion ? 0 : 0.035,
+        delayChildren: prefersReducedMotion ? 0 : 0.15,
+      },
     },
   };
 
@@ -602,7 +610,6 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
         style={{ pointerEvents: "none" }}
         aria-hidden
       />
-      <div className="fixed inset-0 z-[-5] bg-black/35 pointer-events-none" aria-hidden />
       {/* 星尘样式鼠标光标：默认小且偏暗；悬停到可点击元素时放大并提亮 */}
       <div ref={cursorRef} className="cursor-star" aria-hidden />
 
@@ -674,56 +681,118 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
 
         <motion.section
           id="hero"
-          className="scroll-mt-20 py-16 sm:py-24"
+          className="scroll-mt-20 flex flex-col items-center py-20 text-center sm:py-28"
           initial="hidden"
           whileInView="show"
           viewport={{ once: true, amount: 0.25 }}
           variants={sectionVariants}
         >
-          <motion.div variants={itemVariants} className="neon-purple-breath mb-4 inline-flex items-center rounded-full border border-purple-400/40 bg-purple-500/10 px-3 py-1 text-xs font-mono tracking-wide text-purple-200">
+          <motion.div
+            variants={itemVariants}
+            className="profile-neon-breath relative mb-8 h-24 w-24 shrink-0 overflow-hidden rounded-full border-2 border-white/10 sm:h-28 sm:w-28"
+          >
+            <Image
+              src="/screenshot-20251105-214648.jpg"
+              alt="龚梦星 Gong Mengxing"
+              fill
+              className="object-cover"
+              sizes="(max-width: 640px) 96px, 112px"
+              priority
+            />
+          </motion.div>
+
+          {/* 徽章在主标题上方，与圈选示意一致；仅曾删除「Mengxing」大字，未删徽章/英文/按钮 */}
+          <motion.div variants={itemVariants} className="neon-purple-breath mt-2 inline-flex items-center rounded-full border border-purple-400/35 bg-purple-500/10 px-4 py-1.5 text-xs font-mono tracking-widest text-purple-200/95">
             4-Year AI PM
           </motion.div>
-          <motion.h1
-            className="text-3xl font-semibold leading-tight tracking-tight text-slate-50 sm:text-4xl md:text-5xl"
-            style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}
-            variants={headlineContainerVariants}
+
+          <motion.h2
+            className="mt-5 max-w-3xl text-lg font-semibold leading-snug text-slate-100 sm:text-xl md:text-2xl"
+            style={{ fontFamily: '"Geist", "Inter", "SF Pro Text", system-ui, sans-serif' }}
+            variants={sublineContainerVariants}
             initial="hidden"
             animate="show"
           >
-            {headlineParts.map((part, i) => (
+            {sublineParts.map((part, i) => (
               <motion.span
-                key={`${i}-${part === " " ? "sp" : part}`}
-                variants={headlineWordVariants}
+                key={`sub-${i}-${part === " " ? "sp" : part}`}
+                variants={sublineWordVariants}
                 className="inline-block"
                 style={{ whiteSpace: part.trim() === "" ? "pre" : undefined }}
               >
                 {part}
               </motion.span>
             ))}
-          </motion.h1>
-          <motion.p variants={itemVariants} className="mt-4 max-w-2xl text-base leading-relaxed text-slate-300 sm:text-lg">
-            Deep practice in OpenClaw &amp; Claude Code (CC). Building AI-native agents for rapid business validation.
+          </motion.h2>
+
+          <motion.p
+            variants={itemVariants}
+            className="mt-6 max-w-2xl text-base font-light leading-relaxed text-slate-100 sm:text-lg"
+            style={{ fontFamily: '"Geist", "Inter", "SF Pro Text", system-ui, sans-serif' }}
+          >
+            {HERO_BODY}
           </motion.p>
-          <motion.p variants={itemVariants} className="mt-2 text-sm text-slate-500">Agentic Workflow · Rapid Validation · Production-ready Delivery</motion.p>
-          <motion.div variants={itemVariants} className="mt-10 flex flex-wrap gap-4">
-            <motion.a href="/resume.pdf" whileHover={prefersReducedMotion ? undefined : { scale: 1.03 }} whileTap={{ scale: 0.98 }} transition={{ type: "spring" as const, stiffness: 260, damping: 18 }} className="glow-btn glow-btn--primary glow-btn--resume magnetic-btn">查看简历</motion.a>
-            <motion.a href="#about" whileHover={prefersReducedMotion ? undefined : { scale: 1.02 }} whileTap={{ scale: 0.98 }} transition={{ type: "spring" as const, stiffness: 240, damping: 18 }} className="glow-btn glow-btn--secondary magnetic-btn">联系我</motion.a>
+
+          <motion.p variants={itemVariants} className="mt-3 text-xs text-slate-500 sm:text-sm">
+            Agentic Workflow · Rapid Validation · Production-ready Delivery
+          </motion.p>
+
+          <motion.div variants={itemVariants} className="mt-10 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+            <MagneticWrap strength={0.42} padding={48}>
+              <motion.a
+                href="/resume.pdf"
+                whileHover={prefersReducedMotion ? undefined : { scale: 1.04 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ type: "spring" as const, stiffness: 260, damping: 18 }}
+                className="glow-btn glow-btn--primary glow-btn--resume"
+              >
+                查看简历
+              </motion.a>
+            </MagneticWrap>
+            <MagneticWrap strength={0.38} padding={48}>
+              <motion.a
+                href="#about"
+                whileHover={prefersReducedMotion ? undefined : { scale: 1.03 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ type: "spring" as const, stiffness: 240, damping: 18 }}
+                className="glow-btn glow-btn--secondary"
+              >
+                联系我
+              </motion.a>
+            </MagneticWrap>
             <a href="/#projects" className="glow-btn glow-btn--secondary">核心项目</a>
             <a href="/#featured" className="glow-btn glow-btn--secondary">特色项目</a>
             <a href="/#knowledge" className="glow-btn glow-btn--secondary">AI知识沉淀</a>
             <a href="/#insights" className="glow-btn glow-btn--secondary">资讯收集</a>
           </motion.div>
-          <motion.div variants={itemVariants} className="mt-8 rounded-2xl border border-cyan-500/20 bg-black/20 p-3 backdrop-blur-xl">
-            <div className="mb-2 text-[11px] font-mono uppercase tracking-widest text-cyan-300/90">
-              Latest Tech Stack
+
+          <motion.div
+            variants={itemVariants}
+            className="liquid-glass-card mt-14 w-full max-w-4xl rounded-2xl p-4 sm:p-5"
+          >
+            <div className="mb-3 text-center text-[11px] font-mono uppercase tracking-[0.2em] text-slate-400">
+              Tech Stack
             </div>
-            <div className="stack-marquee">
+            <motion.div
+              className="flex flex-wrap justify-center gap-2 sm:gap-3"
+              variants={staggerListContainer}
+              initial="hidden"
+              whileInView="show"
+              viewport={{ once: true, amount: 0.4 }}
+            >
+              {["OpenClaw", "Claude Code (CC)", "Cursor", "Vercel", "Windsurf", "LangChain", "Next.js", "Tailwind CSS"].map((s) => (
+                <motion.span key={s} variants={staggerListItem} className="tech-tag">
+                  {s}
+                </motion.span>
+              ))}
+            </motion.div>
+            <div className="stack-marquee mt-5 border-t border-white/5 pt-4">
               <div className="stack-marquee-track">
-                {["Claude Code (CC)", "OpenClaw", "Cursor", "Vercel", "Windsurf", "LangChain", "Next.js App Router", "Tailwind CSS"].map((s) => (
-                  <span key={`a-${s}`} className="tech-tag">{s}</span>
+                {["OpenClaw", "Claude Code", "Vibe Coding", "Next.js", "Cursor", "LangChain", "Vercel"].map((s) => (
+                  <span key={`hm-a-${s}`} className="tech-tag">{s}</span>
                 ))}
-                {["Claude Code (CC)", "OpenClaw", "Cursor", "Vercel", "Windsurf", "LangChain", "Next.js App Router", "Tailwind CSS"].map((s) => (
-                  <span key={`b-${s}`} className="tech-tag">{s}</span>
+                {["OpenClaw", "Claude Code", "Vibe Coding", "Next.js", "Cursor", "LangChain", "Vercel"].map((s) => (
+                  <span key={`hm-b-${s}`} className="tech-tag">{s}</span>
                 ))}
               </div>
             </div>
@@ -738,41 +807,41 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           viewport={{ once: true, amount: 0.2 }}
           variants={sectionVariants}
         >
-          <h2 className="text-xl font-semibold text-slate-50" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
+          <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl" style={{ fontFamily: '"Geist", "Inter", "SF Pro Display", system-ui, sans-serif' }}>
             关于我
           </h2>
-          <p className="mt-2 text-sm text-slate-500">About · New Paradigm</p>
+          <p className="mt-2 text-sm font-light text-slate-500">About · New Paradigm</p>
           <motion.div
             variants={cardRevealVariants}
             initial="hidden"
             whileInView="show"
             viewport={{ once: true, amount: 0.22, margin: "-0px 0px -8% 0px" }}
-            className="holo-card mt-8 rounded-2xl border border-cyan-500/20 bg-black/20 p-7 backdrop-blur-xl sm:p-8"
+            className="holo-card liquid-glass-card mt-8 rounded-2xl p-7 sm:p-8"
           >
-            <p className="text-sm leading-relaxed text-slate-400">
+            <p className="text-sm font-light leading-relaxed text-slate-400">
               我专注将 Agentic Workflow 与业务闭环深度结合，持续用 Vibe Coding + Rapid Validation 模式，把复杂想法快速转化为可运行、可验证、可迭代的商业级 AI 产品。
             </p>
             <div className="mt-6 grid gap-4 sm:grid-cols-3">
-              <div className="rounded-xl border border-cyan-500/15 bg-black/20 p-4">
+              <div className="liquid-glass-card rounded-xl p-4">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">Vibe Coding 深度实践</h3>
                 <p className="mt-2 text-sm leading-relaxed text-slate-300">
                   能熟练利用 Claude Code (CC) 与 Cursor 完成产品从 0 到 1 的全流程。独立完成需求梳理、UI 设计、前后端开发及 Vercel 自动化部署。
                 </p>
               </div>
-              <div className="rounded-xl border border-cyan-500/15 bg-black/20 p-4">
+              <div className="liquid-glass-card rounded-xl p-4">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">AI Agent 提效专家</h3>
                 <p className="mt-2 text-sm leading-relaxed text-slate-300">
                   深度使用 OpenClaw、Claude Code 等前沿 Agent 工具优化业务流。具备通过 AI 自动化工作流提升团队 5-10 倍交付效率的实战经验。
                 </p>
               </div>
-              <div className="rounded-xl border border-cyan-500/15 bg-black/20 p-4">
+              <div className="liquid-glass-card rounded-xl p-4">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">快速原型验证</h3>
                 <p className="mt-2 text-sm leading-relaxed text-slate-300">
                   拥有在 24 小时内将商业想法转化为可运行产品的“极速交付”能力，快速验证需求与价值闭环。
                 </p>
               </div>
             </div>
-            <div className="mt-6 rounded-xl border border-cyan-500/15 bg-black/20 p-4">
+            <div className="liquid-glass-card mt-6 rounded-xl p-4">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">AI-Native Stack</h3>
               <p className="mt-2 text-sm text-slate-400">
                 Tools
@@ -803,19 +872,20 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           viewport={{ once: true, amount: 0.2 }}
           variants={sectionVariants}
         >
-          <h2 className="text-xl font-semibold text-slate-50" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
-            核心项目展示
+          <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl" style={{ fontFamily: '"Geist", "Inter", "SF Pro Display", system-ui, sans-serif' }}>
+            AI Projects · 核心项目
           </h2>
-          <p className="mt-2 text-sm text-slate-500">Flagship Projects</p>
-          <motion.div className="mt-8 space-y-6">
-            <motion.article
-              variants={cardRevealVariants}
-              initial="hidden"
-              whileInView="show"
-              viewport={{ once: true, amount: 0.18, margin: "-0px 0px -6% 0px" }}
-              whileHover={prefersReducedMotion ? undefined : { y: -6, transition: { type: "spring" as const, stiffness: 180, damping: 18 } }}
-              className="holo-card liquid-glass-card rounded-2xl border border-cyan-500/20 bg-black/20 overflow-hidden backdrop-blur-xl"
-            >
+          <p className="mt-2 text-sm font-light text-slate-500">Flagship · Agentic delivery</p>
+          <motion.div
+            className="mt-8 space-y-6"
+            variants={staggerListContainer}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, amount: 0.18, margin: "0px 0px -8% 0px" }}
+          >
+            <motion.div variants={staggerListItem}>
+              <TiltCard className="block overflow-visible">
+                <article className="holo-card liquid-glass-card overflow-hidden rounded-2xl">
               <div className="p-6 sm:p-8">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
@@ -830,8 +900,8 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                   A RAG-based AI agent for intelligent Q&A and audit assistance in financial institutions. 将复杂规则审计时间显著缩短，关键合规问答可溯源到具体条款与解释。
                 </p>
               </div>
-              <div className="grid gap-4 border-t border-white/10 p-6 sm:grid-cols-3 sm:p-8">
-                <div className="holo-card-inner rounded-xl border border-cyan-500/15 bg-black/20 p-4">
+              <div className="grid gap-4 border-t border-white/5 p-6 sm:grid-cols-3 sm:p-8">
+                <div className="liquid-glass-card holo-card-inner rounded-xl p-4">
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">目标用户与痛点</h4>
                   <ul className="mt-3 space-y-1.5 text-sm text-slate-300">
                     <li>· 合规/内控：法规口径不一致、解释成本高</li>
@@ -839,7 +909,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                     <li>· 审计：缺少可追溯证据链与可复核记录</li>
                   </ul>
                 </div>
-                <div className="holo-card-inner rounded-xl border border-cyan-500/15 bg-black/20 p-4">
+                <div className="liquid-glass-card holo-card-inner rounded-xl p-4">
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">核心业务模块</h4>
                   <ul className="mt-3 space-y-1.5 text-sm text-slate-300">
                     <li>· 法规知识库：条款拆解、版本管理、标签体系</li>
@@ -847,7 +917,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                     <li>· 审计工作台：可追溯对话、结论复核与导出</li>
                   </ul>
                 </div>
-                <div className="holo-card-inner rounded-xl border border-cyan-500/15 bg-black/20 p-4">
+                <div className="liquid-glass-card holo-card-inner rounded-xl p-4">
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">底层架构设计</h4>
                   <ul className="mt-3 space-y-1.5 text-sm text-slate-300">
                     <li>· RAG：法规切片 + 向量检索 + 结构化引用</li>
@@ -868,7 +938,9 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                   <span className="tech-tag">Vector DB</span>
                 </div>
               </div>
-            </motion.article>
+                </article>
+              </TiltCard>
+            </motion.div>
           </motion.div>
         </motion.section>
 
@@ -881,19 +953,20 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           viewport={{ once: true, amount: 0.2 }}
           variants={sectionVariants}
         >
-          <h2 className="text-xl font-semibold text-slate-50" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
-            特色项目展示
+          <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl" style={{ fontFamily: '"Geist", "Inter", "SF Pro Display", system-ui, sans-serif' }}>
+            AI Projects · 特色项目
           </h2>
-          <p className="mt-2 text-sm text-slate-500">Featured Projects</p>
-          <motion.div className="mt-8 grid gap-6 sm:grid-cols-2">
-            <motion.article
-              variants={cardRevealVariants}
-              initial="hidden"
-              whileInView="show"
-              viewport={{ once: true, amount: 0.2, margin: "-0px 0px -8% 0px" }}
-              whileHover={prefersReducedMotion ? undefined : { y: -5, transition: { type: "spring" as const, stiffness: 180, damping: 18 } }}
-              className="holo-card liquid-glass-card rounded-2xl border border-cyan-500/20 bg-black/20 p-5 backdrop-blur-xl"
-            >
+          <p className="mt-2 text-sm font-light text-slate-500">Featured · Experiments</p>
+          <motion.div
+            className="mt-8 grid gap-6 sm:grid-cols-2"
+            variants={staggerListContainer}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, amount: 0.2, margin: "0px 0px -10% 0px" }}
+          >
+            <motion.div variants={staggerListItem}>
+              <TiltCard tiltMax={10} className="block h-full">
+                <article className="holo-card liquid-glass-card h-full rounded-2xl p-5">
               <div className="flex items-start justify-between gap-3">
                 <h3 className="text-base font-semibold text-slate-50" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
                   NotebookLM 工作流实践
@@ -908,15 +981,12 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                 <span className="tech-tag">NotebookLM</span>
                 <span className="tech-tag">RAG</span>
               </div>
-            </motion.article>
-            <motion.article
-              variants={cardRevealVariants}
-              initial="hidden"
-              whileInView="show"
-              viewport={{ once: true, amount: 0.2, margin: "-0px 0px -8% 0px" }}
-              whileHover={prefersReducedMotion ? undefined : { y: -5, transition: { type: "spring" as const, stiffness: 180, damping: 18 } }}
-              className="holo-card liquid-glass-card rounded-2xl border border-cyan-500/20 bg-black/20 p-5 backdrop-blur-xl"
-            >
+                </article>
+              </TiltCard>
+            </motion.div>
+            <motion.div variants={staggerListItem}>
+              <TiltCard tiltMax={10} className="block h-full">
+                <article className="holo-card liquid-glass-card h-full rounded-2xl p-5">
               <div className="flex items-start justify-between gap-3">
                 <h3 className="text-base font-semibold text-slate-50" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
                   Agent 决策逻辑设计
@@ -931,7 +1001,9 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                 <span className="tech-tag">Agents</span>
                 <span className="tech-tag">Workflow</span>
               </div>
-            </motion.article>
+                </article>
+              </TiltCard>
+            </motion.div>
           </motion.div>
         </motion.section>
 
@@ -944,10 +1016,10 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           viewport={{ once: true, amount: 0.2 }}
           variants={sectionVariants}
         >
-          <h2 className="text-xl font-semibold text-slate-50" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
+          <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl" style={{ fontFamily: '"Geist", "Inter", "SF Pro Display", system-ui, sans-serif' }}>
             AI 知识沉淀
           </h2>
-          <p className="mt-2 text-sm text-slate-500">Best Practices &amp; Curation</p>
+          <p className="mt-2 text-sm font-light text-slate-500">Best Practices &amp; Curation</p>
           <motion.div className="mt-8 grid gap-6 sm:grid-cols-2">
             {articlesLoading ? (
               <>
@@ -957,9 +1029,8 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                     variants={cardRevealVariants}
                     initial="hidden"
                     whileInView="show"
-                    viewport={{ once: true, amount: 0.2, margin: "-0px 0px -8% 0px" }}
-                    whileHover={prefersReducedMotion ? undefined : { y: -5, transition: { type: "spring" as const, stiffness: 180, damping: 18 } }}
-                    className="holo-card liquid-glass-card rounded-2xl border border-cyan-500/20 bg-black/20 p-6 backdrop-blur-xl"
+                    viewport={{ once: true, amount: 0.15, margin: "0px 0px -8% 0px" }}
+                    className="holo-card liquid-glass-card rounded-2xl p-6"
                   >
                     <div className="knowledge-loading-skeleton h-6 w-3/4 rounded bg-slate-600/50" />
                     <div className="knowledge-loading-skeleton mt-3 h-4 w-full rounded bg-slate-600/40" />
@@ -968,20 +1039,25 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                   </motion.div>
                 ))}
               </>
+            ) : articles.length === 0 ? (
+              <div className="holo-card liquid-glass-card col-span-full rounded-2xl p-6 text-sm text-slate-400">
+                暂无文章数据，请检查 Notion 数据库连接与字段映射。
+              </div>
             ) : (
-              articles.map((article) => (
+              articles.map((article, idx) => (
                 <motion.div
                   key={article.id}
                   variants={cardRevealVariants}
                   initial="hidden"
                   whileInView="show"
-                  viewport={{ once: true, amount: 0.18, margin: "-0px 0px -8% 0px" }}
-                  whileHover={prefersReducedMotion ? undefined : { y: -5, transition: { type: "spring" as const, stiffness: 180, damping: 18 } }}
+                  viewport={{ once: true, amount: 0.15, margin: "0px 0px -8% 0px" }}
+                  transition={{ delay: prefersReducedMotion ? 0 : idx * 0.06 }}
                 >
+                <TiltCard tiltMax={8} className="block h-full">
                 <Link
                   href={`/articles/${article.id}`}
                   prefetch
-                  className="holo-card liquid-glass-card group block rounded-2xl border border-cyan-500/20 bg-black/20 p-6 backdrop-blur-xl transition hover:border-cyan-400/30"
+                  className="holo-card liquid-glass-card group block h-full rounded-2xl p-6 transition hover:border-purple-500/30"
                 >
                   <h3 className="text-lg font-semibold text-slate-50 group-hover:text-cyan-300" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
                     {article.title}
@@ -991,6 +1067,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                   </p>
                   <span className="mt-4 inline-block text-xs font-medium text-cyan-400/90">进入详情 →</span>
                 </Link>
+                </TiltCard>
                 </motion.div>
               ))
             )}
@@ -1006,10 +1083,10 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           viewport={{ once: true, amount: 0.2 }}
           variants={sectionVariants}
         >
-          <h2 className="text-xl font-semibold text-slate-50" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
+          <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl" style={{ fontFamily: '"Geist", "Inter", "SF Pro Display", system-ui, sans-serif' }}>
             资讯收集
           </h2>
-          <p className="mt-2 text-sm text-slate-500">Industry News &amp; Technical Radar</p>
+          <p className="mt-2 text-sm font-light text-slate-500">Industry News &amp; Technical Radar</p>
           <motion.div
             variants={cardRevealVariants}
             initial="hidden"
@@ -1097,19 +1174,34 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           border-color: rgba(168,85,247,0.55) !important;
           box-shadow: 0 0 0 1px rgba(168,85,247,0.35), 0 0 28px rgba(168,85,247,0.24), 0 0 56px rgba(168,85,247,0.15);
         }
-        .liquid-glass-card {
-          backdrop-filter: blur(20px) saturate(180%);
-          -webkit-backdrop-filter: blur(20px) saturate(180%);
-          background: rgba(17, 17, 17, 0.7);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+        .profile-neon-breath {
+          box-shadow:
+            0 0 0 2px rgba(168, 85, 247, 0.25),
+            0 0 24px rgba(168, 85, 247, 0.35),
+            0 0 48px rgba(168, 85, 247, 0.15);
+          animation: profile-purple-breath 4.5s ease-in-out infinite;
+        }
+        @keyframes profile-purple-breath {
+          0%, 100% {
+            box-shadow:
+              0 0 0 2px rgba(168, 85, 247, 0.22),
+              0 0 20px rgba(168, 85, 247, 0.28),
+              0 0 40px rgba(168, 85, 247, 0.12);
+          }
+          50% {
+            box-shadow:
+              0 0 0 2px rgba(168, 85, 247, 0.5),
+              0 0 36px rgba(168, 85, 247, 0.45),
+              0 0 64px rgba(168, 85, 247, 0.22);
+          }
         }
         .neon-purple-breath {
-          box-shadow: 0 0 0 1px rgba(168,85,247,0.35), 0 0 16px rgba(168,85,247,0.35), 0 0 30px rgba(168,85,247,0.2);
-          animation: purple-breath 2.2s ease-in-out infinite;
+          box-shadow: 0 0 0 1px rgba(168,85,247,0.3), 0 0 14px rgba(168,85,247,0.28), 0 0 28px rgba(168,85,247,0.15);
+          animation: purple-breath 4s ease-in-out infinite;
         }
         @keyframes purple-breath {
-          0%, 100% { box-shadow: 0 0 0 1px rgba(168,85,247,0.35), 0 0 16px rgba(168,85,247,0.35), 0 0 30px rgba(168,85,247,0.2); }
-          50% { box-shadow: 0 0 0 1px rgba(168,85,247,0.55), 0 0 24px rgba(168,85,247,0.5), 0 0 40px rgba(168,85,247,0.3); }
+          0%, 100% { box-shadow: 0 0 0 1px rgba(168,85,247,0.3), 0 0 14px rgba(168,85,247,0.28), 0 0 28px rgba(168,85,247,0.15); }
+          50% { box-shadow: 0 0 0 1px rgba(168,85,247,0.55), 0 0 22px rgba(168,85,247,0.42), 0 0 44px rgba(168,85,247,0.22); }
         }
         @keyframes holo-pulse {
           0%, 100% { box-shadow: 0 0 0 1px rgba(6,182,212,0.12), 0 0 0 1px rgba(176,38,255,0.08), 0 0 24px rgba(6,182,212,0.08), 0 0 48px rgba(176,38,255,0.05); }
@@ -1130,11 +1222,15 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           display: flex;
           gap: 0.5rem;
           width: max-content;
-          animation: stack-scroll 24s linear infinite;
+          animation: stack-scroll 32s linear infinite;
+          will-change: transform;
         }
         @keyframes stack-scroll {
-          from { transform: translateX(0); }
-          to { transform: translateX(-50%); }
+          from { transform: translate3d(0, 0, 0); }
+          to { transform: translate3d(-50%, 0, 0); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .stack-marquee-track { animation: none !important; }
         }
         .status-badge {
           display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.25rem 0.75rem; font-size: 0.75rem; font-weight: 600;

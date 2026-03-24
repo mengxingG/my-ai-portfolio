@@ -9,11 +9,10 @@ export async function fetchPublishedArticlesFromNotion() {
       'Notion-Version': '2022-06-28', // 必须指定的官方 API 版本
       'Content-Type': 'application/json'
     },
+    // 不依赖可变的 Status 字段，避免字段删改后整段数据失效
     body: JSON.stringify({
-      filter: {
-        property: 'Status',
-        multi_select: { contains: 'Published' }
-      }
+      // 使用 Notion 内置时间戳排序，避免依赖某个可变字段名（如 Created/Date）
+      sorts: [{ timestamp: "created_time", direction: "descending" }]
     }),
     cache: 'no-store' as RequestCache // 禁用缓存，确保发布文章秒同步
   };
@@ -23,7 +22,7 @@ export async function fetchPublishedArticlesFromNotion() {
     
     // 如果配置真的有问题，原生 Fetch 会精准捕获并打印出 Notion 的真实报错！
     if (!res.ok) {
-      const errorData = await res.json();
+      const errorData = await res.text();
       console.error("【Notion 官方接口拒绝访问】:", errorData);
       throw new Error(`API 调用失败: ${res.status}`);
     }
@@ -31,8 +30,16 @@ export async function fetchPublishedArticlesFromNotion() {
     const data = await res.json();
     return data.results.map((page: any) => ({
       id: page.id,
-      title: page.properties.Title?.title[0]?.plain_text || '未命名文章',
-      summary: page.properties.Summary?.rich_text[0]?.plain_text || '',
+      title:
+        page.properties?.Title?.title?.[0]?.plain_text ||
+        page.properties?.Name?.title?.[0]?.plain_text ||
+        "未命名文章",
+      summary:
+        page.properties?.Summary?.rich_text?.[0]?.plain_text ||
+        page.properties?.Excerpt?.rich_text?.[0]?.plain_text ||
+        page.properties?.OriginalText?.rich_text?.[0]?.plain_text ||
+        page.properties?.originalText?.rich_text?.[0]?.plain_text ||
+        "",
       created_at: page.created_time,
     }));
   } catch (error) {

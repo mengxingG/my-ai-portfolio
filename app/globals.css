@@ -2,10 +2,12 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography"; /* 新加这一行，激活排版魔法 */
 
+/* 全站深色底：避免透明层下透出系统浅色主题的 body 白底（滚动时尤其明显） */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #020617;
+  --foreground: #f1f5f9;
   --font-scale: 1;
+  color-scheme: dark;
 }
 
 html[data-font-size="small"] { --font-scale: 0.9; }
@@ -19,21 +21,23 @@ html[data-font-size="large"] { --font-scale: 1.1; }
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 html {
   font-size: calc(16px * var(--font-scale));
+  background-color: var(--background);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Liquid glass — shared cards (homepage + widgets) */
+.liquid-glass-card {
+  backdrop-filter: blur(25px) saturate(200%);
+  -webkit-backdrop-filter: blur(25px) saturate(200%);
+  background: rgba(15, 15, 15, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 /* Knowledge sub-pages */

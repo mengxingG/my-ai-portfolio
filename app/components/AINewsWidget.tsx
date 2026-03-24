@@ -32,7 +32,7 @@ export function AINewsWidget({ news }: { news: AINews[] }) {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="查看原文"
-              className="group relative flex flex-col justify-between rounded-xl border border-white/10 bg-white/5 p-5 transition-all hover:-translate-y-1 hover:border-cyan-500/50 hover:bg-white/10"
+              className="liquid-glass-card group relative flex flex-col justify-between rounded-2xl p-5 transition-all hover:-translate-y-1 hover:border-purple-500/35"
             >
               {/* 悬停提示：查看原文 */}
               <div className="pointer-events-none absolute right-3 bottom-3 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/30 px-2 py-1 text-[11px] text-slate-200 opacity-0 backdrop-blur transition-all group-hover:opacity-100 group-hover:translate-y-0.5">
