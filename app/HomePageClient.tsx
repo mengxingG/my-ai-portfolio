@@ -556,10 +556,18 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                 联系我
               </motion.a>
             </MagneticWrap>
-            <a href="/#projects" className="glow-btn glow-btn--secondary">核心项目</a>
-            <a href="/#featured" className="glow-btn glow-btn--secondary">特色项目</a>
-            <a href="/#insights" className="glow-btn glow-btn--secondary">资讯收集</a>
-            <a href="/#knowledge" className="glow-btn glow-btn--secondary">AI知识沉淀</a>
+            <Link href="/#projects" className="glow-btn glow-btn--secondary">
+              核心项目
+            </Link>
+            <Link href="/#featured" className="glow-btn glow-btn--secondary">
+              特色项目
+            </Link>
+            <Link href="/#insights" className="glow-btn glow-btn--secondary">
+              资讯收集
+            </Link>
+            <Link href="/#knowledge" className="glow-btn glow-btn--secondary">
+              AI知识沉淀
+            </Link>
           </motion.div>
 
           <motion.div

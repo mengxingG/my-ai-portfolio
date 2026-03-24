@@ -1,11 +1,23 @@
 import Link from "next/link";
 import { FontSizeSwitcher } from "@/app/components/FontSizeSwitcher";
-import { getArticleDetail } from "@/utils/notion";
+import { getArticleDetail, type ArticleDetail, type NotionBlock } from "@/utils/notion";
 
-function renderRichText(richTexts: any[] | undefined, keyPrefix: string) {
+type RichTextItem = {
+  plain_text?: string;
+  annotations?: {
+    bold?: boolean;
+    italic?: boolean;
+    underline?: boolean;
+    strikethrough?: boolean;
+    code?: boolean;
+  };
+  href?: string | null;
+};
+
+function renderRichText(richTexts: RichTextItem[] | undefined, keyPrefix: string) {
   if (!richTexts || richTexts.length === 0) return null;
 
-  return richTexts.map((rt: any, i: number) => {
+  return richTexts.map((rt, i: number) => {
     const text = rt?.plain_text ?? "";
     const annotations = rt?.annotations ?? {};
     const href = rt?.href;
@@ -56,22 +68,27 @@ function renderRichText(richTexts: any[] | undefined, keyPrefix: string) {
   });
 }
 
-function renderBlocks(blocks: any[]) {
+function richTextOf(value: unknown): RichTextItem[] {
+  if (!value || typeof value !== "object") return [];
+  const r = value as Record<string, unknown>;
+  const rt = r.rich_text;
+  return Array.isArray(rt) ? (rt as RichTextItem[]) : [];
+}
+
+function renderBlocks(blocks: NotionBlock[]) {
   if (!blocks || blocks.length === 0) return null;
 
   const out: React.ReactNode[] = [];
-
-  const richTextOf = (value: any) => value?.rich_text ?? [];
 
   let i = 0;
   while (i < blocks.length) {
     const block = blocks[i];
     const type = block?.type as string;
-    const value = block[type];
+    const value = block[type] as unknown;
 
     // bulleted_list_item: group consecutive blocks into one <ul>
     if (type === "bulleted_list_item") {
-      const items: any[] = [];
+      const items: NotionBlock[] = [];
       const start = i;
       while (i < blocks.length && blocks[i]?.type === "bulleted_list_item") {
         items.push(blocks[i]);
@@ -80,7 +97,7 @@ function renderBlocks(blocks: any[]) {
       out.push(
         <ul key={`bul-${start}`} className="mt-4 list-disc list-inside text-slate-300">
           {items.map((it, idx) => {
-            const v = it.bulleted_list_item ?? it[type];
+            const v = (it.bulleted_list_item ?? it[type]) as unknown;
             return (
               <li key={`bul-${start}-li-${idx}`} className="mt-1 leading-relaxed">
                 {renderRichText(richTextOf(v), `bul-${start}-${idx}`)}
@@ -94,7 +111,7 @@ function renderBlocks(blocks: any[]) {
 
     // numbered_list_item: group consecutive blocks into one <ol>
     if (type === "numbered_list_item") {
-      const items: any[] = [];
+      const items: NotionBlock[] = [];
       const start = i;
       while (i < blocks.length && blocks[i]?.type === "numbered_list_item") {
         items.push(blocks[i]);
@@ -103,7 +120,7 @@ function renderBlocks(blocks: any[]) {
       out.push(
         <ol key={`num-${start}`} className="mt-4 list-decimal list-inside text-slate-300">
           {items.map((it, idx) => {
-            const v = it.numbered_list_item ?? it[type];
+            const v = (it.numbered_list_item ?? it[type]) as unknown;
             return (
               <li key={`num-${start}-li-${idx}`} className="mt-1 leading-relaxed">
                 {renderRichText(richTextOf(v), `num-${start}-${idx}`)}
@@ -154,7 +171,8 @@ function renderBlocks(blocks: any[]) {
         break;
 
       case "callout": {
-        const icon = value?.icon;
+        const callVal = value as Record<string, unknown> | undefined;
+        const icon = callVal?.icon as { type?: string; emoji?: string } | undefined;
         const iconEmoji = icon?.type === "emoji" ? icon.emoji : null;
         out.push(
           <div key={`co-${i}`} className="mt-6 rounded-xl bg-white/5 border border-white/10 p-4">
@@ -178,15 +196,20 @@ function renderBlocks(blocks: any[]) {
         break;
 
       case "image": {
-        const src = value?.type === "external" ? value?.external?.url : value?.file?.url;
-        const captionRich = value?.caption ?? [];
+        const imgVal = value as Record<string, unknown> | undefined;
+        const src =
+          imgVal?.type === "external"
+            ? (imgVal.external as { url?: string } | undefined)?.url
+            : (imgVal?.file as { url?: string } | undefined)?.url;
+        const captionRich = (imgVal?.caption as RichTextItem[] | undefined) ?? [];
         const captionText =
-          captionRich?.map((t: any) => t?.plain_text).join("") || "文章图片";
+          captionRich.map((t) => t?.plain_text).join("") || "文章图片";
 
         out.push(
           <div key={`img-${i}`} className="my-8 overflow-hidden rounded-xl border border-white/10">
             {/* styled img (Next image 需要 domain 配置，避免远程图片导致空白） */}
-            <img src={src} alt={captionText} className="w-full object-cover rounded-xl" />
+            {/* eslint-disable-next-line @next/next/no-img-element -- Notion 外链图，未配置 remotePatterns */}
+            <img src={src ?? ""} alt={captionText} className="w-full object-cover rounded-xl" />
             {captionRich?.length ? (
               <p className="bg-white/5 py-2 text-center text-xs text-slate-500">
                 {renderRichText(captionRich, `imgcap-${i}`)}
@@ -199,8 +222,9 @@ function renderBlocks(blocks: any[]) {
       }
 
       case "code": {
-        const language = (value?.language ?? "").toString().toLowerCase();
-        const codeText = (value?.rich_text ?? []).map((t: any) => t?.plain_text).join("");
+        const codeVal = value as Record<string, unknown> | undefined;
+        const language = (codeVal?.language ?? "").toString().toLowerCase();
+        const codeText = richTextOf(codeVal).map((t) => t?.plain_text).join("");
 
         if (language === "mermaid") {
           out.push(
@@ -230,7 +254,7 @@ function renderBlocks(blocks: any[]) {
 
       default: {
         // 兜底：如果该 block 自带 rich_text，则渲染成段落，避免正文空白
-        const maybeRich = value?.rich_text ?? [];
+        const maybeRich = richTextOf(value);
         if (maybeRich?.length) {
           out.push(
             <p key={`def-${i}`} className="mt-4 text-base leading-relaxed text-slate-300">
@@ -254,7 +278,7 @@ export default async function ArticlePage({
 }) {
   const { id } = await params;
 
-  let data: any = null;
+  let data: ArticleDetail | null = null;
   try {
     data = await getArticleDetail(id);
   } catch (err) {

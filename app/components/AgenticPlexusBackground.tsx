@@ -75,6 +75,13 @@ type StreamDef = {
   flowScale: number;
 };
 
+/** Uniform curve parameter in [0,1]; avoids CatmullRom getPointAt arc-length issues when arc-lengths degenerate. */
+function curveParamT(u: number): number {
+  let x = u % 1;
+  if (x < 0) x += 1;
+  return Math.min(1, Math.max(0, x));
+}
+
 /**
  * Dynamic data-viz: deep volumetric point cloud, fine plexus, animated workflow streams.
  * Fixed z-0; pointer-events none.
@@ -486,6 +493,7 @@ export function AgenticPlexusBackground({ reducedMotion }: Props) {
     let raf = 0;
     let running = true;
     const t0 = performance.now();
+    let didLogFirstFrameCoords = false;
 
     const fillLinePositions = () => {
       let o = 0;
@@ -542,11 +550,12 @@ export function AgenticPlexusBackground({ reducedMotion }: Props) {
 
       streams.forEach((s, si) => {
         const segs = s.def.segments;
+        const denom = Math.max(1, segs - 1);
         for (let i = 0; i < segs; i++) {
-          const u = i / (segs - 1);
-          const uu = (u + flow * s.def.flowScale) % 1;
-          s.curve.getPointAt(uu, tmp);
-          s.curve.getTangentAt(uu, tmpTan);
+          const u = i / denom;
+          const uu = curveParamT(u + flow * s.def.flowScale);
+          s.curve.getPoint(uu, tmp);
+          s.curve.getTangent(uu, tmpTan);
           side.set(-tmpTan.z, 0, tmpTan.x);
           if (side.lengthSq() < 1e-8) side.set(1, 0, 0);
           side.normalize();
@@ -565,8 +574,8 @@ export function AgenticPlexusBackground({ reducedMotion }: Props) {
       for (let i = 0; i < RUNNERS; i++) {
         const si = runnerStream[i];
         const st = streams[si];
-        const u = (runnerPhase[i] + time * runnerSpeed[i] * motion * 0.15) % 1;
-        st.curve.getPointAt(u, tmp);
+        const u = curveParamT(runnerPhase[i] + time * runnerSpeed[i] * motion * 0.15);
+        st.curve.getPoint(u, tmp);
         const j = i * 1.713;
         runnerPos[i * 3] = tmp.x + Math.sin(j + time * 2.4) * 0.035;
         runnerPos[i * 3 + 1] = tmp.y + Math.cos(j * 1.1 + time * 2.1) * 0.028;
@@ -586,6 +595,33 @@ export function AgenticPlexusBackground({ reducedMotion }: Props) {
       camera.position.y = 0.55 + Math.sin(time * 0.035) * 0.22 * motion;
       camera.position.z = 28 + Math.sin(time * 0.065) * 0.65 * motion;
       camera.lookAt(0, 0.2, -18);
+
+      if (!didLogFirstFrameCoords) {
+        didLogFirstFrameCoords = true;
+        const lines: string[] = ["[AgenticPlexus] world coords (frame 1, after computeWorld)"];
+        for (let h = 0; h < clusterCenters.length; h++) {
+          const c = clusterCenters[h];
+          lines.push(
+            `hub ${h}: x=${c.x.toFixed(3)} y=${c.y.toFixed(3)} z=${c.z.toFixed(3)}`
+          );
+        }
+        const step = Math.max(1, Math.floor(n / 48));
+        for (let pi = 0; pi < n; pi += step) {
+          lines.push(
+            `pt ${pi}: x=${world[pi * 3].toFixed(3)} y=${world[pi * 3 + 1].toFixed(3)} z=${world[pi * 3 + 2].toFixed(3)}`
+          );
+        }
+        const hazeStep = Math.max(1, Math.floor(HAZE / 16));
+        for (let hi = 0; hi < HAZE; hi += hazeStep) {
+          const hx = hazeWorld[hi * 3] + Math.sin(time * 0.11 + hazePhase[hi * 3]) * 0.55 * motion;
+          const hy =
+            hazeWorld[hi * 3 + 1] + Math.cos(time * 0.09 + hazePhase[hi * 3 + 1]) * 0.42 * motion;
+          const hz =
+            hazeWorld[hi * 3 + 2] + Math.sin(time * 0.13 + hazePhase[hi * 3 + 2]) * 0.38 * motion;
+          lines.push(`haze ${hi}: x=${hx.toFixed(3)} y=${hy.toFixed(3)} z=${hz.toFixed(3)}`);
+        }
+        console.log(lines.join("\n"));
+      }
 
       renderer.render(scene, camera);
       raf = requestAnimationFrame(tick);

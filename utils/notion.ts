@@ -1,3 +1,29 @@
+type NotionJson = Record<string, unknown>;
+
+export type NotionBlock = NotionJson & {
+  id?: string;
+  type?: string;
+  has_children?: boolean;
+};
+
+function firstTitlePlain(properties: NotionJson | undefined): string {
+  if (!properties) return "未命名文章";
+  const titleProp = (properties.Title ?? properties.Name) as { title?: Array<{ plain_text?: string }> } | undefined;
+  const t = titleProp?.title?.[0]?.plain_text;
+  return typeof t === "string" && t.length > 0 ? t : "未命名文章";
+}
+
+function firstSummaryPlain(properties: NotionJson | undefined): string {
+  if (!properties) return "";
+  const keys = ["Summary", "Excerpt", "OriginalText", "originalText"] as const;
+  for (const k of keys) {
+    const block = properties[k] as { rich_text?: Array<{ plain_text?: string }> } | undefined;
+    const s = block?.rich_text?.[0]?.plain_text;
+    if (typeof s === "string" && s.length > 0) return s;
+  }
+  return "";
+}
+
 // 1. 首页列表：彻底抛弃有 Bug 的 SDK，使用原生 Fetch 直连 Notion 官方 API
 export async function fetchPublishedArticlesFromNotion() {
   const url = `https://api.notion.com/v1/databases/${process.env.NOTION_DATABASE_ID}/query`;
@@ -27,20 +53,13 @@ export async function fetchPublishedArticlesFromNotion() {
       throw new Error(`API 调用失败: ${res.status}`);
     }
 
-    const data = await res.json();
-    return data.results.map((page: any) => ({
-      id: page.id,
-      title:
-        page.properties?.Title?.title?.[0]?.plain_text ||
-        page.properties?.Name?.title?.[0]?.plain_text ||
-        "未命名文章",
-      summary:
-        page.properties?.Summary?.rich_text?.[0]?.plain_text ||
-        page.properties?.Excerpt?.rich_text?.[0]?.plain_text ||
-        page.properties?.OriginalText?.rich_text?.[0]?.plain_text ||
-        page.properties?.originalText?.rich_text?.[0]?.plain_text ||
-        "",
-      created_at: page.created_time,
+    const data = (await res.json()) as { results?: NotionJson[] };
+    const rows = data.results ?? [];
+    return rows.map((page) => ({
+      id: String(page.id ?? ""),
+      title: firstTitlePlain(page.properties as NotionJson | undefined),
+      summary: firstSummaryPlain(page.properties as NotionJson | undefined),
+      created_at: page.created_time as string | undefined,
     }));
   } catch (error) {
     console.error("【底层网络请求错误】:", error);
@@ -52,19 +71,19 @@ const MAX_BLOCK_DEPTH = 20;
 
 /** 同一层级内并行拉取所有 has_children 的子 blocks，显著减少串行 RTT */
 async function flattenBlocksParallel(
-  input: any[],
+  input: NotionBlock[],
   depth: number,
-  fetchChildren: (blockId: string) => Promise<any[]>
-): Promise<any[]> {
+  fetchChildren: (blockId: string) => Promise<NotionBlock[]>
+): Promise<NotionBlock[]> {
   if (depth > MAX_BLOCK_DEPTH || !input?.length) return [];
 
   const withChildren = input.filter((b) => b?.has_children);
   const childrenLists = await Promise.all(
-    withChildren.map((b) => fetchChildren(b.id))
+    withChildren.map((b) => fetchChildren(String(b.id)))
   );
 
   let childIdx = 0;
-  const out: any[] = [];
+  const out: NotionBlock[] = [];
   for (const b of input) {
     out.push(b);
     if (b?.has_children) {
@@ -99,29 +118,26 @@ async function fetchArticleDetailFromNotion(pageId: string) {
   const init = articleNotionFetchInit(pageId);
 
   const res = await fetch(url, { method: "GET", ...init });
-  const page: any = await res.json();
+  const page = (await res.json()) as NotionJson & { id: string; created_time?: string; properties?: NotionJson };
 
-  const fetchChildren = async (blockId: string) => {
+  const fetchChildren = async (blockId: string): Promise<NotionBlock[]> => {
     const blocksUrl = `https://api.notion.com/v1/blocks/${blockId}/children`;
     const blocksRes = await fetch(blocksUrl, { method: "GET", ...init });
-    const blocksData = await blocksRes.json();
-    return blocksData.results || [];
+    const blocksData = (await blocksRes.json()) as { results?: NotionBlock[] };
+    return blocksData.results ?? [];
   };
 
   const topBlocksUrl = `https://api.notion.com/v1/blocks/${pageId}/children`;
   const topBlocksRes = await fetch(topBlocksUrl, { method: "GET", ...init });
-  const topBlocksData = await topBlocksRes.json();
-  const topBlocks: any[] = topBlocksData.results || [];
+  const topBlocksData = (await topBlocksRes.json()) as { results?: NotionBlock[] };
+  const topBlocks: NotionBlock[] = topBlocksData.results ?? [];
 
   const blocks = await flattenBlocksParallel(topBlocks, 0, fetchChildren);
 
   return {
     id: page.id,
-    title:
-      page.properties.Title?.title?.[0]?.plain_text ||
-      page.properties.Name?.title?.[0]?.plain_text ||
-      "未命名文章",
-    created_at: page.created_time,
+    title: firstTitlePlain(page.properties),
+    created_at: page.created_time ?? "",
     blocks,
   };
 }
@@ -144,7 +160,7 @@ export type ArticleDetail = {
   id: string;
   title: string;
   created_at: string;
-  blocks: any[];
+  blocks: NotionBlock[];
 };
 
 /** AI News Radar：与 Notion 数据库字段一一对应 */
@@ -158,14 +174,16 @@ export type AINews = {
   url: string;
 };
 
-function newsRichTextPlain(prop: any): string {
-  const rt = prop?.rich_text;
+function newsRichTextPlain(prop: unknown): string {
+  const p = prop as { rich_text?: Array<{ plain_text?: string }> } | undefined;
+  const rt = p?.rich_text;
   if (!Array.isArray(rt) || rt.length === 0) return "";
   return rt[0]?.plain_text ?? "";
 }
 
-function newsTitlePlain(prop: any): string {
-  const t = prop?.title;
+function newsTitlePlain(prop: unknown): string {
+  const p = prop as { title?: Array<{ plain_text?: string }> } | undefined;
+  const t = p?.title;
   if (!Array.isArray(t) || t.length === 0) return "";
   return t[0]?.plain_text ?? "";
 }
@@ -176,13 +194,15 @@ function normalizeNewsSource(selectName: string): "X" | "YouTube" {
   return "YouTube";
 }
 
-function mapNotionPageToAINews(page: any): AINews | null {
-  const props = page?.properties ?? {};
-  const url = props.URL?.url;
+function mapNotionPageToAINews(page: NotionJson): AINews | null {
+  const props = (page.properties as NotionJson | undefined) ?? {};
+  const urlField = props.URL as { url?: string } | undefined;
+  const url = urlField?.url;
   if (!url || typeof url !== "string") return null;
 
+  const sourceBlock = props.Source as { select?: { name?: string } } | undefined;
   const sourceName =
-    props.Source?.select?.name ??
+    sourceBlock?.select?.name ??
     newsRichTextPlain(props.Source) ??
     newsTitlePlain(props.Source) ??
     "";
@@ -199,7 +219,8 @@ function mapNotionPageToAINews(page: any): AINews | null {
     newsRichTextPlain(props["Original text"]) ||
     "";
 
-  const dateStart = props.Date?.date?.start;
+  const dateBlock = props.Date as { date?: { start?: string } } | undefined;
+  const dateStart = dateBlock?.date?.start;
   const date =
     typeof dateStart === "string" && dateStart.length >= 10
       ? dateStart.slice(0, 10)
@@ -208,7 +229,7 @@ function mapNotionPageToAINews(page: any): AINews | null {
         : "";
 
   return {
-    id: page.id,
+    id: String(page.id ?? ""),
     source: normalizeNewsSource(sourceName),
     author,
     title,
@@ -251,7 +272,7 @@ export async function fetchAINewsRadarFromNotion(): Promise<AINews[]> {
       ...baseQuery,
     });
 
-    const rows = (response.results ?? []) as any[];
+    const rows = (response.results ?? []) as NotionJson[];
     return rows
       .filter((p) => p?.object === "page")
       .map((p) => mapNotionPageToAINews(p))

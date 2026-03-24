@@ -10,16 +10,21 @@ const LABEL: Record<FontSize, string> = {
   large: "大",
 };
 
+function readStoredFontSize(): FontSize {
+  if (typeof window === "undefined") return "medium";
+  const stored = window.localStorage.getItem("gm-font-size");
+  if (stored && (["small", "medium", "large"] as const).includes(stored as FontSize)) {
+    return stored as FontSize;
+  }
+  return "medium";
+}
+
 export function FontSizeSwitcher() {
-  const [size, setSize] = useState<FontSize>("medium");
+  const [size, setSize] = useState<FontSize>(() => readStoredFontSize());
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const stored = window.localStorage.getItem("gm-font-size") as FontSize | null;
-    const initial = stored && ["small", "medium", "large"].includes(stored) ? stored : "medium";
-    setSize(initial);
-    document.documentElement.setAttribute("data-font-size", initial);
-  }, []);
+    document.documentElement.setAttribute("data-font-size", size);
+  }, [size]);
 
   const applySize = (next: FontSize) => {
     setSize(next);
