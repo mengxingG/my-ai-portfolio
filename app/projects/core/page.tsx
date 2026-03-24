@@ -17,7 +17,7 @@ export default function CoreProjectPage() {
       </p>
 
       <div className="mt-8 space-y-8">
-        <section className="holo-card rounded-2xl border border-cyan-500/20 bg-black/20 p-6 backdrop-blur-xl">
+        <section className="holo-card rounded-2xl p-6">
           <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300/90">
             项目概览
           </h2>
@@ -28,7 +28,7 @@ export default function CoreProjectPage() {
         </section>
 
         <section className="grid gap-6 md:grid-cols-3">
-          <div className="holo-card rounded-2xl border border-cyan-500/20 bg-black/20 p-5 backdrop-blur-xl">
+          <div className="holo-card rounded-2xl p-5">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">
               目标用户与痛点
             </h3>
@@ -38,7 +38,7 @@ export default function CoreProjectPage() {
               <li>· 审计：缺少完整证据链与可复核记录，复盘成本高</li>
             </ul>
           </div>
-          <div className="holo-card rounded-2xl border border-cyan-500/20 bg-black/20 p-5 backdrop-blur-xl">
+          <div className="holo-card rounded-2xl p-5">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">
               核心业务模块
             </h3>
@@ -48,7 +48,7 @@ export default function CoreProjectPage() {
               <li>· 审计工作台：对话留痕、结论复核、审计报告导出</li>
             </ul>
           </div>
-          <div className="holo-card rounded-2xl border border-cyan-500/20 bg-black/20 p-5 backdrop-blur-xl">
+          <div className="holo-card rounded-2xl p-5">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">
               底层架构设计
             </h3>

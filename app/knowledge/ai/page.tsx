@@ -12,7 +12,7 @@ export default function AIKnowledgePage() {
       <p className="mt-2 text-sm text-slate-500">实践总结与最佳实践</p>
 
       <div className="mt-10 space-y-10">
-        <article className="knowledge-holo rounded-2xl border border-cyan-500/20 bg-black/20 p-6 backdrop-blur-sm sm:p-8">
+        <article className="knowledge-holo rounded-2xl p-6 sm:p-8">
           <h2 className="text-lg font-semibold text-slate-50" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
             使用工具链进行视频转文本辅助学习
           </h2>
@@ -32,7 +32,7 @@ export default function AIKnowledgePage() {
           </div>
         </article>
 
-        <article className="knowledge-holo rounded-2xl border border-cyan-500/20 bg-black/20 p-6 backdrop-blur-sm sm:p-8">
+        <article className="knowledge-holo rounded-2xl p-6 sm:p-8">
           <h2 className="text-lg font-semibold text-slate-50" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
             RAG 技术应用最佳实践
           </h2>

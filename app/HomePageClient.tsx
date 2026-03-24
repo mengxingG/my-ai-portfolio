@@ -12,6 +12,8 @@ import {
   useTransform,
 } from "framer-motion";
 import { AINewsWidget } from "@/app/components/AINewsWidget";
+import { FontSizeSwitcher } from "@/app/components/FontSizeSwitcher";
+import { AgenticPlexusBackground } from "@/app/components/AgenticPlexusBackground";
 import { MagneticWrap } from "@/app/components/MagneticWrap";
 import { TiltCard } from "@/app/components/TiltCard";
 import type { AINews } from "@/utils/notion";
@@ -23,61 +25,6 @@ type Article = {
   created_at?: string | null;
 };
 
-const CYAN = "#06b6d4";
-const PURPLE = "#7c3aed";
-const GOLD = "#eab308";
-const MOUSE_RADIUS = 120;
-const MOUSE_REPEL = 0.08;
-// 核心位置：界面右侧 2/3 处
-const CORE_X = 2 / 3;
-const CORE_Y = 0.5;
-
-// 连线距离与核心半径（核心半径已 +40%）
-const LINK_DISTANCE_RATIO = 0.36;
-const CORE_RADIUS_RATIO = 0.28;
-const CORE_INNER_RATIO = 0.11;
-
-// 引力锚点：G, M, X 的抽象几何拓扑（归一化 0.25~0.75，占界面 1/2）
-function getGMXAnchors(): { x: number; y: number; w: number }[] {
-  const anchors: { x: number; y: number; w: number }[] = [];
-  const push = (x: number, y: number, w = 1) => anchors.push({ x, y, w });
-  // G 形（更多锚点，更密）
-  [0.28, 0.32, 0.36, 0.4, 0.44, 0.48].forEach((x, i) => push(x, 0.28 + i * 0.015, 1.2));
-  [0.46, 0.5, 0.54, 0.58].forEach((x) => push(x, 0.34, 1));
-  [0.58, 0.55, 0.5, 0.45, 0.4, 0.36].forEach((x, i) => push(x, 0.42 + i * 0.04, 1.2));
-  push(0.34, 0.6, 1.3);
-  push(0.32, 0.52, 1.2);
-  push(0.28, 0.44, 1.1);
-  // M 形
-  [0.32, 0.36, 0.4].forEach((y, i) => push(0.38 + i * 0.02, 0.3 + y * 0.25, 1));
-  push(0.5, 0.48, 1.3);
-  [0.6, 0.64, 0.68].forEach((x, i) => push(x, 0.3 + i * 0.18, 1));
-  // X 形
-  push(0.38, 0.32, 1.1);
-  push(0.72, 0.68, 1.1);
-  push(0.5, 0.5, 1.4);
-  push(0.38, 0.68, 1.1);
-  push(0.72, 0.32, 1.1);
-  push(0.54, 0.42, 1.05);
-  push(0.58, 0.58, 1.05);
-  return anchors;
-}
-
-type Particle = {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  layer: number;
-  r: number;
-  opacity: number;
-  twinklePhase: number;
-  anchorIdx: number;
-  isCore: boolean;
-};
-
-import { FontSizeSwitcher } from "@/app/components/FontSizeSwitcher";
-
 const HERO_SUBLINE = "4年经验 AI 项目经理 | Vibe Coding 重度实践者";
 /** 与 Hero 展示文案一致（仅去掉单独大标题「Mengxing」，其余保留） */
 const HERO_BODY =
@@ -88,16 +35,35 @@ function splitForStagger(text: string): string[] {
   return text.split(/(\s+)/).filter((p) => p.length > 0);
 }
 
+/** 从 computed transform 读出 rotateY（度），用于 CSS transition 途中再次点击时对齐角度 */
+function readRotateYDegFromElement(el: HTMLElement | null, fallback: number): number {
+  if (!el) return fallback;
+  const t = getComputedStyle(el).transform;
+  if (!t || t === "none") return fallback;
+  try {
+    const m = new DOMMatrix(t);
+    const deg = (Math.atan2(m.m13, m.m11) * 180) / Math.PI;
+    return Number.isFinite(deg) ? deg : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export default function HomePageClient({ news }: { news: AINews[] }) {
   const prefersReducedMotion = useReducedMotion();
   const router = useRouter();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const cursorRef = useRef<HTMLDivElement>(null);
   const [projectOpen, setProjectOpen] = useState(false);
   const [knowledgeOpen, setKnowledgeOpen] = useState(false);
   const navRef = useRef<HTMLDivElement>(null);
   const [articles, setArticles] = useState<Article[]>([]);
   const [articlesLoading, setArticlesLoading] = useState(true);
+  const [carouselPaused, setCarouselPaused] = useState(false);
+  /** 点击特色项目按钮后锁定：轮播停转，直到在页面上点击非豁免区域（空白/其他模块） */
+  const [featuredSelectionPinned, setFeaturedSelectionPinned] = useState(false);
+  const [activeFeaturedIndex, setActiveFeaturedIndex] = useState(0);
+  const carouselInnerRef = useRef<HTMLDivElement>(null);
+  const carouselRotationRef = useRef(0);
+  const carouselFocusTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     const closeMenus = (e: MouseEvent) => {
@@ -109,6 +75,17 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
     document.addEventListener("click", closeMenus);
     return () => document.removeEventListener("click", closeMenus);
   }, []);
+
+  useEffect(() => {
+    if (!featuredSelectionPinned) return;
+    const onPointerDown = (e: PointerEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t?.closest("[data-featured-pin-exempt]")) return;
+      setFeaturedSelectionPinned(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => document.removeEventListener("pointerdown", onPointerDown, true);
+  }, [featuredSelectionPinned]);
 
   useEffect(() => {
     let cancelled = false;
@@ -157,348 +134,10 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
   }, []);
 
   /**
-   * 注意：不要对 fixed 全屏 canvas 做 CSS translate 视差——滚动时画布边缘会移出视口，
+   * 注意：不要对 fixed 全屏 WebGL/canvas 层做 CSS translate 视差——滚动时边缘会移出视口，
    * 露出下层 body；在系统浅色主题下 body 为白底，就会出现一条灰白色横带。
    * 纵深效果保留 data-parallax 区块微位移即可。
    */
-
-  useEffect(() => {
-    const cursorEl = cursorRef.current;
-    if (!cursorEl) return;
-
-    // 粗指针设备（手机/平板）直接不启用自定义光标
-    const mq = window.matchMedia?.("(pointer: coarse)");
-    if (mq?.matches) {
-      cursorEl.style.display = "none";
-      return;
-    }
-
-    let rafId = 0;
-    let lastX = -1e4;
-    let lastY = -1e4;
-    let hot = false;
-
-    const setHot = (nextHot: boolean) => {
-      if (hot === nextHot) return;
-      hot = nextHot;
-      cursorEl.classList.toggle("cursor-star--active", hot);
-    };
-
-    const onMove = (e: PointerEvent) => {
-      lastX = e.clientX;
-      lastY = e.clientY;
-
-      if (!rafId) {
-        rafId = window.requestAnimationFrame(() => {
-          rafId = 0;
-          cursorEl.style.transform = `translate3d(${lastX}px, ${lastY}px, 0) translate3d(-50%, -50%, 0)`;
-        });
-      }
-
-      const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
-      const clickable = !!el?.closest("a[href],button,[role='button']");
-      setHot(clickable);
-    };
-
-    const onLeave = () => setHot(false);
-
-    window.addEventListener("pointermove", onMove, { passive: true });
-    window.addEventListener("mouseleave", onLeave, { passive: true });
-
-    return () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("mouseleave", onLeave);
-      if (rafId) window.cancelAnimationFrame(rafId);
-    };
-  }, []);
-
-  const runCanvas = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const anchors = getGMXAnchors();
-    let rafId = 0;
-    let running = true;
-    const mouse = { x: -1e4, y: -1e4, active: false };
-
-    const setSize = () => {
-      const dpr = Math.min(window.devicePixelRatio ?? 1, 2);
-      const width = window.innerWidth;
-      const height = window.innerHeight;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      canvas.style.width = `${width}px`;
-      canvas.style.height = `${height}px`;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      return { w: width, h: height };
-    };
-
-    let { w, h } = setSize();
-
-    const toX = (nx: number) => nx * w;
-    const toY = (ny: number) => ny * h;
-    // 星座进一步放大，视觉占比接近半屏
-    const mapAnchor = (ax: number, ay: number) => ({
-      nx: Math.max(0.02, Math.min(0.98, CORE_X + (ax - 0.5) * 1.75)),
-      ny: Math.max(0.04, Math.min(0.96, CORE_Y + (ay - 0.5) * 1.75)),
-    });
-
-    const particles: Particle[] = [];
-    const FAR_COUNT = 110;
-    const MID_COUNT = 80;
-    const CORE_COUNT = 70;
-
-    const rand = (a: number, b: number) => a + Math.random() * (b - a);
-    const initParticles = () => {
-      particles.length = 0;
-      const minDim = Math.min(w, h);
-      const coreRadiusPx = minDim * CORE_RADIUS_RATIO;
-      const coreInnerPx = minDim * CORE_INNER_RATIO;
-
-      for (let i = 0; i < FAR_COUNT; i++) {
-        particles.push({
-          x: rand(0, w),
-          y: rand(0, h),
-          vx: rand(-0.12, 0.12),
-          vy: rand(-0.12, 0.12),
-          layer: 0,
-          r: rand(0.5, 1.5),
-          opacity: rand(0.5, 0.95),
-          twinklePhase: rand(0, Math.PI * 2),
-          anchorIdx: -1,
-          isCore: false,
-        });
-      }
-      for (let i = 0; i < MID_COUNT; i++) {
-        const ax = anchors[i % anchors.length];
-        const { nx, ny } = mapAnchor(ax.x, ax.y);
-        const jitter = 0.025;
-        particles.push({
-          x: toX(nx + rand(-jitter, jitter)),
-          y: toY(ny + rand(-jitter, jitter)),
-          vx: rand(-0.18, 0.18),
-          vy: rand(-0.18, 0.18),
-          layer: 1,
-          r: rand(1.2, 2.4),
-          opacity: rand(0.55, 0.98),
-          twinklePhase: rand(0, Math.PI * 2),
-          anchorIdx: i % anchors.length,
-          isCore: false,
-        });
-      }
-      const coreCx = toX(CORE_X);
-      const coreCy = toY(CORE_Y);
-      for (let i = 0; i < CORE_COUNT; i++) {
-        const angle = rand(0, Math.PI * 2);
-        const dist = rand(0, coreRadiusPx);
-        particles.push({
-          x: coreCx + Math.cos(angle) * dist,
-          y: coreCy + Math.sin(angle) * dist,
-          vx: rand(-0.08, 0.08),
-          vy: rand(-0.08, 0.08),
-          layer: 2,
-          r: rand(1.4, 3),
-          opacity: rand(0.75, 1),
-          twinklePhase: rand(0, Math.PI * 2),
-          anchorIdx: -1,
-          isCore: dist < coreInnerPx,
-        });
-      }
-    };
-
-    initParticles();
-    const handleResize = () => {
-      const dims = setSize();
-      w = dims.w;
-      h = dims.h;
-      initParticles();
-    };
-    window.addEventListener("resize", handleResize);
-
-    const onMove = (e: MouseEvent) => {
-      mouse.x = e.clientX;
-      mouse.y = e.clientY;
-      mouse.active = true;
-    };
-    const onLeave = () => {
-      mouse.active = false;
-    };
-    window.addEventListener("mousemove", onMove, { passive: true });
-    window.addEventListener("mouseleave", onLeave, { passive: true });
-
-    const drawBg = () => {
-      const g = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.max(w, h) * 0.8);
-      g.addColorStop(0, "#0f1930");
-      g.addColorStop(0.45, "#0b162a");
-      g.addColorStop(0.75, "#081120");
-      g.addColorStop(1, "#04070e");
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, w, h);
-    };
-
-    const tick = (t: number) => {
-      if (!running) return;
-      const time = t * 0.001;
-
-      drawBg();
-
-      // 鼠标排斥 + 引力锚点 + 核心引力
-      const coreCx = toX(CORE_X);
-      const coreCy = toY(CORE_Y);
-      const mouseR2 = MOUSE_RADIUS * MOUSE_RADIUS;
-
-      particles.forEach((p) => {
-        if (mouse.active) {
-          const dx = p.x - mouse.x;
-          const dy = p.y - mouse.y;
-          const d2 = dx * dx + dy * dy;
-          if (d2 < mouseR2 && d2 > 1) {
-            const d = Math.sqrt(d2);
-            const f = (1 - d / MOUSE_RADIUS) * MOUSE_REPEL;
-            p.vx += (dx / d) * f;
-            p.vy += (dy / d) * f;
-          }
-        }
-
-        if (p.layer === 1 && p.anchorIdx >= 0) {
-          const a = anchors[p.anchorIdx];
-          const { nx, ny } = mapAnchor(a.x, a.y);
-          const ax = toX(nx);
-          const ay = toY(ny);
-          const dx = ax - p.x;
-          const dy = ay - p.y;
-          const dist = Math.hypot(dx, dy);
-          if (dist > 2) {
-            const pull = 0.002 * a.w;
-            p.vx += (dx / dist) * pull;
-            p.vy += (dy / dist) * pull;
-          }
-        }
-
-        if (p.layer === 2) {
-          const dx = coreCx - p.x;
-          const dy = coreCy - p.y;
-          const dist = Math.hypot(dx, dy);
-          if (dist > 1) {
-            const strength = p.isCore ? 0.012 : 0.004;
-            p.vx += (dx / dist) * strength;
-            p.vy += (dy / dist) * strength;
-          }
-        }
-
-        p.vx *= 0.98;
-        p.vy *= 0.98;
-        p.x += p.vx;
-        p.y += p.vy;
-
-        // 视差：远景移动更慢（通过速度衰减已体现）；边界约束
-        if (p.x < -20 || p.x > w + 20) p.vx *= -0.5;
-        if (p.y < -20 || p.y > h + 20) p.vy *= -0.5;
-        p.x = Math.max(-20, Math.min(w + 20, p.x));
-        p.y = Math.max(-20, Math.min(h + 20, p.y));
-      });
-
-      // 连线：同层或近层，距离 < linkDistance 则画线（透明度随距离渐变）
-      const linkDistance = Math.min(w, h) * LINK_DISTANCE_RATIO;
-      const linkPairs: [Particle, Particle][] = [];
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const a = particles[i];
-          const b = particles[j];
-          if (a.layer !== b.layer && Math.abs(a.layer - b.layer) > 1) continue;
-          const dx = a.x - b.x;
-          const dy = a.y - b.y;
-          const d = Math.hypot(dx, dy);
-          if (d < linkDistance) linkPairs.push([a, b]);
-        }
-      }
-
-      linkPairs.forEach(([a, b]) => {
-        const dx = a.x - b.x;
-        const dy = a.y - b.y;
-        const d = Math.hypot(dx, dy);
-        const alpha = (1 - d / linkDistance) * 0.55;
-        if (alpha < 0.02) return;
-        ctx.beginPath();
-        ctx.moveTo(a.x, a.y);
-        ctx.lineTo(b.x, b.y);
-        const grad = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
-        grad.addColorStop(0, `rgba(6, 182, 212, ${alpha})`);
-        grad.addColorStop(0.5, `rgba(124, 58, 237, ${alpha * 0.8})`);
-        grad.addColorStop(1, `rgba(234, 179, 8, ${alpha * 0.6})`);
-        ctx.strokeStyle = grad;
-        ctx.lineWidth = 0.85;
-        ctx.stroke();
-      });
-
-      // 绘制粒子：远景闪烁（更密更亮），中景/近景发光
-      particles.forEach((p) => {
-        const twinkle = p.layer === 0 ? 0.6 + 0.5 * Math.sin(time * 2.2 + p.twinklePhase) : 1;
-        const op = Math.max(0.2, Math.min(1, p.opacity * twinkle));
-
-        if (p.layer === 0) {
-          ctx.fillStyle = `rgba(180, 220, 255, ${op})`;
-          ctx.shadowColor = "rgba(6, 182, 212, 0.6)";
-          ctx.shadowBlur = p.r * 3.2;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.shadowBlur = 0;
-          return;
-        }
-
-        if (p.layer === 2 && p.isCore) {
-          const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 4);
-          g.addColorStop(0, `rgba(6, 182, 212, ${op * 0.9})`);
-          g.addColorStop(0.5, `rgba(124, 58, 237, ${op * 0.4})`);
-          g.addColorStop(1, "rgba(6, 182, 212, 0)");
-          ctx.fillStyle = g;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.r * 4, 0, Math.PI * 2);
-          ctx.fill();
-        }
-
-        const color = p.layer === 2 ? (p.isCore ? CYAN : PURPLE) : CYAN;
-        const hex = color === CYAN ? "6, 182, 212" : "124, 58, 237";
-        ctx.fillStyle = `rgba(${hex}, ${op})`;
-        ctx.shadowColor = color;
-        ctx.shadowBlur = p.layer === 2 ? 12 : 6;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
-      });
-
-      rafId = requestAnimationFrame(tick);
-    };
-
-    rafId = requestAnimationFrame(tick);
-
-    const onVisibility = () => {
-      running = document.visibilityState === "visible";
-      if (!running) cancelAnimationFrame(rafId);
-      else rafId = requestAnimationFrame(tick);
-    };
-    document.addEventListener("visibilitychange", onVisibility);
-
-    return () => {
-      running = false;
-      cancelAnimationFrame(rafId);
-      window.removeEventListener("resize", handleResize);
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseleave", onLeave);
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
-  }, []);
-
-  useEffect(() => {
-    const cleanup = runCanvas();
-    return () => {
-      if (typeof cleanup === "function") cleanup();
-    };
-  }, [runCanvas]);
 
   const sectionVariants = {
     hidden: { opacity: 0, y: prefersReducedMotion ? 0 : 26 },
@@ -524,14 +163,10 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
     },
   };
 
-  /** 滚动联动导航：背景不透明度 + 模糊强度（发布会式「愈滚愈沉」） */
+  /** 滚动联动导航：描边与阴影（底色与模糊由 .liquid-glass-nav 统一为液态玻璃） */
   const { scrollY } = useScroll();
-  const navBgAlpha = useTransform(scrollY, [0, 72, 160], [0.62, 0.78, 0.88]);
-  const navBlurPx = useTransform(scrollY, [0, 120], [18, 28]);
   const navBorderAlpha = useTransform(scrollY, [0, 100], [0.08, 0.16]);
   const navShadowAlpha = useTransform(scrollY, [0, 100], [0.06, 0.14]);
-  const navBackground = useMotionTemplate`rgba(17, 17, 17, ${navBgAlpha})`;
-  const navBackdrop = useMotionTemplate`blur(${navBlurPx}px) saturate(200%)`;
   const navBorder = useMotionTemplate`1px solid rgba(255, 255, 255, ${navBorderAlpha})`;
   const navShadow = useMotionTemplate`0 12px 40px rgba(0, 0, 0, ${navShadowAlpha})`;
 
@@ -602,16 +237,180 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
     },
   };
 
+  const featuredProjects = React.useMemo(
+    () => [
+      {
+        id: "knowyourai",
+        title: "KnowYourAI.co",
+        badge: "Featured",
+        badgeClass:
+          "border border-amber-500/40 bg-amber-500/10 text-amber-200/90",
+        description:
+          "面向 AI 产品经理与开发者的知识索引与能力地图项目，聚焦模型能力评测、实用工具链整理与可执行方法论沉淀。",
+        tags: ["Product Strategy", "AI Workflow", "Knowledge Base"],
+        hasDetail: false,
+      },
+      {
+        id: "agentive",
+        title: "AGENTIVE",
+        badge: "Featured",
+        badgeClass:
+          "border border-purple-500/40 bg-purple-500/10 text-purple-200/90",
+        description:
+          "多 Agent 协同执行框架实践，打通任务拆解、工具调用与审计追踪，提升复杂业务流自动化可控性与交付效率。",
+        tags: ["Agents", "Orchestration", "Automation"],
+        hasDetail: false,
+      },
+      {
+        id: "syntax",
+        title: "SYNTAX",
+        badge: "Featured",
+        badgeClass: "border border-cyan-500/40 bg-cyan-500/10 text-cyan-200/90",
+        description:
+          "AI-native 开发效率项目，围绕 Prompt Engineering、代码辅助与自动化验证构建统一研发闭环，缩短从想法到上线的路径。",
+        tags: ["Vibe Coding", "PromptOps", "Next.js"],
+        hasDetail: false,
+      },
+      {
+        id: "ai-news-radar",
+        title: "AI 资讯雷达",
+        badge: "Core",
+        badgeClass:
+          "border border-emerald-500/40 bg-emerald-500/10 text-emerald-200/90",
+        description:
+          "端到端全自动情报聚合系统：Google/YouTube API 抓取多源数据，GPT-4o mini 清洗去重与双语翻译，Make.com 调度 Coze 每日写入 Notion。",
+        tags: ["Coze", "Make.com", "Notion API", "GPT-4o mini", "Automation"],
+        ctaHref: "/ai-news",
+        ctaText: "👉 实时查看 Notion 情报库",
+        hasDetail: true,
+      },
+    ],
+    []
+  );
+
+  const carouselStep = 360 / featuredProjects.length;
+  const normalizeAngle = (deg: number) => {
+    const wrapped = ((deg + 180) % 360 + 360) % 360;
+    return wrapped - 180;
+  };
+
+  const nearestFeaturedIndex = useCallback((rotationDeg: number) => {
+    let best = 0;
+    let bestDist = Number.POSITIVE_INFINITY;
+    featuredProjects.forEach((_, idx) => {
+      const dist = Math.abs(normalizeAngle(idx * carouselStep + rotationDeg));
+      if (dist < bestDist) {
+        best = idx;
+        bestDist = dist;
+      }
+    });
+    return best;
+  }, [carouselStep, featuredProjects]);
+
+  const syncFeaturedIndexIfChanged = useCallback(
+    (deg: number) => {
+      const next = nearestFeaturedIndex(deg);
+      setActiveFeaturedIndex((prev) => (prev === next ? prev : next));
+    },
+    [nearestFeaturedIndex]
+  );
+
+  useEffect(() => () => {
+    if (carouselFocusTimeoutRef.current != null) {
+      window.clearTimeout(carouselFocusTimeoutRef.current);
+    }
+  }, []);
+
+  useEffect(() => {
+    const el = carouselInnerRef.current;
+    if (!el) return;
+    el.style.transform = `rotateY(${carouselRotationRef.current}deg)`;
+  }, []);
+
+  useEffect(() => {
+    if (prefersReducedMotion) return;
+    let rafId = 0;
+    let last = performance.now();
+    const tick = (now: number) => {
+      const dt = now - last;
+      last = now;
+      const el = carouselInnerRef.current;
+      const focusing = carouselFocusTimeoutRef.current != null;
+      const allowSpin =
+        !featuredSelectionPinned && !carouselPaused && !focusing;
+      if (allowSpin && el) {
+        const next = carouselRotationRef.current + dt * 0.008;
+        carouselRotationRef.current = next;
+        el.style.transform = `rotateY(${next}deg)`;
+        syncFeaturedIndexIfChanged(next);
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [
+    carouselPaused,
+    featuredSelectionPinned,
+    prefersReducedMotion,
+    syncFeaturedIndexIfChanged,
+  ]);
+
+  const focusCarouselProject = (idx: number) => {
+    const el = carouselInnerRef.current;
+    const base = -idx * carouselStep;
+    const current = readRotateYDegFromElement(el, carouselRotationRef.current);
+    carouselRotationRef.current = current;
+    const candidates = [base - 720, base - 360, base, base + 360, base + 720];
+    const target = candidates.reduce((best, c) =>
+      Math.abs(c - current) < Math.abs(best - current) ? c : best
+    );
+    if (carouselFocusTimeoutRef.current != null) {
+      window.clearTimeout(carouselFocusTimeoutRef.current);
+      carouselFocusTimeoutRef.current = null;
+    }
+    if (prefersReducedMotion) {
+      carouselRotationRef.current = target;
+      if (el) {
+        el.style.transition = "none";
+        el.style.transform = `rotateY(${target}deg)`;
+      }
+      syncFeaturedIndexIfChanged(target);
+      return;
+    }
+    if (el) {
+      el.style.transition = "none";
+      el.style.transform = `rotateY(${current}deg)`;
+      void el.offsetHeight;
+      el.style.transition = "transform 0.58s cubic-bezier(0.22, 1, 0.36, 1)";
+      requestAnimationFrame(() => {
+        el.style.transform = `rotateY(${target}deg)`;
+      });
+    }
+    carouselFocusTimeoutRef.current = window.setTimeout(() => {
+      carouselFocusTimeoutRef.current = null;
+      carouselRotationRef.current = target;
+      if (el) {
+        el.style.transition = "none";
+        el.style.transform = `rotateY(${target}deg)`;
+      }
+      syncFeaturedIndexIfChanged(target);
+    }, 600);
+  };
+
   return (
     <main className="gmx-main relative min-h-screen text-slate-100 antialiased">
-      <canvas
-        ref={canvasRef}
-        className="fixed inset-0 z-[-10] block w-full h-full"
-        style={{ pointerEvents: "none" }}
-        aria-hidden
-      />
-      {/* 星尘样式鼠标光标：默认小且偏暗；悬停到可点击元素时放大并提亮 */}
-      <div ref={cursorRef} className="cursor-star" aria-hidden />
+      {/* z-0：负 z-index 会把画布压到 body 底色之下，看起来像「背景只剩纯色」 */}
+      <AgenticPlexusBackground reducedMotion={Boolean(prefersReducedMotion)} />
+      <div className="pointer-events-none fixed inset-0 z-[1]" aria-hidden>
+        <div className="absolute inset-0 bg-black/40" />
+        <div
+          className="agentic-foreground-vignette absolute inset-0 mix-blend-screen"
+          style={{
+            background:
+              "radial-gradient(ellipse 130% 58% at 50% 100%, rgba(192, 132, 252, 0.42) 0%, transparent 56%)",
+          }}
+        />
+      </div>
 
       <div className="relative z-10 mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <motion.header
@@ -620,9 +419,6 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           transition={{ type: "spring" as const, stiffness: 140, damping: 20 }}
           className="liquid-glass-nav sticky top-4 z-[45] flex flex-wrap items-center justify-between gap-4 rounded-2xl px-4 py-4 sm:px-5"
           style={{
-            backgroundColor: navBackground,
-            backdropFilter: navBackdrop,
-            WebkitBackdropFilter: navBackdrop,
             border: navBorder,
             boxShadow: navShadow,
           }}
@@ -650,7 +446,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                   项目库
                 </button>
                 <div
-                  className={`nav-dropdown-panel absolute left-0 top-full z-50 mt-1 min-w-[10rem] rounded-lg border border-cyan-500/20 bg-slate-900/95 py-1 shadow-xl backdrop-blur-xl transition-all duration-200 group-hover:opacity-100 group-hover:pointer-events-auto ${projectOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
+                  className={`nav-dropdown-panel liquid-glass-card absolute left-0 top-full z-50 mt-1 min-w-[10rem] rounded-lg border border-cyan-500/25 py-1 shadow-xl transition-all duration-200 group-hover:opacity-100 group-hover:pointer-events-auto ${projectOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
                 >
                   <a href="/projects/core" className="block px-4 py-2.5 text-left text-slate-300 hover:bg-cyan-500/10 hover:text-cyan-300">核心项目</a>
                   <a href="/projects/featured" className="block px-4 py-2.5 text-left text-slate-300 hover:bg-cyan-500/10 hover:text-cyan-300">特色项目</a>
@@ -667,7 +463,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                   知识库
                 </button>
                 <div
-                  className={`nav-dropdown-panel absolute left-0 top-full z-50 mt-1 min-w-[10rem] rounded-lg border border-cyan-500/20 bg-slate-900/95 py-1 shadow-xl backdrop-blur-xl transition-all duration-200 group-hover:opacity-100 group-hover:pointer-events-auto ${knowledgeOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
+                  className={`nav-dropdown-panel liquid-glass-card absolute left-0 top-full z-50 mt-1 min-w-[10rem] rounded-lg border border-cyan-500/25 py-1 shadow-xl transition-all duration-200 group-hover:opacity-100 group-hover:pointer-events-auto ${knowledgeOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
                 >
                   <a href="/knowledge/ai" className="block px-4 py-2.5 text-left text-slate-300 hover:bg-cyan-500/10 hover:text-cyan-300">AI 知识</a>
                   <a href="/knowledge/insights" className="block px-4 py-2.5 text-left text-slate-300 hover:bg-cyan-500/10 hover:text-cyan-300">资讯收集</a>
@@ -762,8 +558,8 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
             </MagneticWrap>
             <a href="/#projects" className="glow-btn glow-btn--secondary">核心项目</a>
             <a href="/#featured" className="glow-btn glow-btn--secondary">特色项目</a>
-            <a href="/#knowledge" className="glow-btn glow-btn--secondary">AI知识沉淀</a>
             <a href="/#insights" className="glow-btn glow-btn--secondary">资讯收集</a>
+            <a href="/#knowledge" className="glow-btn glow-btn--secondary">AI知识沉淀</a>
           </motion.div>
 
           <motion.div
@@ -816,7 +612,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
             initial="hidden"
             whileInView="show"
             viewport={{ once: true, amount: 0.22, margin: "-0px 0px -8% 0px" }}
-            className="holo-card liquid-glass-card mt-8 rounded-2xl p-7 sm:p-8"
+            className="holo-card mt-8 rounded-2xl p-7 sm:p-8"
           >
             <p className="text-sm font-light leading-relaxed text-slate-400">
               我专注将 Agentic Workflow 与业务闭环深度结合，持续用 Vibe Coding + Rapid Validation 模式，把复杂想法快速转化为可运行、可验证、可迭代的商业级 AI 产品。
@@ -885,7 +681,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           >
             <motion.div variants={staggerListItem}>
               <TiltCard className="block overflow-visible">
-                <article className="holo-card liquid-glass-card overflow-hidden rounded-2xl">
+                <article className="holo-card overflow-hidden rounded-2xl">
               <div className="p-6 sm:p-8">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
@@ -901,7 +697,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                 </p>
               </div>
               <div className="grid gap-4 border-t border-white/5 p-6 sm:grid-cols-3 sm:p-8">
-                <div className="liquid-glass-card holo-card-inner rounded-xl p-4">
+                <div className="liquid-glass-card rounded-xl p-4">
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">目标用户与痛点</h4>
                   <ul className="mt-3 space-y-1.5 text-sm text-slate-300">
                     <li>· 合规/内控：法规口径不一致、解释成本高</li>
@@ -909,7 +705,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                     <li>· 审计：缺少可追溯证据链与可复核记录</li>
                   </ul>
                 </div>
-                <div className="liquid-glass-card holo-card-inner rounded-xl p-4">
+                <div className="liquid-glass-card rounded-xl p-4">
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">核心业务模块</h4>
                   <ul className="mt-3 space-y-1.5 text-sm text-slate-300">
                     <li>· 法规知识库：条款拆解、版本管理、标签体系</li>
@@ -917,7 +713,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                     <li>· 审计工作台：可追溯对话、结论复核与导出</li>
                   </ul>
                 </div>
-                <div className="liquid-glass-card holo-card-inner rounded-xl p-4">
+                <div className="liquid-glass-card rounded-xl p-4">
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">底层架构设计</h4>
                   <ul className="mt-3 space-y-1.5 text-sm text-slate-300">
                     <li>· RAG：法规切片 + 向量检索 + 结构化引用</li>
@@ -956,54 +752,263 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl" style={{ fontFamily: '"Geist", "Inter", "SF Pro Display", system-ui, sans-serif' }}>
             AI Projects · 特色项目
           </h2>
-          <p className="mt-2 text-sm font-light text-slate-500">Featured · Experiments</p>
+          <p className="mt-2 text-sm font-light text-slate-500">
+            {featuredSelectionPinned
+              ? "已锁定当前项目 · 点击页面空白或其他模块区域恢复自动旋转"
+              : "3D Rotating Carousel · Focus + Depth"}
+          </p>
+
+          <div
+            className="featured-carousel-controls mt-6 flex flex-wrap gap-3"
+            data-featured-pin-exempt
+          >
+            {featuredProjects.map((project, idx) => {
+              const active = activeFeaturedIndex === idx;
+              const lockedActive = featuredSelectionPinned && active;
+              return (
+                <motion.button
+                  key={`featured-btn-${project.id}`}
+                  type="button"
+                  onClick={() => {
+                    setFeaturedSelectionPinned(true);
+                    focusCarouselProject(idx);
+                  }}
+                  aria-pressed={lockedActive}
+                  whileHover={
+                    prefersReducedMotion
+                      ? undefined
+                      : { scale: 1.035, y: -2 }
+                  }
+                  whileTap={
+                    prefersReducedMotion
+                      ? undefined
+                      : { scale: [1, 0.94, 1.02, 1], transition: { duration: 0.38 } }
+                  }
+                  transition={{ type: "spring" as const, stiffness: 400, damping: 22 }}
+                  className={[
+                    "group relative isolate overflow-hidden rounded-2xl px-4 py-2.5 text-left shadow-lg transition-[box-shadow,background-color] duration-300 sm:min-w-[11rem]",
+                    "border border-white/[0.12] bg-gradient-to-br from-white/[0.08] via-purple-500/[0.06] to-cyan-500/[0.05]",
+                    "before:pointer-events-none before:absolute before:inset-0 before:rounded-2xl before:p-px",
+                    "before:bg-gradient-to-r before:from-fuchsia-400/50 before:via-purple-400/40 before:to-cyan-400/45 before:opacity-80 before:[mask:linear-gradient(#fff_0_0)_content-box,linear-gradient(#fff_0_0)] before:[mask-composite:xor] before:[-webkit-mask-composite:xor]",
+                    lockedActive ? "featured-btn--pinned-active" : "",
+                    active
+                      ? "border-purple-400/55 bg-gradient-to-br from-purple-500/25 via-fuchsia-500/15 to-cyan-500/10 text-white shadow-[0_0_0_1px_rgba(168,85,247,0.45),0_0_28px_rgba(168,85,247,0.35),0_12px_40px_rgba(0,0,0,0.35)] before:opacity-100"
+                      : "text-slate-200 hover:border-purple-400/40 hover:shadow-[0_0_24px_rgba(168,85,247,0.22)] hover:before:opacity-100",
+                  ].join(" ")}
+                >
+                  <span className="relative z-10 flex items-center justify-between gap-3">
+                    <span className="flex min-w-0 flex-col gap-0.5">
+                      <span className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-purple-200/80">
+                        {lockedActive
+                          ? "● 已锁定选中"
+                          : active
+                            ? "● 当前展示"
+                            : "切换视图"}
+                      </span>
+                      <span
+                        className="truncate text-sm font-semibold tracking-tight sm:text-base"
+                        style={{ fontFamily: '"Geist", "Inter", system-ui, sans-serif' }}
+                      >
+                        {project.title}
+                      </span>
+                    </span>
+                    <span
+                      className={[
+                        "shrink-0 rounded-lg px-2 py-1 text-xs font-bold tabular-nums transition-colors duration-300",
+                        lockedActive
+                          ? "bg-fuchsia-500/35 text-white ring-1 ring-fuchsia-300/50"
+                          : active
+                            ? "bg-white/20 text-white"
+                            : "bg-white/5 text-purple-200/90 group-hover:bg-purple-500/25 group-hover:text-white",
+                      ].join(" ")}
+                      aria-hidden
+                    >
+                      {idx + 1}
+                    </span>
+                  </span>
+                </motion.button>
+              );
+            })}
+          </div>
+
+          <div
+            className="mt-8 flex snap-x gap-4 overflow-x-auto pb-2 md:hidden"
+            data-featured-pin-exempt
+          >
+            {featuredProjects.map((project) => (
+              <article
+                key={`featured-mobile-${project.id}`}
+                className="holo-card min-w-[86%] snap-center rounded-2xl p-5"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="text-base font-semibold text-slate-50" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
+                    {project.title}
+                  </h3>
+                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-mono uppercase ${project.badgeClass}`}>
+                    {project.badge}
+                  </span>
+                </div>
+                <p className="mt-3 text-sm leading-relaxed text-slate-400">{project.description}</p>
+                <div className="mt-4 flex flex-wrap gap-1.5">
+                  {project.tags.map((tag) => (
+                    <span key={`${project.id}-${tag}`} className="tech-tag">{tag}</span>
+                  ))}
+                </div>
+                {project.ctaHref ? (
+                  <div className="pt-5">
+                    <Link href={project.ctaHref} className="glow-btn glow-btn--primary glow-btn--resume inline-flex">
+                      {project.ctaText}
+                    </Link>
+                  </div>
+                ) : null}
+              </article>
+            ))}
+          </div>
+
+          <div
+            className="relative mt-10 hidden md:block [contain:layout_paint]"
+            style={{ perspective: "1600px" }}
+            data-featured-pin-exempt
+          >
+            <div className="relative mx-auto h-[500px] w-full max-w-6xl">
+              <div
+                ref={carouselInnerRef}
+                className="absolute inset-0 will-change-transform [transform-style:preserve-3d] [backface-visibility:hidden]"
+              >
+                {featuredProjects.map((project, idx) => {
+                  const radius = 380;
+                  const isFocused = idx === activeFeaturedIndex;
+                  /** 后侧卡片压低透明度，避免叠在前景上时「透字」；锁定选中时前景再用实底 */
+                  const rearOpacity = featuredSelectionPinned ? 0.34 : 0.62;
+
+                  return (
+                    <div
+                      key={`featured-3d-${project.id}`}
+                      className="absolute left-1/2 top-1/2 w-[380px] -translate-x-1/2 -translate-y-1/2"
+                      style={{ transform: `rotateY(${idx * carouselStep}deg) translateZ(${radius}px)` }}
+                    >
+                      <motion.article
+                        onMouseEnter={() => setCarouselPaused(true)}
+                        onMouseLeave={() => setCarouselPaused(false)}
+                        className="holo-card rounded-2xl p-5"
+                        style={{
+                          pointerEvents: isFocused ? "auto" : "none",
+                          opacity: isFocused ? 1 : rearOpacity,
+                          isolation: "isolate",
+                          boxShadow: isFocused
+                            ? "0 0 0 1px rgba(168,85,247,0.5), 0 0 32px rgba(168,85,247,0.38), 0 0 72px rgba(168,85,247,0.16), inset 0 1px 0 rgba(255,255,255,0.06)"
+                            : undefined,
+                          filter: isFocused ? "none" : "brightness(0.88) saturate(0.92)",
+                        }}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <h3 className="text-base font-semibold text-slate-50" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
+                            {project.title}
+                          </h3>
+                          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-mono uppercase ${project.badgeClass}`}>
+                            {project.badge}
+                          </span>
+                        </div>
+                        <p
+                          className={`mt-3 text-sm leading-relaxed ${isFocused ? "text-slate-300" : "text-slate-500"}`}
+                        >
+                          {project.description}
+                        </p>
+                        <div className="mt-4 flex flex-wrap gap-1.5">
+                          {project.tags.map((tag) => (
+                            <span key={`${project.id}-desktop-${tag}`} className="tech-tag">{tag}</span>
+                          ))}
+                        </div>
+                        {project.ctaHref ? (
+                          <div className="pt-5">
+                            <Link href={project.ctaHref} className="glow-btn glow-btn--primary glow-btn--resume inline-flex">
+                              {project.ctaText}
+                            </Link>
+                          </div>
+                        ) : null}
+                      </motion.article>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
           <motion.div
-            className="mt-8 grid gap-6 sm:grid-cols-2"
-            variants={staggerListContainer}
+            className="mt-8"
+            variants={staggerListItem}
             initial="hidden"
             whileInView="show"
             viewport={{ once: true, amount: 0.2, margin: "0px 0px -10% 0px" }}
           >
-            <motion.div variants={staggerListItem}>
-              <TiltCard tiltMax={10} className="block h-full">
-                <article className="holo-card liquid-glass-card h-full rounded-2xl p-5">
-              <div className="flex items-start justify-between gap-3">
-                <h3 className="text-base font-semibold text-slate-50" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
-                  NotebookLM 工作流实践
-                </h3>
-                <span className="shrink-0 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-mono uppercase text-amber-200/90">Experiment</span>
+            {featuredProjects[activeFeaturedIndex]?.id === "ai-news-radar" ? (
+              <div className="holo-card rounded-2xl p-5 sm:p-6">
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <h3 className="text-lg font-semibold text-slate-50" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
+                    AI 资讯雷达 (AI News Radar) —— 端到端全自动情报聚合系统
+                  </h3>
+                  <span className="shrink-0 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-mono uppercase text-emerald-200/90">Core Case</span>
+                </div>
+                <div className="grid gap-6 lg:grid-cols-2">
+                  <div className="space-y-4">
+                    <figure className="liquid-glass-card w-full overflow-hidden rounded-xl shadow-[0_12px_24px_rgba(0,0,0,0.28)]">
+                      <Image src="/image/news.png" alt="AI News Radar 新闻展示截图" width={1200} height={600} className="h-auto w-full object-contain" />
+                    </figure>
+                    <p className="text-xs text-slate-400">News 输出预览</p>
+                  </div>
+                  <div className="space-y-5">
+                    <section>
+                      <h4 className="text-sm font-semibold text-white">🚀 项目概述</h4>
+                      <p className="mt-2 text-sm leading-relaxed text-slate-300">这是一个无需人工干预、每日自动运行的 AI 情报系统。通过整合低代码工作流引擎与 LLM，实现从「多源抓取 → 智能过滤清洗 → 双语摘要翻译 → 结构化入库」的完整闭环，显著降低信息噪音。</p>
+                    </section>
+                    <section>
+                      <h4 className="text-sm font-semibold text-white">🛠️ 技术架构</h4>
+                      <ol className="mt-2 space-y-2 text-sm text-slate-300">
+                        <li className="liquid-glass-card rounded-lg px-3 py-2">1. Make.com：Cron Job 定时触发与 API 路由调度</li>
+                        <li className="liquid-glass-card rounded-lg px-3 py-2">2. Coze Workflow：多节点工作流串联与逻辑控制</li>
+                        <li className="liquid-glass-card rounded-lg px-3 py-2">3. Google Web Search API + YouTube API：多源数据抓取</li>
+                        <li className="liquid-glass-card rounded-lg px-3 py-2">4. GPT-4o mini：数据清洗、去重、双语摘要翻译</li>
+                        <li className="liquid-glass-card rounded-lg px-3 py-2">5. Notion API：结构化数据库自动写入与展示</li>
+                      </ol>
+                    </section>
+                    <section>
+                      <h4 className="text-sm font-semibold text-white">📈 核心痛点与突破</h4>
+                      <ul className="mt-2 space-y-2 text-sm text-slate-300">
+                        <li className="liquid-glass-card rounded-lg px-3 py-2">双重去重（Title + Date 组合键 + 语义判重），有效拦截洗稿与重复报道。</li>
+                        <li className="liquid-glass-card rounded-lg px-3 py-2">Node.js 时间校准与正则校验，解决 Notion API 对时间戳格式敏感导致的写入崩溃。</li>
+                        <li className="liquid-glass-card rounded-lg px-3 py-2">引入 Make.com 作为独立调度层，跨平台触发 Coze，提升稳定性与灵活性。</li>
+                      </ul>
+                    </section>
+                    <div className="flex flex-wrap gap-1.5">
+                      <span className="tech-tag">Coze</span><span className="tech-tag">Make.com</span><span className="tech-tag">Notion API</span><span className="tech-tag">GPT-4o mini</span><span className="tech-tag">Automation</span>
+                    </div>
+                    <p className="text-sm text-slate-300">将每日获取前沿 AI 资讯的耗时从 <span className="font-semibold text-cyan-300">40 分钟/天</span> 缩减至<span className="font-semibold text-purple-300"> 0 分钟/天</span>，构建个人高价值情报知识库。</p>
+                    <div><Link href="/ai-news" className="glow-btn glow-btn--primary glow-btn--resume inline-flex">👉 实时查看 Notion 情报库</Link></div>
+                  </div>
+                </div>
               </div>
-              <p className="mt-3 text-sm leading-relaxed text-slate-400">
-                多源资料导入、结构化知识图与 RAG pipeline 的端到端产品化实践，输出可复用的工作流模板。
-              </p>
-              <div className="mt-4 flex flex-wrap gap-1.5">
-                <span className="tech-tag">Built with AI Agent</span>
-                <span className="tech-tag">NotebookLM</span>
-                <span className="tech-tag">RAG</span>
-              </div>
-                </article>
-              </TiltCard>
-            </motion.div>
-            <motion.div variants={staggerListItem}>
-              <TiltCard tiltMax={10} className="block h-full">
-                <article className="holo-card liquid-glass-card h-full rounded-2xl p-5">
-              <div className="flex items-start justify-between gap-3">
-                <h3 className="text-base font-semibold text-slate-50" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
-                  Agent 决策逻辑设计
-                </h3>
-                <span className="shrink-0 rounded-full border border-purple-500/40 bg-purple-500/10 px-2 py-0.5 text-[10px] font-mono uppercase text-purple-200/90">Design</span>
-              </div>
-              <p className="mt-3 text-sm leading-relaxed text-slate-400">
-                多工具、多角色、多阶段的 Agent 决策图设计，兼顾自动化执行与可解释、可审计的边界控制。
-              </p>
-              <div className="mt-4 flex flex-wrap gap-1.5">
-                <span className="tech-tag">Built with AI Agent</span>
-                <span className="tech-tag">Agents</span>
-                <span className="tech-tag">Workflow</span>
-              </div>
-                </article>
-              </TiltCard>
-            </motion.div>
+            ) : (
+              <div className="holo-card min-h-[260px] rounded-2xl border border-dashed border-white/15 p-5 sm:p-6" />
+            )}
+          </motion.div>
+        </motion.section>
+
+        <motion.section
+          id="insights"
+          className="scroll-mt-20 py-16"
+          data-parallax="0.008"
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={sectionVariants}
+        >
+          <motion.div
+            variants={cardRevealVariants}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, amount: 0.15, margin: "-0px 0px -10% 0px" }}
+          >
+            <AINewsWidget news={news} />
           </motion.div>
         </motion.section>
 
@@ -1030,7 +1035,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                     initial="hidden"
                     whileInView="show"
                     viewport={{ once: true, amount: 0.15, margin: "0px 0px -8% 0px" }}
-                    className="holo-card liquid-glass-card rounded-2xl p-6"
+                    className="holo-card rounded-2xl p-6"
                   >
                     <div className="knowledge-loading-skeleton h-6 w-3/4 rounded bg-slate-600/50" />
                     <div className="knowledge-loading-skeleton mt-3 h-4 w-full rounded bg-slate-600/40" />
@@ -1040,7 +1045,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                 ))}
               </>
             ) : articles.length === 0 ? (
-              <div className="holo-card liquid-glass-card col-span-full rounded-2xl p-6 text-sm text-slate-400">
+              <div className="holo-card col-span-full rounded-2xl p-6 text-sm text-slate-400">
                 暂无文章数据，请检查 Notion 数据库连接与字段映射。
               </div>
             ) : (
@@ -1057,7 +1062,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                 <Link
                   href={`/articles/${article.id}`}
                   prefetch
-                  className="holo-card liquid-glass-card group block h-full rounded-2xl p-6 transition hover:border-purple-500/30"
+                  className="holo-card group block h-full rounded-2xl p-6 transition hover:border-purple-500/30"
                 >
                   <h3 className="text-lg font-semibold text-slate-50 group-hover:text-cyan-300" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
                     {article.title}
@@ -1071,29 +1076,6 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                 </motion.div>
               ))
             )}
-          </motion.div>
-        </motion.section>
-
-        <motion.section
-          id="insights"
-          className="scroll-mt-20 py-16"
-          data-parallax="0.008"
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, amount: 0.2 }}
-          variants={sectionVariants}
-        >
-          <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl" style={{ fontFamily: '"Geist", "Inter", "SF Pro Display", system-ui, sans-serif' }}>
-            资讯收集
-          </h2>
-          <p className="mt-2 text-sm font-light text-slate-500">Industry News &amp; Technical Radar</p>
-          <motion.div
-            variants={cardRevealVariants}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, amount: 0.15, margin: "-0px 0px -10% 0px" }}
-          >
-            <AINewsWidget news={news} />
           </motion.div>
         </motion.section>
 
@@ -1120,17 +1102,6 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           © {new Date().getFullYear()} 龚梦星 Gong Mengxing · AI 产品经理
         </footer>
       </div>
-
-      <a
-        href="#"
-        className="chat-fab"
-        aria-label="小龙虾 AI 助手"
-        title="小龙虾 AI 助手"
-      >
-        <svg className="chat-fab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-        </svg>
-      </a>
 
       <style jsx global>{`
         html { scroll-behavior: smooth; }
@@ -1165,15 +1136,6 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           box-shadow: 0 0 0 1px rgba(176,38,255,0.15), 0 0 16px rgba(176,38,255,0.1);
         }
         .glow-btn--secondary:hover { box-shadow: 0 0 0 1px rgba(176,38,255,0.5), 0 0 24px rgba(176,38,255,0.25); }
-        .holo-card {
-          box-shadow: 0 0 0 1px rgba(6,182,212,0.12), 0 0 0 1px rgba(176,38,255,0.08), 0 0 24px rgba(6,182,212,0.08), 0 0 48px rgba(176,38,255,0.05);
-          animation: holo-pulse 4s ease-in-out infinite;
-        }
-        /* transform 由 Framer Motion whileHover 驱动，此处仅保留辉光与描边 */
-        .holo-card:hover {
-          border-color: rgba(168,85,247,0.55) !important;
-          box-shadow: 0 0 0 1px rgba(168,85,247,0.35), 0 0 28px rgba(168,85,247,0.24), 0 0 56px rgba(168,85,247,0.15);
-        }
         .profile-neon-breath {
           box-shadow:
             0 0 0 2px rgba(168, 85, 247, 0.25),
@@ -1202,10 +1164,6 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
         @keyframes purple-breath {
           0%, 100% { box-shadow: 0 0 0 1px rgba(168,85,247,0.3), 0 0 14px rgba(168,85,247,0.28), 0 0 28px rgba(168,85,247,0.15); }
           50% { box-shadow: 0 0 0 1px rgba(168,85,247,0.55), 0 0 22px rgba(168,85,247,0.42), 0 0 44px rgba(168,85,247,0.22); }
-        }
-        @keyframes holo-pulse {
-          0%, 100% { box-shadow: 0 0 0 1px rgba(6,182,212,0.12), 0 0 0 1px rgba(176,38,255,0.08), 0 0 24px rgba(6,182,212,0.08), 0 0 48px rgba(176,38,255,0.05); }
-          50% { box-shadow: 0 0 0 1px rgba(6,182,212,0.2), 0 0 0 1px rgba(176,38,255,0.12), 0 0 32px rgba(6,182,212,0.12), 0 0 56px rgba(176,38,255,0.08); }
         }
         .tech-tag {
           display: inline-block; padding: 0.25rem 0.75rem; font-size: 0.75rem;
@@ -1244,21 +1202,6 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           0%, 100% { box-shadow: 0 0 12px rgba(52,211,153,0.3); }
           50% { box-shadow: 0 0 20px rgba(52,211,153,0.5); }
         }
-        .chat-fab {
-          position: fixed; right: 1.5rem; bottom: 1.5rem; z-index: 50;
-          display: flex; align-items: center; justify-content: center;
-          width: 3.5rem; height: 3.5rem; border-radius: 50%;
-          background: rgba(6,182,212,0.15); border: 1px solid rgba(6,182,212,0.5);
-          color: rgb(165 243 252); cursor: pointer; transition: transform 0.2s ease;
-          box-shadow: 0 0 0 2px rgba(6,182,212,0.2), 0 0 24px rgba(6,182,212,0.25), 0 0 48px rgba(6,182,212,0.15);
-          animation: chat-fab-breathe 2.5s ease-in-out infinite;
-        }
-        .chat-fab:hover { transform: scale(1.05); }
-        .chat-fab-icon { width: 1.5rem; height: 1.5rem; }
-        @keyframes chat-fab-breathe {
-          0%, 100% { box-shadow: 0 0 0 2px rgba(6,182,212,0.2), 0 0 24px rgba(6,182,212,0.25), 0 0 48px rgba(6,182,212,0.15); }
-          50% { box-shadow: 0 0 0 2px rgba(6,182,212,0.4), 0 0 32px rgba(6,182,212,0.4), 0 0 64px rgba(6,182,212,0.25); }
-        }
         .knowledge-loading-skeleton {
           animation: knowledge-skeleton 1.5s ease-in-out infinite;
         }
@@ -1267,73 +1210,30 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           50% { opacity: 1; }
         }
 
-        .cursor-star {
-          position: fixed;
-          left: 0;
-          top: 0;
-          z-index: 60;
-          width: 18px;
-          height: 18px;
-          border-radius: 9999px;
-          pointer-events: none;
-          opacity: 1;
-          mix-blend-mode: screen;
-          transform: translate3d(-50%, -50%, 0) scale(1);
-          filter: drop-shadow(0 0 26px rgba(6,182,212,0.75)) drop-shadow(0 0 36px rgba(176,38,255,0.45));
-          transition: opacity 120ms ease, transform 120ms ease, filter 120ms ease;
-          animation: cursor-star-glow 1.6s ease-in-out infinite;
+        @keyframes featured-btn-pin-breathe {
+          0%, 100% {
+            box-shadow:
+              0 0 0 1px rgba(168, 85, 247, 0.5),
+              0 0 26px rgba(168, 85, 247, 0.38),
+              0 12px 40px rgba(0, 0, 0, 0.35);
+          }
+          50% {
+            box-shadow:
+              0 0 0 2px rgba(217, 70, 239, 0.7),
+              0 0 44px rgba(168, 85, 247, 0.55),
+              0 0 72px rgba(34, 211, 238, 0.14),
+              0 12px 40px rgba(0, 0, 0, 0.35);
+          }
         }
-
-        .cursor-star::before,
-        .cursor-star::after {
-          content: "";
-          position: absolute;
-          left: 50%;
-          top: 50%;
-          width: 2.4px;
-          height: 2.4px;
-          border-radius: 9999px;
-          transform: translate(-50%, -50%);
-          background: rgba(165,243,252,0.95);
-          box-shadow:
-            0 0 28px rgba(6,182,212,0.98),
-            -4px -3px 0 rgba(165,243,252,0.86),
-            -3px -6px 0 rgba(6,182,212,0.7),
-            4px -4px 0 rgba(176,38,255,0.7),
-            6px -1px 0 rgba(165,243,252,0.78),
-            3px 6px 0 rgba(6,182,212,0.7),
-            -4px 4px 0 rgba(176,38,255,0.6),
-            -2px 3px 0 rgba(165,243,252,0.64);
+        .featured-btn--pinned-active {
+          animation: featured-btn-pin-breathe 2.2s ease-in-out infinite;
         }
-
-        .cursor-star::after {
-          background: rgba(176,38,255,0.9);
-          box-shadow:
-            0 0 32px rgba(176,38,255,0.96),
-            -7px 1px 0 rgba(165,243,252,0.5),
-            -4px 7px 0 rgba(165,243,252,0.66),
-            2px 7px 0 rgba(165,243,252,0.48),
-            7px 4px 0 rgba(176,38,255,0.62),
-            5px -7px 0 rgba(176,38,255,0.44);
-          opacity: 1;
+        @media (prefers-reduced-motion: reduce) {
+          .featured-btn--pinned-active { animation: none; }
         }
-
-        @keyframes cursor-star-glow {
-          0%, 100% { filter: drop-shadow(0 0 26px rgba(6,182,212,0.75)) drop-shadow(0 0 36px rgba(176,38,255,0.45)); }
-          50% { filter: drop-shadow(0 0 32px rgba(6,182,212,0.9)) drop-shadow(0 0 46px rgba(176,38,255,0.55)); }
-        }
-
-        .cursor-star--active {
-          width: 26px;
-          height: 26px;
-          opacity: 1;
-          transform: translate3d(-50%, -50%, 0) scale(2.1);
-          filter: drop-shadow(0 0 28px rgba(6,182,212,0.98)) drop-shadow(0 0 44px rgba(176,38,255,0.78));
-        }
-
-        .gmx-main { cursor: default; }
-        @media (pointer: fine) {
-          .gmx-main { cursor: none; }
+        .featured-carousel-controls button:focus-visible {
+          outline: 2px solid rgba(168, 85, 247, 0.65);
+          outline-offset: 3px;
         }
       `}</style>
     </main>

@@ -12,7 +12,7 @@ export default function InsightsPage() {
       <p className="mt-2 text-sm text-slate-500">行业动态与工具链 · 筛选与整理</p>
 
       <div className="mt-10 space-y-8">
-        <section className="knowledge-holo rounded-2xl border border-cyan-500/20 bg-black/20 p-6 backdrop-blur-sm sm:p-8">
+        <section className="knowledge-holo rounded-2xl p-6 sm:p-8">
           <h2 className="text-base font-semibold text-slate-50" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
             收集范围
           </h2>
@@ -24,7 +24,7 @@ export default function InsightsPage() {
           </ul>
         </section>
 
-        <section className="knowledge-holo rounded-2xl border border-cyan-500/20 bg-black/20 p-6 backdrop-blur-sm sm:p-8">
+        <section className="knowledge-holo rounded-2xl p-6 sm:p-8">
           <h2 className="text-base font-semibold text-slate-50" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
             整理方式
           </h2>
@@ -33,7 +33,7 @@ export default function InsightsPage() {
           </p>
         </section>
 
-        <section className="rounded-xl border border-white/10 bg-black/10 p-5">
+        <section className="liquid-glass-card rounded-xl p-5">
           <p className="text-sm text-slate-500">
             更多条目整理中，敬请期待。若有推荐来源或话题，欢迎通过首页「小龙虾 AI 助手」反馈。
           </p>

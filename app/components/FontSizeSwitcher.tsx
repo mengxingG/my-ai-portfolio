@@ -30,7 +30,7 @@ export function FontSizeSwitcher() {
   };
 
   return (
-    <div className="flex items-center gap-1 rounded-full border border-white/15 bg-black/30 px-2 py-1 text-[11px] text-slate-300 backdrop-blur-md">
+    <div className="liquid-glass-card flex items-center gap-1 rounded-full px-2 py-1 text-[11px] text-slate-300">
       <span className="hidden sm:inline text-[10px] text-slate-500">字体</span>
       {(["small", "medium", "large"] as FontSize[]).map((key) => (
         <button

@@ -206,7 +206,7 @@ function renderBlocks(blocks: any[]) {
           out.push(
             <div
               key={`mer-${i}`}
-              className="my-6 overflow-x-auto rounded-lg bg-black/50 p-4 border border-cyan-500/20"
+              className="liquid-glass-card my-6 overflow-x-auto rounded-lg border border-cyan-500/20 p-4"
               data-mermaid="true"
             >
               <pre className="whitespace-pre-wrap text-sm text-cyan-300">
@@ -218,7 +218,7 @@ function renderBlocks(blocks: any[]) {
           out.push(
             <pre
               key={`code-${i}`}
-              className="my-6 overflow-x-auto rounded-lg bg-black/50 p-4 text-sm text-cyan-300 border border-cyan-500/20"
+              className="liquid-glass-card my-6 overflow-x-auto rounded-lg border border-cyan-500/20 p-4 text-sm text-cyan-300"
             >
               <code>{codeText}</code>
             </pre>

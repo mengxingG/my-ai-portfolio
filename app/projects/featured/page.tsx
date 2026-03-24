@@ -17,7 +17,7 @@ export default function FeaturedProjectsPage() {
       </p>
 
       <div className="mt-8 space-y-8">
-        <article className="holo-card rounded-2xl border border-cyan-500/20 bg-black/20 p-6 backdrop-blur-xl">
+        <article className="holo-card rounded-2xl p-6">
           <h2
             className="text-lg font-semibold text-slate-50"
             style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}
@@ -33,7 +33,7 @@ export default function FeaturedProjectsPage() {
           </p>
         </article>
 
-        <article className="holo-card rounded-2xl border border-cyan-500/20 bg-black/20 p-6 backdrop-blur-xl">
+        <article className="holo-card rounded-2xl p-6">
           <h2
             className="text-lg font-semibold text-slate-50"
             style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}

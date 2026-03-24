@@ -48,17 +48,17 @@ export default function AINewsRadarClient({ news }: { news: AINews[] }) {
         {filtered.map((item) => (
           <div
             key={item.id}
-            className="group flex flex-col justify-between rounded-2xl border border-cyan-500/20 bg-black/20 p-6 backdrop-blur-xl transition-all hover:border-cyan-400/30 hover:bg-black/30"
+            className="liquid-glass-card group flex flex-col justify-between rounded-2xl p-6 transition-all hover:border-cyan-400/40"
           >
             <div>
               <div className="flex items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-2">
                   {item.source === "X" ? (
-                    <div className="flex items-center justify-center rounded-full bg-black/40 p-1.5 ring-1 ring-white/20">
+                    <div className="liquid-glass-card flex items-center justify-center rounded-full p-1.5">
                       <Twitter className="h-4 w-4 text-white" />
                     </div>
                   ) : (
-                    <div className="flex items-center justify-center rounded-full bg-red-500/10 p-1.5 ring-1 ring-red-500/30">
+                    <div className="liquid-glass-card flex items-center justify-center rounded-full p-1.5 ring-1 ring-red-500/35">
                       <Youtube className="h-4 w-4 text-red-500" />
                     </div>
                   )}
