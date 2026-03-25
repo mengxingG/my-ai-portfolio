@@ -95,23 +95,23 @@ body {
 
   .agentic-foreground-vignette {
     animation: none;
-    opacity: 0.24;
+    opacity: 0.18;
   }
 }
 
 /* Slow neon purple lift at bottom — pairs with AgenticPlexusBackground */
 .agentic-foreground-vignette {
-  opacity: 0.26;
+  opacity: 0.2;
   animation: agentic-foreground-purple 11s ease-in-out infinite;
 }
 
 @keyframes agentic-foreground-purple {
   0%,
   100% {
-    opacity: 0.18;
+    opacity: 0.14;
   }
   50% {
-    opacity: 0.34;
+    opacity: 0.26;
   }
 }
 

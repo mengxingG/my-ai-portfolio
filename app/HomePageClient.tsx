@@ -402,17 +402,17 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
       {/* z-0：负 z-index 会把画布压到 body 底色之下，看起来像「背景只剩纯色」 */}
       <AgenticPlexusBackground reducedMotion={Boolean(prefersReducedMotion)} />
       <div className="pointer-events-none fixed inset-0 z-[1]" aria-hidden>
-        <div className="absolute inset-0 bg-black/40" />
+        <div className="absolute inset-0 bg-black/26" />
         <div
           className="agentic-foreground-vignette absolute inset-0 mix-blend-screen"
           style={{
             background:
-              "radial-gradient(ellipse 130% 58% at 50% 100%, rgba(192, 132, 252, 0.42) 0%, transparent 56%)",
+              "radial-gradient(ellipse 130% 58% at 50% 100%, rgba(192, 132, 252, 0.28) 0%, transparent 56%)",
           }}
         />
       </div>
 
-      <div className="relative z-10 mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="relative z-10 mx-auto w-full max-w-6xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
         <motion.header
           initial={{ opacity: 0, y: prefersReducedMotion ? 0 : -18 }}
           animate={{ opacity: 1, y: 0 }}
@@ -432,7 +432,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
               initial="hidden"
               animate="show"
               variants={sectionVariants}
-              className="flex items-center gap-6 text-sm font-medium text-slate-400"
+              className="flex items-center gap-4 text-sm font-medium text-slate-400"
             >
               <a href="#hero" className="nav-link text-slate-300 hover:text-cyan-300">首页</a>
               <div className="nav-dropdown group relative">
@@ -477,7 +477,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
 
         <motion.section
           id="hero"
-          className="scroll-mt-20 flex flex-col items-center py-20 text-center sm:py-28"
+          className="scroll-mt-20 flex flex-col items-center py-12 text-center sm:py-16"
           initial="hidden"
           whileInView="show"
           viewport={{ once: true, amount: 0.25 }}
@@ -485,7 +485,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
         >
           <motion.div
             variants={itemVariants}
-            className="profile-neon-breath relative mb-8 h-24 w-24 shrink-0 overflow-hidden rounded-full border-2 border-white/10 sm:h-28 sm:w-28"
+            className="profile-neon-breath relative mb-5 h-24 w-24 shrink-0 overflow-hidden rounded-full border-2 border-white/10 sm:h-28 sm:w-28"
           >
             <Image
               src="/screenshot-20251105-214648.jpg"
@@ -503,7 +503,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           </motion.div>
 
           <motion.h2
-            className="mt-5 max-w-3xl text-lg font-semibold leading-snug text-slate-100 sm:text-xl md:text-2xl"
+            className="mt-3 max-w-3xl text-lg font-semibold leading-snug text-slate-100 sm:text-xl md:text-2xl"
             style={{ fontFamily: '"Geist", "Inter", "SF Pro Text", system-ui, sans-serif' }}
             variants={sublineContainerVariants}
             initial="hidden"
@@ -523,17 +523,17 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
 
           <motion.p
             variants={itemVariants}
-            className="mt-6 max-w-2xl text-base font-light leading-relaxed text-slate-100 sm:text-lg"
+            className="mt-4 max-w-2xl text-base font-light leading-relaxed text-slate-100 sm:text-lg"
             style={{ fontFamily: '"Geist", "Inter", "SF Pro Text", system-ui, sans-serif' }}
           >
             {HERO_BODY}
           </motion.p>
 
-          <motion.p variants={itemVariants} className="mt-3 text-xs text-slate-500 sm:text-sm">
+          <motion.p variants={itemVariants} className="mt-2 text-xs text-slate-500 sm:text-sm">
             Agentic Workflow · Rapid Validation · Production-ready Delivery
           </motion.p>
 
-          <motion.div variants={itemVariants} className="mt-10 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+          <motion.div variants={itemVariants} className="mt-6 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
             <MagneticWrap strength={0.42} padding={48}>
               <motion.a
                 href="/resume.pdf"
@@ -572,7 +572,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
 
           <motion.div
             variants={itemVariants}
-            className="liquid-glass-card mt-14 w-full max-w-4xl rounded-2xl p-4 sm:p-5"
+            className="liquid-glass-card mt-8 w-full max-w-4xl rounded-2xl p-4 sm:p-5"
           >
             <div className="mb-3 text-center text-[11px] font-mono uppercase tracking-[0.2em] text-slate-400">
               Tech Stack
@@ -590,7 +590,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                 </motion.span>
               ))}
             </motion.div>
-            <div className="stack-marquee mt-5 border-t border-white/5 pt-4">
+            <div className="stack-marquee mt-3 border-t border-white/5 pt-3">
               <div className="stack-marquee-track">
                 {["OpenClaw", "Claude Code", "Vibe Coding", "Next.js", "Cursor", "LangChain", "Vercel"].map((s) => (
                   <span key={`hm-a-${s}`} className="tech-tag">{s}</span>
@@ -604,153 +604,8 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
         </motion.section>
 
         <motion.section
-          id="about"
-          className="scroll-mt-20 py-16"
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, amount: 0.2 }}
-          variants={sectionVariants}
-        >
-          <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl" style={{ fontFamily: '"Geist", "Inter", "SF Pro Display", system-ui, sans-serif' }}>
-            关于我
-          </h2>
-          <p className="mt-2 text-sm font-light text-slate-500">About · New Paradigm</p>
-          <motion.div
-            variants={cardRevealVariants}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, amount: 0.22, margin: "-0px 0px -8% 0px" }}
-            className="holo-card mt-8 rounded-2xl p-7 sm:p-8"
-          >
-            <p className="text-sm font-light leading-relaxed text-slate-400">
-              我专注将 Agentic Workflow 与业务闭环深度结合，持续用 Vibe Coding + Rapid Validation 模式，把复杂想法快速转化为可运行、可验证、可迭代的商业级 AI 产品。
-            </p>
-            <div className="mt-6 grid gap-4 sm:grid-cols-3">
-              <div className="liquid-glass-card rounded-xl p-4">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">Vibe Coding 深度实践</h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-300">
-                  能熟练利用 Claude Code (CC) 与 Cursor 完成产品从 0 到 1 的全流程。独立完成需求梳理、UI 设计、前后端开发及 Vercel 自动化部署。
-                </p>
-              </div>
-              <div className="liquid-glass-card rounded-xl p-4">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">AI Agent 提效专家</h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-300">
-                  深度使用 OpenClaw、Claude Code 等前沿 Agent 工具优化业务流。具备通过 AI 自动化工作流提升团队 5-10 倍交付效率的实战经验。
-                </p>
-              </div>
-              <div className="liquid-glass-card rounded-xl p-4">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">快速原型验证</h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-300">
-                  拥有在 24 小时内将商业想法转化为可运行产品的“极速交付”能力，快速验证需求与价值闭环。
-                </p>
-              </div>
-            </div>
-            <div className="liquid-glass-card mt-6 rounded-xl p-4">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">AI-Native Stack</h3>
-              <p className="mt-2 text-sm text-slate-400">
-                Tools
-              </p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {["Claude Code (CC)", "OpenClaw", "Cursor", "Vercel", "Windsurf"].map((item) => (
-                  <span key={item} className="tech-tag">{item}</span>
-                ))}
-              </div>
-              <p className="mt-4 text-sm text-slate-400">
-                Frameworks
-              </p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {["LangChain", "Next.js (App Router)", "Tailwind CSS"].map((item) => (
-                  <span key={item} className="tech-tag">{item}</span>
-                ))}
-              </div>
-            </div>
-          </motion.div>
-        </motion.section>
-
-        <motion.section
-          id="projects"
-          className="scroll-mt-20 py-16"
-          data-parallax="0.018"
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, amount: 0.2 }}
-          variants={sectionVariants}
-        >
-          <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl" style={{ fontFamily: '"Geist", "Inter", "SF Pro Display", system-ui, sans-serif' }}>
-            AI Projects · 核心项目
-          </h2>
-          <p className="mt-2 text-sm font-light text-slate-500">Flagship · Agentic delivery</p>
-          <motion.div
-            className="mt-8 space-y-6"
-            variants={staggerListContainer}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, amount: 0.18, margin: "0px 0px -8% 0px" }}
-          >
-            <motion.div variants={staggerListItem}>
-              <TiltCard className="block overflow-visible">
-                <article className="holo-card overflow-hidden rounded-2xl">
-              <div className="p-6 sm:p-8">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-slate-50 sm:text-xl" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
-                      金融合规智能助手
-                    </h3>
-                    <p className="mt-1 text-sm font-mono text-slate-500">Financial Compliance Intelligent Assistant</p>
-                  </div>
-                  <span className="status-badge status-badge--ready">READY</span>
-                </div>
-                <p className="mt-4 text-sm leading-relaxed text-slate-400">
-                  A RAG-based AI agent for intelligent Q&A and audit assistance in financial institutions. 将复杂规则审计时间显著缩短，关键合规问答可溯源到具体条款与解释。
-                </p>
-              </div>
-              <div className="grid gap-4 border-t border-white/5 p-6 sm:grid-cols-3 sm:p-8">
-                <div className="liquid-glass-card rounded-xl p-4">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">目标用户与痛点</h4>
-                  <ul className="mt-3 space-y-1.5 text-sm text-slate-300">
-                    <li>· 合规/内控：法规口径不一致、解释成本高</li>
-                    <li>· 业务/产品：需求变更频繁、边界难对齐</li>
-                    <li>· 审计：缺少可追溯证据链与可复核记录</li>
-                  </ul>
-                </div>
-                <div className="liquid-glass-card rounded-xl p-4">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">核心业务模块</h4>
-                  <ul className="mt-3 space-y-1.5 text-sm text-slate-300">
-                    <li>· 法规知识库：条款拆解、版本管理、标签体系</li>
-                    <li>· 合规问答：引用到条款/解释口径/案例</li>
-                    <li>· 审计工作台：可追溯对话、结论复核与导出</li>
-                  </ul>
-                </div>
-                <div className="liquid-glass-card rounded-xl p-4">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">底层架构设计</h4>
-                  <ul className="mt-3 space-y-1.5 text-sm text-slate-300">
-                    <li>· RAG：法规切片 + 向量检索 + 结构化引用</li>
-                    <li>· Agent：工具调用编排、权限与操作审计</li>
-                    <li>· 证据链：来源/版本/置信度/决策日志全记录</li>
-                  </ul>
-                </div>
-              </div>
-              <p className="border-t border-white/10 px-6 py-4 text-sm text-slate-300 sm:px-8">
-                ▶ 业务成效：构建 RAG 自动化评测集，合规审查耗时缩减 40%，实现 100% 溯源审计。
-              </p>
-              <div className="border-t border-white/10 px-6 py-4 sm:px-8">
-                <div className="flex flex-wrap gap-2">
-                  <span className="tech-tag">Built with AI Agent</span>
-                  <span className="tech-tag">NotebookLM-inspired</span>
-                  <span className="tech-tag">RAG</span>
-                  <span className="tech-tag">LLMOps</span>
-                  <span className="tech-tag">Vector DB</span>
-                </div>
-              </div>
-                </article>
-              </TiltCard>
-            </motion.div>
-          </motion.div>
-        </motion.section>
-
-        <motion.section
           id="featured"
-          className="scroll-mt-20 py-16"
+          className="scroll-mt-20 py-10"
           data-parallax="0.014"
           initial="hidden"
           whileInView="show"
@@ -758,16 +613,16 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           variants={sectionVariants}
         >
           <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl" style={{ fontFamily: '"Geist", "Inter", "SF Pro Display", system-ui, sans-serif' }}>
-            AI Projects · 特色项目
+            AI Projects · 个人独立开发项目
           </h2>
           <p className="mt-2 text-sm font-light text-slate-500">
             {featuredSelectionPinned
               ? "已锁定当前项目 · 点击页面空白或其他模块区域恢复自动旋转"
-              : "3D Rotating Carousel · Focus + Depth"}
+              : "随便点击，了解我的独立开发项目"}
           </p>
 
           <div
-            className="featured-carousel-controls mt-6 flex flex-wrap gap-3"
+            className="featured-carousel-controls mt-4 flex flex-wrap gap-2.5"
             data-featured-pin-exempt
           >
             {featuredProjects.map((project, idx) => {
@@ -840,7 +695,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           </div>
 
           <div
-            className="mt-8 flex snap-x gap-4 overflow-x-auto pb-2 md:hidden"
+            className="mt-5 flex snap-x gap-3 overflow-x-auto pb-2 md:hidden"
             data-featured-pin-exempt
           >
             {featuredProjects.map((project) => (
@@ -874,7 +729,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           </div>
 
           <div
-            className="relative mt-10 hidden md:block [contain:layout_paint]"
+            className="relative mt-6 hidden md:block [contain:layout_paint]"
             style={{ perspective: "1600px" }}
             data-featured-pin-exempt
           >
@@ -943,7 +798,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           </div>
 
           <motion.div
-            className="mt-8"
+            className="mt-5"
             variants={staggerListItem}
             initial="hidden"
             whileInView="show"
@@ -951,27 +806,27 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           >
             {featuredProjects[activeFeaturedIndex]?.id === "ai-news-radar" ? (
               <div className="holo-card rounded-2xl p-5 sm:p-6">
-                <div className="mb-4 flex items-start justify-between gap-3">
+                <div className="mb-3 flex items-start justify-between gap-3">
                   <h3 className="text-lg font-semibold text-slate-50" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
                     AI 资讯雷达 (AI News Radar) —— 端到端全自动情报聚合系统
                   </h3>
                   <span className="shrink-0 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-mono uppercase text-emerald-200/90">Core Case</span>
                 </div>
-                <div className="grid gap-6 lg:grid-cols-2">
-                  <div className="space-y-4">
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <div className="space-y-3">
                     <figure className="liquid-glass-card w-full overflow-hidden rounded-xl shadow-[0_12px_24px_rgba(0,0,0,0.28)]">
                       <Image src="/image/news.png" alt="AI News Radar 新闻展示截图" width={1200} height={600} className="h-auto w-full object-contain" />
                     </figure>
                     <p className="text-xs text-slate-400">News 输出预览</p>
                   </div>
-                  <div className="space-y-5">
+                  <div className="space-y-3">
                     <section>
                       <h4 className="text-sm font-semibold text-white">🚀 项目概述</h4>
                       <p className="mt-2 text-sm leading-relaxed text-slate-300">这是一个无需人工干预、每日自动运行的 AI 情报系统。通过整合低代码工作流引擎与 LLM，实现从「多源抓取 → 智能过滤清洗 → 双语摘要翻译 → 结构化入库」的完整闭环，显著降低信息噪音。</p>
                     </section>
                     <section>
                       <h4 className="text-sm font-semibold text-white">🛠️ 技术架构</h4>
-                      <ol className="mt-2 space-y-2 text-sm text-slate-300">
+                      <ol className="mt-2 space-y-1.5 text-sm text-slate-300">
                         <li className="liquid-glass-card rounded-lg px-3 py-2">1. Make.com：Cron Job 定时触发与 API 路由调度</li>
                         <li className="liquid-glass-card rounded-lg px-3 py-2">2. Coze Workflow：多节点工作流串联与逻辑控制</li>
                         <li className="liquid-glass-card rounded-lg px-3 py-2">3. Google Web Search API + YouTube API：多源数据抓取</li>
@@ -981,7 +836,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                     </section>
                     <section>
                       <h4 className="text-sm font-semibold text-white">📈 核心痛点与突破</h4>
-                      <ul className="mt-2 space-y-2 text-sm text-slate-300">
+                      <ul className="mt-2 space-y-1.5 text-sm text-slate-300">
                         <li className="liquid-glass-card rounded-lg px-3 py-2">双重去重（Title + Date 组合键 + 语义判重），有效拦截洗稿与重复报道。</li>
                         <li className="liquid-glass-card rounded-lg px-3 py-2">Node.js 时间校准与正则校验，解决 Notion API 对时间戳格式敏感导致的写入崩溃。</li>
                         <li className="liquid-glass-card rounded-lg px-3 py-2">引入 Make.com 作为独立调度层，跨平台触发 Coze，提升稳定性与灵活性。</li>
@@ -1001,9 +856,155 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           </motion.div>
         </motion.section>
 
+
+        <motion.section
+          id="about"
+          className="scroll-mt-20 py-10"
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={sectionVariants}
+        >
+          <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl" style={{ fontFamily: '"Geist", "Inter", "SF Pro Display", system-ui, sans-serif' }}>
+            关于我
+          </h2>
+          <p className="mt-2 text-sm font-light text-slate-500">About · New Paradigm</p>
+          <motion.div
+            variants={cardRevealVariants}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, amount: 0.22, margin: "-0px 0px -8% 0px" }}
+            className="holo-card mt-5 rounded-2xl p-5 sm:p-7"
+          >
+            <p className="text-sm font-light leading-relaxed text-slate-400">
+              我专注将 Agentic Workflow 与业务闭环深度结合，持续用 Vibe Coding + Rapid Validation 模式，把复杂想法快速转化为可运行、可验证、可迭代的商业级 AI 产品。
+            </p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="liquid-glass-card rounded-xl p-4">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">Vibe Coding 深度实践</h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                  能熟练利用 Claude Code (CC) 与 Cursor 完成产品从 0 到 1 的全流程。独立完成需求梳理、UI 设计、前后端开发及 Vercel 自动化部署。
+                </p>
+              </div>
+              <div className="liquid-glass-card rounded-xl p-4">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">AI Agent 提效专家</h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                  深度使用 OpenClaw、Claude Code 等前沿 Agent 工具优化业务流。具备通过 AI 自动化工作流提升团队 5-10 倍交付效率的实战经验。
+                </p>
+              </div>
+              <div className="liquid-glass-card rounded-xl p-4">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">快速原型验证</h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                  拥有在 24 小时内将商业想法转化为可运行产品的“极速交付”能力，快速验证需求与价值闭环。
+                </p>
+              </div>
+            </div>
+            <div className="liquid-glass-card mt-4 rounded-xl p-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">AI-Native Stack</h3>
+              <p className="mt-2 text-sm text-slate-400">
+                Tools
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {["Claude Code (CC)", "OpenClaw", "Cursor", "Vercel", "Windsurf"].map((item) => (
+                  <span key={item} className="tech-tag">{item}</span>
+                ))}
+              </div>
+              <p className="mt-3 text-sm text-slate-400">
+                Frameworks
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {["LangChain", "Next.js (App Router)", "Tailwind CSS"].map((item) => (
+                  <span key={item} className="tech-tag">{item}</span>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        </motion.section>
+
+        <motion.section
+          id="projects"
+          className="scroll-mt-20 py-10"
+          data-parallax="0.018"
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={sectionVariants}
+        >
+          <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl" style={{ fontFamily: '"Geist", "Inter", "SF Pro Display", system-ui, sans-serif' }}>
+            AI Projects · 核心项目
+          </h2>
+          <p className="mt-2 text-sm font-light text-slate-500">Flagship · Agentic delivery</p>
+          <motion.div
+            className="mt-5 space-y-4"
+            variants={staggerListContainer}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, amount: 0.18, margin: "0px 0px -8% 0px" }}
+          >
+            <motion.div variants={staggerListItem}>
+              <TiltCard className="block overflow-visible">
+                <article className="holo-card overflow-hidden rounded-2xl">
+              <div className="p-5 sm:p-6">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-50 sm:text-xl" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
+                      金融合规智能助手
+                    </h3>
+                    <p className="mt-1 text-sm font-mono text-slate-500">Financial Compliance Intelligent Assistant</p>
+                  </div>
+                  <span className="status-badge status-badge--ready">READY</span>
+                </div>
+                <p className="mt-3 text-sm leading-relaxed text-slate-400">
+                  A RAG-based AI agent for intelligent Q&A and audit assistance in financial institutions. 将复杂规则审计时间显著缩短，关键合规问答可溯源到具体条款与解释。
+                </p>
+              </div>
+              <div className="grid gap-3 border-t border-white/5 p-5 sm:grid-cols-3 sm:p-6">
+                <div className="liquid-glass-card rounded-xl p-4">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">目标用户与痛点</h4>
+                  <ul className="mt-2 space-y-1.5 text-sm text-slate-300">
+                    <li>· 合规/内控：法规口径不一致、解释成本高</li>
+                    <li>· 业务/产品：需求变更频繁、边界难对齐</li>
+                    <li>· 审计：缺少可追溯证据链与可复核记录</li>
+                  </ul>
+                </div>
+                <div className="liquid-glass-card rounded-xl p-4">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">核心业务模块</h4>
+                  <ul className="mt-2 space-y-1.5 text-sm text-slate-300">
+                    <li>· 法规知识库：条款拆解、版本管理、标签体系</li>
+                    <li>· 合规问答：引用到条款/解释口径/案例</li>
+                    <li>· 审计工作台：可追溯对话、结论复核与导出</li>
+                  </ul>
+                </div>
+                <div className="liquid-glass-card rounded-xl p-4">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">底层架构设计</h4>
+                  <ul className="mt-2 space-y-1.5 text-sm text-slate-300">
+                    <li>· RAG：法规切片 + 向量检索 + 结构化引用</li>
+                    <li>· Agent：工具调用编排、权限与操作审计</li>
+                    <li>· 证据链：来源/版本/置信度/决策日志全记录</li>
+                  </ul>
+                </div>
+              </div>
+              <p className="border-t border-white/10 px-5 py-3 text-sm text-slate-300 sm:px-6">
+                ▶ 业务成效：构建 RAG 自动化评测集，合规审查耗时缩减 40%，实现 100% 溯源审计。
+              </p>
+              <div className="border-t border-white/10 px-5 py-3 sm:px-6">
+                <div className="flex flex-wrap gap-2">
+                  <span className="tech-tag">Built with AI Agent</span>
+                  <span className="tech-tag">NotebookLM-inspired</span>
+                  <span className="tech-tag">RAG</span>
+                  <span className="tech-tag">LLMOps</span>
+                  <span className="tech-tag">Vector DB</span>
+                </div>
+              </div>
+                </article>
+              </TiltCard>
+            </motion.div>
+          </motion.div>
+        </motion.section>
+
         <motion.section
           id="insights"
-          className="scroll-mt-20 py-16"
+          className="scroll-mt-20 py-10"
           data-parallax="0.008"
           initial="hidden"
           whileInView="show"
@@ -1022,7 +1023,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
 
         <motion.section
           id="knowledge"
-          className="scroll-mt-20 py-16"
+          className="scroll-mt-20 py-10"
           data-parallax="0.01"
           initial="hidden"
           whileInView="show"
@@ -1033,7 +1034,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
             AI 知识沉淀
           </h2>
           <p className="mt-2 text-sm font-light text-slate-500">Best Practices &amp; Curation</p>
-          <motion.div className="mt-8 grid gap-6 sm:grid-cols-2">
+          <motion.div className="mt-5 grid gap-4 sm:grid-cols-2">
             {articlesLoading ? (
               <>
                 {[1, 2].map((i) => (
@@ -1043,17 +1044,17 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                     initial="hidden"
                     whileInView="show"
                     viewport={{ once: true, amount: 0.15, margin: "0px 0px -8% 0px" }}
-                    className="holo-card rounded-2xl p-6"
+                    className="holo-card rounded-2xl p-5"
                   >
                     <div className="knowledge-loading-skeleton h-6 w-3/4 rounded bg-slate-600/50" />
                     <div className="knowledge-loading-skeleton mt-3 h-4 w-full rounded bg-slate-600/40" />
                     <div className="knowledge-loading-skeleton mt-2 h-4 w-5/6 rounded bg-slate-600/40" />
-                    <div className="knowledge-loading-skeleton mt-6 h-3 w-24 rounded bg-cyan-500/30" />
+                    <div className="knowledge-loading-skeleton mt-4 h-3 w-24 rounded bg-cyan-500/30" />
                   </motion.div>
                 ))}
               </>
             ) : articles.length === 0 ? (
-              <div className="holo-card col-span-full rounded-2xl p-6 text-sm text-slate-400">
+              <div className="holo-card col-span-full rounded-2xl p-5 text-sm text-slate-400">
                 暂无文章数据，请检查 Notion 数据库连接与字段映射。
               </div>
             ) : (
@@ -1070,7 +1071,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                 <Link
                   href={`/articles/${article.id}`}
                   prefetch
-                  className="holo-card group block h-full rounded-2xl p-6 transition hover:border-purple-500/30"
+                  className="holo-card group block h-full rounded-2xl p-5 transition hover:border-purple-500/30"
                 >
                   <h3 className="text-lg font-semibold text-slate-50 group-hover:text-cyan-300" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
                     {article.title}
@@ -1088,7 +1089,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
         </motion.section>
 
         <motion.div
-          className="mt-12 overflow-hidden border-y border-white/10 py-3"
+          className="mt-8 overflow-hidden border-y border-white/10 py-2.5"
           variants={cardRevealVariants}
           initial="hidden"
           whileInView="show"
@@ -1106,7 +1107,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           </div>
         </motion.div>
 
-        <footer className="pt-6 text-xs text-slate-500">
+        <footer className="pt-4 text-xs text-slate-500">
           © {new Date().getFullYear()} 龚梦星 Gong Mengxing · AI 产品经理
         </footer>
       </div>

@@ -10,8 +10,8 @@ type Props = {
 const PURPLE = 0xc084fc;
 const PURPLE_HOT = 0xe879f9;
 const PURPLE_DIM = 0x7c3aed;
-const DEEP_BLUE = 0x020617;
-const FOG_COLOR = 0x030712;
+const DEEP_BLUE = 0x060b18;
+const FOG_COLOR = 0x050a14;
 
 const pointVertexShader = `
   attribute float size;
@@ -39,10 +39,11 @@ const pointFragmentShader = `
     if (r > 0.5) discard;
     float rim = 1.0 - smoothstep(0.06, 0.5, r);
     float core = pow(max(0.0, 1.0 - r * 2.4), 2.2);
-    float glow = rim * 0.72 + core * 1.15;
+    float glowRaw = rim * 0.88 + core * 1.38;
+    float glow = glowRaw * 1.3;
     float fog = exp(-uFogDensity * vViewZ);
-    vec3 col = vColor * glow * (0.42 + 0.58 * fog);
-    float alpha = clamp(glow * (0.38 + 0.55 * fog), 0.0, 1.0);
+    vec3 col = vColor * glow * (0.58 + 0.52 * fog);
+    float alpha = clamp(glowRaw * (0.52 + 0.48 * fog) * 1.3, 0.0, 1.0);
     gl_FragColor = vec4(col, alpha);
   }
 `;
@@ -95,7 +96,7 @@ export function AgenticPlexusBackground({ reducedMotion }: Props) {
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(DEEP_BLUE);
-    const fogDensity = 0.0175;
+    const fogDensity = 0.011;
     scene.fog = new THREE.FogExp2(FOG_COLOR, fogDensity);
 
     const camera = new THREE.PerspectiveCamera(48, 1, 0.06, 220);
@@ -108,7 +109,7 @@ export function AgenticPlexusBackground({ reducedMotion }: Props) {
     });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.02;
+    renderer.toneMappingExposure = 1.32;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     const canvas = renderer.domElement;
@@ -118,18 +119,20 @@ export function AgenticPlexusBackground({ reducedMotion }: Props) {
     container.appendChild(canvas);
 
     const motion = reducedMotion ? 0.16 : 1;
+    /** Global animation rate (+15% vs baseline). */
+    const ANIM_SPEED = 1.15;
 
     const fogCol = new THREE.Color(FOG_COLOR);
 
-    scene.add(new THREE.AmbientLight(0x1a0f2a, 0.32));
-    const hemi = new THREE.HemisphereLight(0x3d2a5c, 0x020308, 0.48);
+    scene.add(new THREE.AmbientLight(0x22143a, 0.46));
+    const hemi = new THREE.HemisphereLight(0x4a3570, 0x0a0c14, 0.62);
     scene.add(hemi);
 
-    const key = new THREE.DirectionalLight(0xa78bfa, 0.22);
+    const key = new THREE.DirectionalLight(0xc4b5fd, 0.36);
     key.position.set(8, 10, 14);
     scene.add(key);
 
-    const fill = new THREE.DirectionalLight(0x312e81, 0.12);
+    const fill = new THREE.DirectionalLight(0x4338ca, 0.2);
     fill.position.set(-10, -4, 8);
     scene.add(fill);
 
@@ -145,7 +148,7 @@ export function AgenticPlexusBackground({ reducedMotion }: Props) {
 
     const hubLights: THREE.PointLight[] = [];
     clusterCenters.forEach((c, i) => {
-      const pl = new THREE.PointLight(i % 2 === 0 ? PURPLE_HOT : PURPLE_DIM, 0.62, 52, 1.9);
+      const pl = new THREE.PointLight(i % 2 === 0 ? PURPLE_HOT : PURPLE_DIM, 0.88, 58, 1.85);
       pl.position.copy(c);
       scene.add(pl);
       hubLights.push(pl);
@@ -221,7 +224,7 @@ export function AgenticPlexusBackground({ reducedMotion }: Props) {
         c.y = centerBase[i].y + Math.cos(time * 0.095 + i * 0.72) * 0.78 * s + centerVel[i].y * time * 0.065;
         c.z = centerBase[i].z + Math.sin(time * 0.075 + i * 1.08) * 0.62 * s + centerVel[i].z * time * 0.055;
         hubLights[i].position.copy(c);
-        hubLights[i].intensity = (0.48 + Math.sin(time * 0.42 + i * 0.35) * 0.18 * motion) * (0.85 + i * 0.02);
+        hubLights[i].intensity = (0.68 + Math.sin(time * 0.42 + i * 0.35) * 0.22 * motion) * (0.88 + i * 0.02);
       });
 
       const wob = motion * 0.26;
@@ -332,17 +335,17 @@ export function AgenticPlexusBackground({ reducedMotion }: Props) {
     const lineMat = new THREE.LineBasicMaterial({
       color: PURPLE_DIM,
       transparent: true,
-      opacity: 0.14,
+      opacity: 0.286,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     });
     const plexusLines = new THREE.LineSegments(lineGeo, lineMat);
 
     const streamDefs: StreamDef[] = [
-      { indices: [0, 1, 2, 3, 5], tension: 0.32, color: 0xd8b4fe, baseOpacity: 0.52, segments: 72, flowScale: 0.032 },
-      { indices: [1, 4, 3], tension: 0.38, color: PURPLE, baseOpacity: 0.42, segments: 48, flowScale: 0.026 },
-      { indices: [2, 6, 5], tension: 0.36, color: 0xe9d5ff, baseOpacity: 0.38, segments: 44, flowScale: 0.028 },
-      { indices: [0, 4, 2, 6], tension: 0.34, color: 0xc4b5fd, baseOpacity: 0.36, segments: 56, flowScale: 0.024 },
+      { indices: [0, 1, 2, 3, 5], tension: 0.32, color: 0xe9d5ff, baseOpacity: 0.884, segments: 72, flowScale: 0.032 },
+      { indices: [1, 4, 3], tension: 0.38, color: PURPLE, baseOpacity: 0.754, segments: 48, flowScale: 0.026 },
+      { indices: [2, 6, 5], tension: 0.36, color: 0xf5f3ff, baseOpacity: 0.676, segments: 44, flowScale: 0.028 },
+      { indices: [0, 4, 2, 6], tension: 0.34, color: 0xddd6fe, baseOpacity: 0.65, segments: 56, flowScale: 0.024 },
     ];
 
     type StreamObj = {
@@ -388,11 +391,11 @@ export function AgenticPlexusBackground({ reducedMotion }: Props) {
       map: runnerTex,
       color: new THREE.Color(PURPLE_HOT),
       transparent: true,
-      opacity: 0.88,
+      opacity: 1,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
       sizeAttenuation: true,
-      size: 0.14,
+      size: 0.176,
     });
     const runners = new THREE.Points(runnerGeo, runnerMat);
 
@@ -417,9 +420,9 @@ export function AgenticPlexusBackground({ reducedMotion }: Props) {
     const hazeColors = new Float32Array(HAZE * 3);
     for (let i = 0; i < HAZE; i++) {
       hazeSizes[i] = 0.018 + rng() * 0.028;
-      const dim = 0.22 + rng() * 0.2;
-      hazeColors[i * 3] = dim * 0.75;
-      hazeColors[i * 3 + 1] = dim * 0.55;
+      const dim = (0.34 + rng() * 0.26) * 1.3;
+      hazeColors[i * 3] = dim * 0.82;
+      hazeColors[i * 3 + 1] = dim * 0.62;
       hazeColors[i * 3 + 2] = dim;
     }
     hazeGeo.setAttribute("size", new THREE.BufferAttribute(hazeSizes, 1));
@@ -428,7 +431,7 @@ export function AgenticPlexusBackground({ reducedMotion }: Props) {
     const hazeMat = new THREE.ShaderMaterial({
       uniforms: {
         uFogColor: { value: fogCol.clone() },
-        uFogDensity: { value: fogDensity * 1.15 },
+        uFogDensity: { value: fogDensity * 1.05 },
       },
       vertexShader: pointVertexShader,
       fragmentShader: pointFragmentShader,
@@ -444,8 +447,8 @@ export function AgenticPlexusBackground({ reducedMotion }: Props) {
     const sizes = new Float32Array(n);
     const colors = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) {
-      sizes[i] = clusterId[i] >= 0 ? 0.048 + weight[i] * 0.052 : 0.022 + weight[i] * 0.026;
-      const bright = clusterId[i] >= 0 ? 0.92 + weight[i] * 0.12 : 0.32;
+      sizes[i] = clusterId[i] >= 0 ? 0.052 + weight[i] * 0.056 : 0.026 + weight[i] * 0.03;
+      const bright = clusterId[i] >= 0 ? (1.0 + weight[i] * 0.08) * 1.3 : 0.44 * 1.3;
       colors[i * 3] = bright;
       colors[i * 3 + 1] = bright * 0.78;
       colors[i * 3 + 2] = 1;
@@ -518,7 +521,8 @@ export function AgenticPlexusBackground({ reducedMotion }: Props) {
 
     const tick = (now: number) => {
       if (!running) return;
-      const time = (now - t0) * 0.001;
+      const elapsed = (now - t0) * 0.001;
+      const time = elapsed * ANIM_SPEED;
       computeWorld(time);
       syncStreamControls();
 
@@ -583,7 +587,7 @@ export function AgenticPlexusBackground({ reducedMotion }: Props) {
       }
       runnerGeo.attributes.position.needsUpdate = true;
 
-      lineMat.opacity = 0.1 + 0.06 * Math.sin(time * 0.48) * motion;
+      lineMat.opacity = 0.208 + 0.117 * Math.sin(time * 0.48) * motion;
 
       key.position.x = 8 + Math.sin(time * 0.07) * 3 * motion;
       key.position.y = 10 + Math.cos(time * 0.055) * 2.2 * motion;

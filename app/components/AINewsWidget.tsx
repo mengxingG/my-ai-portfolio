@@ -10,8 +10,8 @@ export function AINewsWidget({ news }: { news: AINews[] }) {
   const displayNews = news.slice(0, 6);
 
   return (
-    <div className="mt-8">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="mt-4">
+      <div className="mb-4 flex items-center justify-between">
         <h3 className="text-xl font-semibold text-slate-100">📡 AI 资讯雷达 (最新动态)</h3>
         <Link
           href="/ai-news"
@@ -24,7 +24,7 @@ export function AINewsWidget({ news }: { news: AINews[] }) {
       {displayNews.length === 0 ? (
         <p className="text-sm text-slate-500">暂无已发布的资讯，请稍后再来。</p>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
           {displayNews.map((item) => (
             <a
               key={item.id}
