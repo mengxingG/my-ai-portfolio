@@ -4,6 +4,9 @@ import { fetchAINewsRadarFromNotion, type AINews } from "@/utils/notion";
 import AINewsRadarClient from "./AINewsRadarClient";
 import StarfieldBackground from "@/app/components/StarfieldBackground";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function AINewsRadar() {
   let newsList: AINews[] = [];
   try {

@@ -1,3 +1,6 @@
+import { unstable_noStore as noStore } from "next/cache";
+import { createNotionClient } from "@/lib/notion-client";
+
 type NotionJson = Record<string, unknown>;
 
 export type NotionBlock = NotionJson & {
@@ -240,18 +243,20 @@ function mapNotionPageToAINews(page: NotionJson): AINews | null {
 }
 
 /**
- * AI News Radar：使用 @notionhq/client（require 避免 Turbopack 问题）
+ * AI News Radar：使用 @notionhq/client（经 lib/notion-client 注入开发环境代理 fetch）
  */
 export async function fetchAINewsRadarFromNotion(): Promise<AINews[]> {
+  // Disable Next.js render/fetch caching so homepage + radar always reflect
+  // the latest Notion DB updates after reload.
+  noStore();
+
   const databaseId = process.env.NOTION_AI_NEWS_DB_ID;
   const apiKey = process.env.NOTION_API_KEY;
   if (!databaseId || !apiKey) {
     throw new Error("Missing NOTION_AI_NEWS_DB_ID or NOTION_API_KEY");
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { Client } = require("@notionhq/client") as typeof import("@notionhq/client");
-  const notion = new Client({ auth: apiKey });
+  const notion = createNotionClient(apiKey);
 
   try {
     // @notionhq/client v5+：数据库查询改为 dataSources.query，需先从 database 取 data_source_id

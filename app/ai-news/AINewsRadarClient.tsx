@@ -8,12 +8,38 @@ type TabKey = "all" | "news" | "vedio";
 
 export default function AINewsRadarClient({ news }: { news: AINews[] }) {
   const [tab, setTab] = useState<TabKey>("all");
+  const [fromDate, setFromDate] = useState<string>("");
+  const [toDate, setToDate] = useState<string>("");
+
+  function parseISODateToMs(d: string): number | null {
+    if (!d) return null;
+    // Notion date is formatted like "YYYY-MM-DD"; parse as UTC midnight.
+    if (d.length === 10) {
+      const ms = Date.parse(`${d}T00:00:00Z`);
+      return Number.isFinite(ms) ? ms : null;
+    }
+    const ms = Date.parse(d);
+    return Number.isFinite(ms) ? ms : null;
+  }
 
   const filtered = useMemo(() => {
-    if (tab === "vedio") return news.filter((n) => n.source === "YouTube");
-    if (tab === "news") return news.filter((n) => n.source === "X");
-    return news;
-  }, [news, tab]);
+    let list = news;
+    if (tab === "vedio") list = list.filter((n) => n.source === "YouTube");
+    if (tab === "news") list = list.filter((n) => n.source === "X");
+
+    const fromMs = parseISODateToMs(fromDate);
+    const toMs = parseISODateToMs(toDate);
+
+    if (fromMs === null && toMs === null) return list;
+
+    return list.filter((item) => {
+      const itemMs = parseISODateToMs(item.date ?? "");
+      if (itemMs === null) return false;
+      if (fromMs !== null && itemMs < fromMs) return false;
+      if (toMs !== null && itemMs > toMs) return false;
+      return true;
+    });
+  }, [news, tab, fromDate, toDate]);
 
   const tabs: Array<{ key: TabKey; label: string }> = [
     { key: "all", label: "all" },
@@ -23,25 +49,62 @@ export default function AINewsRadarClient({ news }: { news: AINews[] }) {
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-center gap-2">
-        {tabs.map((t) => {
-          const active = t.key === tab;
-          return (
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {tabs.map((t) => {
+            const active = t.key === tab;
+            return (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => setTab(t.key)}
+                className={[
+                  "rounded-full border px-3 py-1.5 text-sm transition-all",
+                  active
+                    ? "border-cyan-500/50 bg-cyan-500/10 text-cyan-200"
+                    : "border-white/10 bg-white/5 text-slate-300 hover:border-cyan-500/40 hover:bg-white/10",
+                ].join(" ")}
+              >
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500">From</span>
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="rounded-xl border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-slate-200 outline-none focus:border-cyan-500/40 focus:ring-1 focus:ring-cyan-500/20"
+              aria-label="From date"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500">To</span>
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="rounded-xl border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-slate-200 outline-none focus:border-cyan-500/40 focus:ring-1 focus:ring-cyan-500/20"
+              aria-label="To date"
+            />
+          </div>
+          {(fromDate || toDate) && (
             <button
-              key={t.key}
               type="button"
-              onClick={() => setTab(t.key)}
-              className={[
-                "rounded-full border px-3 py-1.5 text-sm transition-all",
-                active
-                  ? "border-cyan-500/50 bg-cyan-500/10 text-cyan-200"
-                  : "border-white/10 bg-white/5 text-slate-300 hover:border-cyan-500/40 hover:bg-white/10",
-              ].join(" ")}
+              onClick={() => {
+                setFromDate("");
+                setToDate("");
+              }}
+              className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-slate-300 transition hover:border-cyan-500/30 hover:text-cyan-200"
             >
-              {t.label}
+              Clear
             </button>
-          );
-        })}
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">

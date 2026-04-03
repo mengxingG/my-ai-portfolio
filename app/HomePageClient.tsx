@@ -465,6 +465,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                 <div
                   className={`nav-dropdown-panel liquid-glass-card absolute left-0 top-full z-50 mt-1 min-w-[10rem] rounded-lg border border-cyan-500/25 py-1 shadow-xl transition-all duration-200 group-hover:opacity-100 group-hover:pointer-events-auto ${knowledgeOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
                 >
+                  <a href="/knowledge" className="block px-4 py-2.5 text-left text-slate-300 hover:bg-cyan-500/10 hover:text-cyan-300">Learning Dashboard</a>
                   <a href="/knowledge/ai" className="block px-4 py-2.5 text-left text-slate-300 hover:bg-cyan-500/10 hover:text-cyan-300">AI 知识</a>
                   <a href="/knowledge/insights" className="block px-4 py-2.5 text-left text-slate-300 hover:bg-cyan-500/10 hover:text-cyan-300">资讯收集</a>
                 </div>
@@ -567,6 +568,9 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
             </Link>
             <Link href="/#knowledge" className="glow-btn glow-btn--secondary">
               AI知识沉淀
+            </Link>
+            <Link href="/knowledge" className="glow-btn glow-btn--secondary">
+              Learning Dashboard
             </Link>
           </motion.div>
 

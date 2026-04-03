@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, isTextUIPart, type UIMessage } from "ai";
 
@@ -30,6 +31,14 @@ const QUICK_REPLIES = [
 ] as const;
 
 export function FloatingChat() {
+  const pathname = usePathname();
+  // Hide lobster button inside Learning hub to reduce distraction.
+  if (pathname === "/learning" || pathname.startsWith("/learning/")) return null;
+
+  return <FloatingChatInner />;
+}
+
+function FloatingChatInner() {
   const [open, setOpen] = useState(true);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
