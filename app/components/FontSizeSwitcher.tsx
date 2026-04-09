@@ -20,11 +20,14 @@ function readStoredFontSize(): FontSize {
 }
 
 export function FontSizeSwitcher() {
-  const [size, setSize] = useState<FontSize>(() => readStoredFontSize());
+  /** Must match SSR — localStorage is applied after mount to avoid hydration className mismatch. */
+  const [size, setSize] = useState<FontSize>("medium");
 
   useEffect(() => {
-    document.documentElement.setAttribute("data-font-size", size);
-  }, [size]);
+    const stored = readStoredFontSize();
+    setSize(stored);
+    document.documentElement.setAttribute("data-font-size", stored);
+  }, []);
 
   const applySize = (next: FontSize) => {
     setSize(next);

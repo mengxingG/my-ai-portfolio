@@ -1,35 +1,143 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bot, Mic, MicOff, Pause, Play, Sparkles, Volume2, VolumeX, X } from "lucide-react";
+import { Loader2, Mic, MicOff, Play, X } from "lucide-react";
+import {
+  extractQuestionBodyAfterMarker,
+  parseInterviewReplyMarkers,
+  parseReviewReply,
+} from "@/lib/interview-markers";
+import {
+  createBrowserSpeechSession,
+  isBrowserSpeechRecognitionSupported,
+  shouldFallbackSpeechRecognitionToCloud,
+  speechRecognitionErrorMessage,
+  type BrowserSpeechSession,
+} from "@/lib/browser-speech-recognition";
+import {
+  CLOUD_VOICE_RECORDING_MAX_MS,
+  VOICE_UPLOAD_LARGE_BYTES,
+  createOptimizedVoiceMediaRecorder,
+} from "@/lib/voice-media-recorder";
 
-type InterviewVoiceState = "idle" | "recording" | "processing" | "speaking";
+type InterviewVoiceState = "idle" | "recording" | "processing";
+type QuestionPhase = "listening" | "confirming" | "reviewing" | "waiting";
+type Msg = { role: "assistant" | "user"; content: string };
+type InterviewHistoryItem = { question: string; userAnswer: string; aiResponse: string };
 
-type Props = {
-  /** Optional: show Bot (default) or Mic as the center avatar icon. */
-  centerIcon?: "bot" | "mic";
+export type InterviewProgressState = {
+  currentQuestion: number;
+  totalQuestions: number;
 };
 
+type Props = {
+  /** Optional: 面试官形象（公文包）或麦克风 as the center avatar icon. */
+  centerIcon?: "interviewer" | "mic";
+  /** 约定面试总题数（用于进度展示） */
+  totalInterviewQuestions?: number;
+  /**
+   * 与费曼聊天同源：当前 Knowledge 条目的「大纲 + 原文节选」，供面试官 100% 基于文档命题。
+   * 对应 /api/interview 的 FormData 字段 `documentContent`。
+   */
+  documentContent?: string;
+  /** 结束面试时，将本轮对话历史回传给父组件 */
+  onFinish?: (messages: Msg[]) => void;
+  /** 点击「生成评分报告」时调用（与父级 evaluate 对接） */
+  onGenerateReport?: (history: InterviewHistoryItem[]) => void | Promise<void>;
+};
+
+const DEFAULT_TOTAL_QUESTIONS = 5;
+
+function buildHistoryForEvaluate(
+  history: InterviewHistoryItem[],
+  totalQuestions: number,
+  earlyExit: boolean
+): InterviewHistoryItem[] {
+  const base = [...history];
+  if (!earlyExit) return base;
+  const y = Math.max(1, totalQuestions);
+  const answered = base.length;
+  for (let i = answered + 1; i <= y; i++) {
+    base.push({
+      question: `第${i}题（未完成）`,
+      userAnswer: "（未作答）",
+      aiResponse: "",
+    });
+  }
+  return base;
+}
+
+function logInterviewApiPayload(meta: Record<string, unknown>) {
+  if (typeof window === "undefined") return;
+  // eslint-disable-next-line no-console
+  console.log("[InterviewVoiceUI] POST /api/interview · FormData 将包含的字段", meta);
+}
+
 export function InterviewVoiceUI({
-  centerIcon = "bot",
+  totalInterviewQuestions = DEFAULT_TOTAL_QUESTIONS,
+  documentContent = "",
+  onFinish,
+  onGenerateReport,
 }: Props) {
   /* =========================
-   * State machine (4 states)
+   * Question flow (4 phases)
    * ========================= */
+  const [questionPhase, setQuestionPhase] = useState<QuestionPhase>("listening");
   const [state, setState] = useState<InterviewVoiceState>("idle");
   const [muted, setMuted] = useState(false);
   const [paused, setPaused] = useState(false);
   const [caption, setCaption] = useState("点击开始后将进行本地录音，结束后上传到后端识别。");
   const [userTranscript, setUserTranscript] = useState("");
+  const [answerDraft, setAnswerDraft] = useState("");
   const [micError, setMicError] = useState<string | null>(null);
   const [requestError, setRequestError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [interviewerText, setInterviewerText] = useState<string>("");
+  const [currentQuestionText, setCurrentQuestionText] = useState<string>("");
+  const [aiReviewText, setAiReviewText] = useState<string>("");
+  const [messages, setMessages] = useState<Msg[]>([]);
+  const [interviewHistory, setInterviewHistory] = useState<InterviewHistoryItem[]>([]);
+  /** 当前题号（与 AI 的【第N题】对齐，初始为 1） */
+  const [currentQuestion, setCurrentQuestion] = useState(1);
+  const [interviewEnded, setInterviewEnded] = useState(false);
+  const [finishedSummary, setFinishedSummary] = useState<{ x: number; y: number; minutes: number } | null>(
+    null
+  );
+  const [reportBtnLoading, setReportBtnLoading] = useState(false);
+  const interviewHistoryRef = useRef<InterviewHistoryItem[]>([]);
+  const interviewStartedAtRef = useRef<number | null>(null);
+  const earlyExitRef = useRef(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const recordingTimerRef = useRef<number | null>(null);
+  /** 仅在 listening 阶段：可选的文字作答缓冲 */
+  const [textAnswerBuffer, setTextAnswerBuffer] = useState("");
+  const chatScrollRef = useRef<HTMLDivElement | null>(null);
+  const chatBottomRef = useRef<HTMLDivElement | null>(null);
+  const answerInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const confirmInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const messagesRef = useRef<Msg[]>(messages);
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
-  const CenterIcon = centerIcon === "mic" ? Mic : Bot;
+  useEffect(() => {
+    interviewHistoryRef.current = interviewHistory;
+  }, [interviewHistory]);
+
+  function snapshotFinishStats(x: number, y: number) {
+    const t0 = interviewStartedAtRef.current;
+    const minutes = t0 != null ? Math.max(1, Math.round((Date.now() - t0) / 60000)) : 0;
+    setFinishedSummary({ x, y, minutes });
+  }
+
+  const PHASE_HINT_LS_KEY = "interview_voice_phase_hint_shown:v1";
+  const [phaseHintShown, setPhaseHintShown] = useState(true);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const v = window.localStorage.getItem(PHASE_HINT_LS_KEY);
+    setPhaseHintShown(v === "1");
+  }, []);
 
   const theme = useMemo(() => {
-    if (state === "speaking") return "speaking";
     if (state === "recording") return "listening";
     if (state === "processing") return "processing";
     return "idle";
@@ -39,9 +147,31 @@ export function InterviewVoiceUI({
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const stopRequestedRef = useRef(false);
+  /** 浏览器 Web Speech 实时识别（优先）；为 null 时用录音 + 云端转写 */
+  const browserSpeechSessionRef = useRef<BrowserSpeechSession | null>(null);
+  const [speechLiveUi, setSpeechLiveUi] = useState({ accumulatedFinal: "", interim: "" });
+  const [asrFallbackNotice, setAsrFallbackNotice] = useState<string | null>(null);
+  /** 当前这一段作答：浏览器实时识别 vs 录音上传云端 */
+  const [voiceCaptureMode, setVoiceCaptureMode] = useState<"browser" | "cloud" | null>(null);
   const isMountedRef = useRef(true);
   const requestAbortRef = useRef<AbortController | null>(null);
   const speakUtterRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const cloudVoiceMaxTimerRef = useRef<number | null>(null);
+
+  async function handleGenerateReport() {
+    if (!onGenerateReport || reportBtnLoading) return;
+    const padded = buildHistoryForEvaluate(
+      [...interviewHistoryRef.current],
+      totalInterviewQuestions,
+      earlyExitRef.current
+    );
+    setReportBtnLoading(true);
+    try {
+      await Promise.resolve(onGenerateReport(padded));
+    } finally {
+      if (isMountedRef.current) setReportBtnLoading(false);
+    }
+  }
 
   const stopSpeaking = useCallback(() => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
@@ -50,6 +180,19 @@ export function InterviewVoiceUI({
   }, []);
 
   const cleanupMediaRecorder = useCallback(() => {
+    if (cloudVoiceMaxTimerRef.current != null) {
+      window.clearTimeout(cloudVoiceMaxTimerRef.current);
+      cloudVoiceMaxTimerRef.current = null;
+    }
+    setVoiceCaptureMode(null);
+    if (browserSpeechSessionRef.current) {
+      try {
+        browserSpeechSessionRef.current.stop();
+      } catch {
+        /* noop */
+      }
+      browserSpeechSessionRef.current = null;
+    }
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
       try {
         mediaRecorderRef.current.stop();
@@ -63,6 +206,10 @@ export function InterviewVoiceUI({
       mediaStreamRef.current = null;
     }
     audioChunksRef.current = [];
+    if (recordingTimerRef.current) {
+      window.clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
   }, []);
 
   const cancelInFlightRequest = useCallback(() => {
@@ -128,7 +275,7 @@ export function InterviewVoiceUI({
     [muted, pickZhVoice]
   );
 
-  const sendAudioForInterview = useCallback(async (audioBlob: Blob) => {
+  const transcribeAudio = useCallback(async (audioBlob: Blob) => {
     cancelInFlightRequest();
     setRequestError(null);
     setLoading(true);
@@ -138,6 +285,7 @@ export function InterviewVoiceUI({
       const formData = new FormData();
       const ext = audioBlob.type.includes("webm") ? "webm" : "wav";
       formData.append("audio", new File([audioBlob], `interview.${ext}`, { type: audioBlob.type || "audio/webm" }));
+      formData.append("mode", "transcribe");
 
       const r = await fetch("/api/interview", {
         method: "POST",
@@ -146,89 +294,250 @@ export function InterviewVoiceUI({
       });
       const data = (await r.json()) as {
         userTranscript?: string;
-        aiReply?: string;
         error?: string;
       };
       if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
       const transcript = (data.userTranscript ?? "").trim();
-      const reply = (data.aiReply ?? "").trim();
-      if (!transcript || !reply) {
-        throw new Error("Empty ASR/LLM payload");
-      }
-      return { transcript, reply };
+      if (!transcript) throw new Error("Empty ASR payload");
+      return { transcript };
     } finally {
       if (requestAbortRef.current === controller) requestAbortRef.current = null;
       if (isMountedRef.current) setLoading(false);
     }
   }, [cancelInFlightRequest]);
 
-  const startRecording = useCallback(async () => {
-    if (typeof window === "undefined" || !navigator?.mediaDevices?.getUserMedia) {
-      setMicError("当前浏览器不支持录音能力（MediaRecorder / getUserMedia）。请使用最新版 Chrome。");
-      return;
+  const askAiQuestion = useCallback(async (questionNo: number) => {
+    cancelInFlightRequest();
+    setRequestError(null);
+    setLoading(true);
+    const controller = new AbortController();
+    requestAbortRef.current = controller;
+    try {
+      const formData = new FormData();
+      const doc = String(documentContent ?? "").trim();
+      formData.append("mode", "ask");
+      formData.append("history", JSON.stringify(messagesRef.current));
+      formData.append("totalQuestions", String(Math.max(1, totalInterviewQuestions)));
+      formData.append("currentQuestion", String(Math.max(1, questionNo)));
+      formData.append("documentContent", doc);
+      logInterviewApiPayload({
+        mode: "ask",
+        documentContentLength: doc.length,
+        documentContentPreview: doc.slice(0, 500),
+        documentContentIsEmpty: doc.length === 0,
+        totalQuestions: Math.max(1, totalInterviewQuestions),
+        currentQuestion: Math.max(1, questionNo),
+      });
+
+      const r = await fetch("/api/interview", { method: "POST", body: formData, signal: controller.signal });
+      const data = (await r.json()) as { aiReply?: string; error?: string };
+      if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+      const reply = (data.aiReply ?? "").trim();
+      if (!reply) throw new Error("Empty model reply");
+      return reply;
+    } finally {
+      if (requestAbortRef.current === controller) requestAbortRef.current = null;
+      if (isMountedRef.current) setLoading(false);
     }
+  }, [cancelInFlightRequest, documentContent, totalInterviewQuestions]);
+
+  const reviewAnswer = useCallback(
+    async (questionText: string, answerText: string) => {
+      cancelInFlightRequest();
+      setRequestError(null);
+      setLoading(true);
+      const controller = new AbortController();
+      requestAbortRef.current = controller;
+      try {
+        const formData = new FormData();
+        const doc = String(documentContent ?? "").trim();
+        formData.append("mode", "review");
+        formData.append("history", JSON.stringify(messagesRef.current));
+        formData.append("totalQuestions", String(Math.max(1, totalInterviewQuestions)));
+        formData.append("currentQuestion", String(Math.max(1, currentQuestion)));
+        formData.append("questionText", questionText);
+        formData.append("answerText", answerText);
+        formData.append("documentContent", doc);
+        logInterviewApiPayload({
+          mode: "review",
+          documentContentLength: doc.length,
+          documentContentPreview: doc.slice(0, 500),
+          documentContentIsEmpty: doc.length === 0,
+          totalQuestions: Math.max(1, totalInterviewQuestions),
+          currentQuestion: Math.max(1, currentQuestion),
+        });
+
+        const r = await fetch("/api/interview", { method: "POST", body: formData, signal: controller.signal });
+        const data = (await r.json()) as { aiReply?: string; error?: string };
+        if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+        const reply = (data.aiReply ?? "").trim();
+        if (!reply) throw new Error("Empty model reply");
+        return reply;
+      } finally {
+        if (requestAbortRef.current === controller) requestAbortRef.current = null;
+        if (isMountedRef.current) setLoading(false);
+      }
+    },
+    [cancelInFlightRequest, currentQuestion, documentContent, totalInterviewQuestions]
+  );
+
+  const startCloudAnswerRecording = useCallback(
+    async (opts?: { showRouteNotice?: boolean }): Promise<boolean> => {
+      if (interviewEnded) return false;
+      const showRouteNotice = opts?.showRouteNotice !== false;
+
+      if (typeof window === "undefined" || !navigator?.mediaDevices?.getUserMedia) {
+        setMicError("当前浏览器不支持录音能力（MediaRecorder / getUserMedia）。请使用最新版 Chrome。");
+        return false;
+      }
+
+      if (showRouteNotice) {
+        setAsrFallbackNotice("语音识别已切换为云端模式（录音结束后识别）");
+        window.setTimeout(() => setAsrFallbackNotice(null), 8000);
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaStreamRef.current = stream;
+        const recorder = createOptimizedVoiceMediaRecorder(stream);
+        mediaRecorderRef.current = recorder;
+
+        recorder.ondataavailable = (event) => {
+          if (event.data && event.data.size > 0) {
+            audioChunksRef.current.push(event.data);
+          }
+        };
+
+        recorder.onstop = async () => {
+          if (cloudVoiceMaxTimerRef.current != null) {
+            window.clearTimeout(cloudVoiceMaxTimerRef.current);
+            cloudVoiceMaxTimerRef.current = null;
+          }
+          const blob = new Blob(audioChunksRef.current, {
+            type: recorder.mimeType || "audio/webm",
+          });
+          audioChunksRef.current = [];
+
+          if (!isMountedRef.current || !stopRequestedRef.current) {
+            setVoiceCaptureMode(null);
+            cleanupMediaRecorder();
+            return;
+          }
+          setState("processing");
+          if (blob.size > VOICE_UPLOAD_LARGE_BYTES) {
+            setCaption("录音较长，识别中…");
+          } else {
+            setCaption("语音转写中…");
+          }
+          try {
+            const { transcript } = await transcribeAudio(blob);
+            if (!isMountedRef.current) return;
+            setUserTranscript(transcript);
+            setAnswerDraft(transcript);
+            setQuestionPhase("confirming");
+            setState("idle");
+            setCaption("请确认你的回答文字（可修改错别字/补充要点），然后提交给面试官。");
+          } catch (e) {
+            if (!isMountedRef.current) return;
+            const msg = e instanceof Error ? e.message : "Unknown error";
+            setRequestError(`接口调用失败：${msg}`);
+            setState("idle");
+            setCaption("转写失败。你可以重新录音。");
+          } finally {
+            cleanupMediaRecorder();
+          }
+        };
+
+        recorder.start(250);
+        cloudVoiceMaxTimerRef.current = window.setTimeout(() => {
+          cloudVoiceMaxTimerRef.current = null;
+          const rec = mediaRecorderRef.current;
+          if (rec?.state === "recording") {
+            stopRequestedRef.current = true;
+            try {
+              rec.stop();
+            } catch {
+              /* noop */
+            }
+            setState("processing");
+            setCaption("已达最长录音时间（60 秒），正在转写…");
+          }
+        }, CLOUD_VOICE_RECORDING_MAX_MS);
+        setVoiceCaptureMode("cloud");
+        setState("recording");
+        setRecordingSeconds(0);
+        if (recordingTimerRef.current) window.clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = window.setInterval(() => setRecordingSeconds((s) => s + 1), 1000);
+        setCaption("本地录音中（最长 60 秒）…结束后将上传云端转写。");
+        return true;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "";
+        if (/permission|denied|notallowed/i.test(message)) {
+          setMicError("麦克风权限被拒绝：请在浏览器地址栏权限设置中允许麦克风后重试。");
+        } else {
+          setMicError(`无法启动录音：${message || "unknown error"}`);
+        }
+        cleanupMediaRecorder();
+        setState("idle");
+        return false;
+      }
+    },
+    [cleanupMediaRecorder, interviewEnded, transcribeAudio]
+  );
+
+  const startRecording = useCallback(async () => {
+    if (interviewEnded) return;
     setMicError(null);
     setRequestError(null);
     stopRequestedRef.current = false;
     audioChunksRef.current = [];
 
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaStreamRef.current = stream;
-      const recorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = recorder;
-
-      recorder.ondataavailable = (event) => {
-        if (event.data && event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      recorder.onstop = async () => {
-        const blob = new Blob(audioChunksRef.current, {
-          type: recorder.mimeType || "audio/webm",
-        });
-        audioChunksRef.current = [];
-
-        if (!isMountedRef.current || !stopRequestedRef.current) return;
-        setState("processing");
-        setCaption("面试官正在评估...");
-        try {
-          const { transcript, reply } = await sendAudioForInterview(blob);
-          if (!isMountedRef.current) return;
-          setUserTranscript(transcript);
-          setInterviewerText(reply);
-          setState("speaking");
-          setCaption(reply);
-          const ok = await speakInterviewer(reply);
-          if (!isMountedRef.current) return;
-          setState("idle");
-          setCaption(ok ? "一轮结束。点击开始进入下一题。" : "播报失败，但文字已显示。点击开始进入下一题。");
-        } catch (e) {
-          if (!isMountedRef.current) return;
-          const msg = e instanceof Error ? e.message : "Unknown error";
-          setRequestError(`接口调用失败：${msg}`);
-          setState("idle");
-          setCaption("接口调用失败。你可以重试开始下一轮。");
-        } finally {
+    const canUseBrowserSpeech =
+      typeof window !== "undefined" && isBrowserSpeechRecognitionSupported();
+    let usedBrowserSpeech = false;
+    if (canUseBrowserSpeech) {
+      setAsrFallbackNotice(null);
+      setSpeechLiveUi({ accumulatedFinal: "", interim: "" });
+      const session = createBrowserSpeechSession({
+        lang: "zh-CN",
+        onUpdate: (snap) => setSpeechLiveUi(snap),
+        onError: (code) => {
+          if (shouldFallbackSpeechRecognitionToCloud(code)) {
+            cleanupMediaRecorder();
+            setMicError(null);
+            setVoiceCaptureMode("cloud");
+            setAsrFallbackNotice("语音识别已切换为云端模式（录音结束后识别）");
+            window.setTimeout(() => setAsrFallbackNotice(null), 8000);
+            setCaption("实时识别不可用，已自动切换云端录音，请继续说完后点击「结束回答」。");
+            void startCloudAnswerRecording({ showRouteNotice: false }).then((ok) => {
+              if (!isMountedRef.current) return;
+              if (!ok) setState("idle");
+            });
+            return;
+          }
+          setMicError(speechRecognitionErrorMessage(code));
           cleanupMediaRecorder();
-        }
-      };
-
-      recorder.start(250);
-      setState("recording");
-      setCaption("本地录音中…请开始回答。点击“结束回答”后将上传到后端识别。");
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "";
-      if (/permission|denied|notallowed/i.test(message)) {
-        setMicError("麦克风权限被拒绝：请在浏览器地址栏权限设置中允许麦克风后重试。");
-      } else {
-        setMicError(`无法启动录音：${message || "unknown error"}`);
+          setState("idle");
+        },
+      });
+      if (session) {
+        browserSpeechSessionRef.current = session;
+        setVoiceCaptureMode("browser");
+        setState("recording");
+        setRecordingSeconds(0);
+        if (recordingTimerRef.current) window.clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = window.setInterval(() => setRecordingSeconds((s) => s + 1), 1000);
+        setCaption("实时识别中…说完后点击「结束回答」。");
+        usedBrowserSpeech = true;
+        return;
       }
-      cleanupMediaRecorder();
-      setState("idle");
     }
-  }, [cleanupMediaRecorder, sendAudioForInterview, speakInterviewer]);
+
+    const ok = await startCloudAnswerRecording();
+    if (!ok) {
+      /* startCloudAnswerRecording 已设置 micError / state */
+    }
+  }, [cleanupMediaRecorder, interviewEnded, startCloudAnswerRecording]);
 
   /* =========================
    * UI actions
@@ -240,55 +549,260 @@ export function InterviewVoiceUI({
     setMicError(null);
     setRequestError(null);
     setUserTranscript("");
-    setInterviewerText("");
-    setCaption("正在请求麦克风权限并启动本地录音…");
-    void startRecording();
+    setAnswerDraft("");
+    setMessages([]);
+    setCurrentQuestion(1);
+    setInterviewEnded(false);
+    setFinishedSummary(null);
+    earlyExitRef.current = false;
+    interviewStartedAtRef.current = null;
+    setReportBtnLoading(false);
+    setInterviewHistory([]);
+    setCurrentQuestionText("");
+    setAiReviewText("");
+    setTextAnswerBuffer("");
+    setQuestionPhase("listening");
+    setCaption("正在生成第 1 题…");
+    void (async () => {
+      try {
+        setState("processing");
+        const q = await askAiQuestion(1);
+        if (!isMountedRef.current) return;
+        const total = Math.max(1, totalInterviewQuestions);
+        const { currentN } = parseInterviewReplyMarkers(q, total);
+        if (currentN != null) setCurrentQuestion(currentN);
+        setCurrentQuestionText(q);
+        setMessages([{ role: "assistant", content: q }]);
+        interviewStartedAtRef.current = Date.now();
+        setCaption("请开始作答。录音时会显示计时；结束回答后进入确认阶段。");
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Unknown error";
+        setRequestError(`出题失败：${msg}`);
+        setCaption("出题失败。你可以点击开始重试。");
+      } finally {
+        setState("idle");
+      }
+    })();
   }
 
-  function endInterview() {
+  function requestEarlyEndInterview() {
+    if (interviewEnded) return;
+    if (
+      !window.confirm(
+        "确定要提前结束面试吗？已完成的题目会被纳入评分，未完成的题目将标记为未作答。"
+      )
+    ) {
+      return;
+    }
     stopSpeaking();
     cancelInFlightRequest();
     stopRequestedRef.current = false;
     cleanupMediaRecorder();
     setState("idle");
-    setPaused(false);
-    setMuted(false);
-    setCaption("面试已结束。你可以再次点击开始，重新进入模拟。");
+    earlyExitRef.current = true;
+    const y = Math.max(1, totalInterviewQuestions);
+    const x = Math.min(interviewHistoryRef.current.length, y);
+    snapshotFinishStats(x, y);
+    setInterviewEnded(true);
+    setQuestionPhase("waiting");
+    setCaption("面试已提前结束。可生成评分报告。");
+    setMessages((ms) => [...ms, { role: "assistant", content: "（面试已提前结束）" }]);
   }
 
   function endAnswer() {
+    if (interviewEnded) return;
+    if (browserSpeechSessionRef.current) {
+      const snap = browserSpeechSessionRef.current.getSnapshot();
+      const full = (snap.accumulatedFinal + snap.interim).trim();
+      cleanupMediaRecorder();
+      setSpeechLiveUi({ accumulatedFinal: "", interim: "" });
+      setState("idle");
+      if (full) {
+        setUserTranscript(full);
+        setAnswerDraft(full);
+        setQuestionPhase("confirming");
+        setCaption("请确认你的回答文字（可修改错别字/补充要点），然后提交给面试官。");
+      } else {
+        setCaption("未识别到语音。可重新点击「开始录音」或改用下方文字作答。");
+        setQuestionPhase("listening");
+      }
+      return;
+    }
     const recorder = mediaRecorderRef.current;
     if (!recorder || recorder.state === "inactive") return;
     stopRequestedRef.current = true;
     recorder.stop();
     setState("processing");
-    setCaption("面试官正在思考...");
+    setCaption("正在结束录音并准备转写...");
   }
 
-  function simulateAiSpeaking() {
+  async function submitConfirmedAnswer() {
+    if (interviewEnded) return;
+    const answer = answerDraft.trim();
+    if (!answer) return;
+    setQuestionPhase("reviewing");
+    setState("processing");
+    setRequestError(null);
+    setAiReviewText("");
+    const q = currentQuestionText.trim();
+    try {
+      setMessages((ms) => [...ms, { role: "user", content: answer }]);
+      const reply = await reviewAnswer(q, answer);
+      if (!isMountedRef.current) return;
+      setAiReviewText(reply);
+      setMessages((ms) => [...ms, { role: "assistant", content: reply }]);
+      const total = Math.max(1, totalInterviewQuestions);
+      const parsed = parseReviewReply(reply, total);
+
+      if (parsed.ended) {
+        setInterviewHistory((h) => {
+          const nh = [...h, { question: q, userAnswer: answer, aiResponse: reply }];
+          snapshotFinishStats(nh.length, total);
+          return nh;
+        });
+        earlyExitRef.current = false;
+        setInterviewEnded(true);
+        setQuestionPhase("waiting");
+        setCaption("面试已结束。可在下方生成评分报告。");
+        return;
+      }
+
+      if (parsed.isFollowUp) {
+        setQuestionPhase("listening");
+        setUserTranscript("");
+        setAnswerDraft("");
+        setTextAnswerBuffer("");
+        setCaption("面试官追问，请继续作答（可录音或使用下方文字）。");
+        return;
+      }
+
+      if (parsed.currentN != null) {
+        setInterviewHistory((h) => [...h, { question: q, userAnswer: answer, aiResponse: reply }]);
+        earlyExitRef.current = false;
+        setCurrentQuestion(parsed.currentN);
+        const body = extractQuestionBodyAfterMarker(reply).trim();
+        setCurrentQuestionText(body || reply.trim());
+        setUserTranscript("");
+        setAnswerDraft("");
+        setTextAnswerBuffer("");
+        setQuestionPhase("listening");
+        setCaption(`已进入第 ${parsed.currentN} 题，请作答。`);
+        return;
+      }
+
+      setInterviewHistory((h) => {
+        const nh = [...h, { question: q, userAnswer: answer, aiResponse: reply }];
+        if (currentQuestion >= total) {
+          snapshotFinishStats(nh.length, total);
+        }
+        return nh;
+      });
+      earlyExitRef.current = false;
+
+      if (currentQuestion >= total) {
+        setInterviewEnded(true);
+        setQuestionPhase("waiting");
+        setCaption("面试已结束。可在下方生成评分报告。");
+        return;
+      }
+
+      setQuestionPhase("waiting");
+      setCaption(
+        parsed.hasNextTopicMarker ? "可以进入下一题了。" : "本题已完成。准备好了再进入下一题。"
+      );
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      setRequestError(`评审失败：${msg}`);
+      setQuestionPhase("confirming");
+      setCaption("评审失败。你可以再次提交或重新录音。");
+    } finally {
+      setState("idle");
+    }
+  }
+
+  function reRecord() {
+    if (interviewEnded) return;
     stopRequestedRef.current = false;
     cleanupMediaRecorder();
-    setState("speaking");
-    const mock = "（模拟）面试官提问：请用 STAR 法复盘一次你处理线上故障的经历。";
-    setInterviewerText(mock);
-    setCaption(mock);
-    void (async () => {
-      const ok = await speakInterviewer(mock);
-      if (!isMountedRef.current) return;
-      setState("idle");
-      setCaption(ok ? "一轮结束。点击开始进入下一题。" : "播报失败，但文字已显示。点击开始进入下一题。");
-    })();
+    setSpeechLiveUi({ accumulatedFinal: "", interim: "" });
+    setUserTranscript("");
+    setAnswerDraft("");
+    setTextAnswerBuffer("");
+    setQuestionPhase("listening");
+    setCaption("已回到录音阶段。开始录音后作答。");
   }
 
-  function backToListening() {
-    setPaused(false);
-    setMuted(false);
-    setCaption("正在准备下一轮录音…");
+  function beginRecording() {
+    if (interviewEnded) return;
+    if (questionPhase !== "listening") return;
     void startRecording();
   }
 
-  const showControls = state === "recording" || state === "speaking";
-  const showAnswerControls = state === "recording" || state === "processing" || state === "speaking";
+  function goNextQuestionOrFinish() {
+    if (interviewEnded) return;
+    const total = Math.max(1, totalInterviewQuestions);
+    const isLast = currentQuestion >= total;
+    if (isLast) {
+      earlyExitRef.current = false;
+      snapshotFinishStats(interviewHistory.length, total);
+      setInterviewEnded(true);
+      setQuestionPhase("waiting");
+      setCaption("面试已结束。可在下方生成评分报告。");
+      setMessages((ms) => [
+        ...ms,
+        { role: "assistant", content: "【面试结束】\n本轮面试已完成。你可以生成评分报告。" },
+      ]);
+      return;
+    }
+    const nextN = Math.min(total, currentQuestion + 1);
+    setCurrentQuestion(nextN);
+    setQuestionPhase("listening");
+    setUserTranscript("");
+    setAnswerDraft("");
+    setTextAnswerBuffer("");
+    setAiReviewText("");
+    setCurrentQuestionText("");
+    setCaption(`正在生成第 ${nextN} 题…`);
+    void (async () => {
+      try {
+        setState("processing");
+        const q = await askAiQuestion(nextN);
+        if (!isMountedRef.current) return;
+        setCurrentQuestionText(q);
+        setMessages((ms) => [...ms, { role: "assistant", content: q }]);
+        setCaption("请开始作答。录音结束后进入确认阶段。");
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Unknown error";
+        setRequestError(`出题失败：${msg}`);
+        setCaption("出题失败。你可以点击“下一题”重试。");
+      } finally {
+        setState("idle");
+      }
+    })();
+  }
+
+  const totalQ = Math.max(1, totalInterviewQuestions);
+  const displayQuestionUi = interviewEnded ? totalQ : Math.min(Math.max(1, currentQuestion), totalQ);
+  const progressPercent = Math.min(100, (displayQuestionUi / totalQ) * 100);
+
+  useEffect(() => {
+    // 新消息自动滚动到底部
+    chatBottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages.length, interviewEnded, finishedSummary]);
+
+  useEffect(() => {
+    const el = answerInputRef.current;
+    if (!el) return;
+    el.style.height = "0px";
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+  }, [textAnswerBuffer, questionPhase, state, voiceCaptureMode, speechLiveUi.accumulatedFinal, speechLiveUi.interim]);
+
+  useEffect(() => {
+    const el = confirmInputRef.current;
+    if (!el) return;
+    el.style.height = "0px";
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+  }, [answerDraft, questionPhase]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -301,7 +815,7 @@ export function InterviewVoiceUI({
   }, [cancelInFlightRequest, cleanupMediaRecorder, stopSpeaking]);
 
   return (
-    <div className="flex h-full w-full items-center justify-center bg-[#0f1115] p-6 text-slate-100">
+    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-[#0f1115] text-slate-100">
       <style jsx global>{`
         /* ==========================================
          * InterviewVoiceUI animations (CSS-only)
@@ -357,308 +871,308 @@ export function InterviewVoiceUI({
         }
       `}</style>
 
-      <div className="relative w-full max-w-[720px]">
-        {/* Main card */}
-        <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03] px-6 py-7 shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_20px_60px_rgba(0,0,0,0.55)]">
-          {/* Header hint */}
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <div className="text-xs font-mono text-slate-400">Interview · Voice</div>
-              <div className="mt-1 text-lg font-semibold text-slate-100">
-                模拟面试官考核
-                <span className="ml-2 align-middle text-xs font-mono text-rose-200/80">
-                  {state === "speaking" ? "LIVE" : state === "processing" ? "EVAL" : "READY"}
-                </span>
-              </div>
-              <div className="mt-1 text-sm text-slate-400">
-                {state === "idle"
-                  ? "点击开始后会请求麦克风权限，并进行本地录音。"
-                  : state === "recording"
-                    ? "本地录音中。说完后点击“结束回答”上传到后端评估。"
-                    : state === "processing"
-                      ? "面试官正在评估..."
-                      : "面试官提问中（波纹代表语音输出）。"}
-              </div>
+      <div className="mx-auto flex h-full min-h-0 w-full max-w-[720px] flex-col overflow-hidden px-4 py-4 sm:px-5 sm:py-5">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-white/15 bg-[#0b0f16] shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_24px_80px_rgba(0,0,0,0.70)]">
+          {/* Progress (compact, 30px) */}
+          <div className="flex h-[30px] shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4">
+            <div className="text-xs font-semibold tabular-nums text-slate-200">
+              第 {displayQuestionUi} 题 / 共 {totalQ} 题
             </div>
-
-            {state !== "idle" ? (
-              <button
-                type="button"
-                onClick={simulateAiSpeaking}
-                className="shrink-0 rounded-2xl border border-purple-500/25 bg-purple-500/10 px-4 py-2 text-xs font-semibold text-purple-100 transition hover:bg-purple-500/15"
-                aria-label="Simulate AI speaking"
-              >
-                <Sparkles className="mr-2 inline h-4 w-4" />
-                模拟AI回复
-              </button>
-            ) : null}
-          </div>
-
-          {micError ? (
-            <div className="mt-3 rounded-2xl border border-rose-500/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
-              {micError}
-            </div>
-          ) : null}
-          {requestError ? (
-            <div className="mt-3 rounded-2xl border border-rose-500/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
-              {requestError}
-            </div>
-          ) : null}
-
-          {/* Center stage */}
-          <div className="mt-7 flex items-center justify-center">
-            <div className="relative">
-              {/* Ripple layers (speaking) */}
-              {theme === "speaking" ? (
-                <>
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <span
-                      // eslint-disable-next-line react/no-array-index-key
-                      key={`ripple-${i}`}
-                      aria-hidden
-                      className="absolute left-1/2 top-1/2 block h-[220px] w-[220px] -translate-x-1/2 -translate-y-1/2 rounded-full"
-                      style={{
-                        background:
-                          "radial-gradient(circle at center, rgba(168,85,247,0.22) 0%, rgba(34,211,238,0.14) 35%, rgba(168,85,247,0.04) 60%, rgba(0,0,0,0) 72%)",
-                        border: "1px solid rgba(168,85,247,0.18)",
-                        animation: `ivui-ripple 1.65s ease-out ${i * 0.35}s infinite`,
-                        filter: "blur(0.2px)",
-                      }}
-                    />
-                  ))}
-                </>
-              ) : null}
-
-              {/* Recording ripple + glow */}
-              {theme === "listening" ? (
-                <>
-                  {Array.from({ length: 2 }).map((_, i) => (
-                    <span
-                      // eslint-disable-next-line react/no-array-index-key
-                      key={`listen-ripple-${i}`}
-                      aria-hidden
-                      className="absolute left-1/2 top-1/2 block h-[210px] w-[210px] -translate-x-1/2 -translate-y-1/2 rounded-full"
-                      style={{
-                        background:
-                          "radial-gradient(circle at center, rgba(34,211,238,0.16) 0%, rgba(34,211,238,0.10) 35%, rgba(34,211,238,0.03) 60%, rgba(0,0,0,0) 72%)",
-                        border: "1px solid rgba(34,211,238,0.14)",
-                        animation: `ivui-ripple 2.1s ease-out ${i * 0.65}s infinite`,
-                      }}
-                    />
-                  ))}
-                  <span
-                    aria-hidden
-                    className="absolute left-1/2 top-1/2 block h-[210px] w-[210px] -translate-x-1/2 -translate-y-1/2 rounded-full"
-                    style={{
-                      background:
-                        "radial-gradient(circle at center, rgba(34,211,238,0.18) 0%, rgba(34,211,238,0.08) 40%, rgba(0,0,0,0) 72%)",
-                      animation: "ivui-glow 1.9s ease-in-out infinite",
-                    }}
-                  />
-                </>
-              ) : null}
-
-              {/* Processing radar (processing only) */}
-              {theme === "processing" ? (
-                <>
-                  <span
-                    aria-hidden
-                    className="absolute left-1/2 top-1/2 block h-[220px] w-[220px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10"
-                    style={{
-                      background:
-                        "radial-gradient(circle at center, rgba(148,163,184,0.05) 0%, rgba(148,163,184,0.03) 45%, rgba(0,0,0,0) 72%)",
-                    }}
-                  />
-                  <span
-                    aria-hidden
-                    className="absolute left-1/2 top-1/2 block h-[220px] w-[220px] -translate-x-1/2 -translate-y-1/2 rounded-full"
-                    style={{
-                      background:
-                        "conic-gradient(from 0deg, rgba(34,211,238,0.0), rgba(34,211,238,0.18), rgba(168,85,247,0.0) 55%)",
-                      animation: "ivui-radar 1.2s linear infinite",
-                      maskImage:
-                        "radial-gradient(circle at center, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 55%, rgba(0,0,0,0) 76%)",
-                      WebkitMaskImage:
-                        "radial-gradient(circle at center, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 55%, rgba(0,0,0,0) 76%)",
-                    }}
-                  />
-                </>
-              ) : null}
-
-              {/* Core avatar */}
+            <div className="h-2 w-28 overflow-hidden rounded-full bg-white/[0.10]" role="progressbar">
               <div
-                className={[
-                  "relative grid h-[120px] w-[120px] place-items-center rounded-full border",
-                  theme === "idle"
-                    ? "border-white/10 bg-black/20"
-                    : theme === "listening"
-                      ? "border-cyan-500/25 bg-cyan-500/10 shadow-[0_0_0_1px_rgba(34,211,238,0.14),0_0_40px_rgba(34,211,238,0.10)]"
-                      : theme === "processing"
-                        ? "border-white/10 bg-white/[0.03]"
-                        : "border-purple-500/25 bg-purple-500/10 shadow-[0_0_0_1px_rgba(168,85,247,0.14),0_0_45px_rgba(168,85,247,0.12)]",
-                ].join(" ")}
-                style={{
-                  animation: theme === "processing" ? "ivui-softFlicker 1.05s ease-in-out infinite" : undefined,
-                }}
-              >
-                <CenterIcon
-                  className={[
-                    "h-10 w-10",
-                    theme === "idle"
-                      ? "text-slate-300"
-                      : theme === "listening"
-                        ? "text-cyan-200"
-                        : theme === "processing"
-                          ? "text-slate-200"
-                          : "text-purple-200",
-                  ].join(" ")}
-                  aria-hidden
-                />
-                {theme === "listening" ? (
-                  <span
-                    className="absolute bottom-3 inline-flex items-center gap-1 rounded-full border border-cyan-500/20 bg-black/25 px-2 py-1 text-[11px] font-mono text-cyan-100/90"
-                    aria-hidden
-                  >
-                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-cyan-300 shadow-[0_0_18px_rgba(34,211,238,0.45)]" />
-                    recording
-                  </span>
-                ) : theme === "speaking" ? (
-                  <span
-                    className="absolute bottom-3 inline-flex items-center gap-1 rounded-full border border-purple-500/20 bg-black/25 px-2 py-1 text-[11px] font-mono text-purple-100/90"
-                    aria-hidden
-                  >
-                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-purple-300 shadow-[0_0_18px_rgba(168,85,247,0.45)]" />
-                    speaking
-                  </span>
-                ) : null}
-              </div>
+                className="h-full rounded-full bg-gradient-to-r from-cyan-500/90 via-purple-500/85 to-purple-400/80 transition-[width] duration-500 ease-out motion-reduce:transition-none"
+                style={{ width: `${progressPercent}%` }}
+              />
             </div>
           </div>
 
-          {/* Caption area (字幕) */}
-          <div className="mt-7">
-            <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-              <div className="text-xs font-mono text-slate-500">字幕</div>
-              <div className="mt-2 text-sm leading-relaxed text-slate-200/95">
-                {state === "recording" ? (
-                  <>
-                    <div className="text-slate-300/90">录音中…结束后会在这里显示你的转写文本。</div>
-                    <div className="mt-2 text-xs text-slate-500">{caption}</div>
-                  </>
-                ) : (
-                  <>
-                    {state === "speaking" ? (
-                      <div className="text-slate-100/95">{interviewerText || caption}</div>
-                    ) : (
-                      caption
-                    )}
-                    {loading ? (
-                      <div className="mt-2 text-xs font-mono text-cyan-200/80">loading…</div>
-                    ) : null}
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom area: idle CTA */}
-          {state === "idle" ? (
-            <div className="mt-6 flex items-center justify-center">
-              <button
-                type="button"
-                onClick={startInterview}
-                className="inline-flex items-center gap-2 rounded-2xl border border-purple-500/25 bg-gradient-to-b from-purple-500/20 to-white/[0.03] px-6 py-3 text-sm font-semibold text-purple-100 transition hover:from-purple-500/25 hover:to-white/[0.05]"
-              >
-                <Play className="h-4 w-4" />
-                开始模拟面试
-              </button>
-            </div>
-          ) : (
-            <div className="mt-6 flex items-center justify-between gap-3">
-              <div className="text-xs text-slate-500">
-                {state === "processing" ? "面试官正在评估..." : "保持节奏：短句、结构、先结论。"}
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPaused((v) => !v)}
-                  className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/[0.07]"
-                  aria-pressed={paused}
-                >
-                  {paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-                  {paused ? "继续" : "暂停"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMuted((v) => !v)}
-                  className={[
-                    "inline-flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold transition",
-                    muted
-                      ? "border-amber-500/25 bg-amber-500/10 text-amber-100 hover:bg-amber-500/15"
-                      : "border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.07]",
-                  ].join(" ")}
-                  aria-pressed={muted}
-                >
-                  {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                  {muted ? "已静音" : "静音"}
-                </button>
-                {showAnswerControls ? (
-                  <button
-                    type="button"
-                    onClick={state === "speaking" ? backToListening : endAnswer}
+          {/* Chat area */}
+          <div ref={chatScrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3">
+            {messages.length ? (
+              <div className="flex flex-col gap-3">
+                {messages.map((m, i) => (
+                  <div
+                    key={`${i}-${m.role}-${m.content.slice(0, 24)}`}
                     className={[
-                      "inline-flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold transition",
-                      state === "speaking"
-                        ? "border-cyan-500/25 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-500/15"
-                        : "border-purple-500/25 bg-purple-500/10 text-purple-100 hover:bg-purple-500/15",
+                      "max-w-[85%] rounded-2xl border px-4 py-3 text-sm leading-relaxed shadow-sm",
+                      m.role === "assistant"
+                        ? "self-start border-white/10 bg-white/[0.03] text-slate-100"
+                        : "self-end border-cyan-500/25 bg-cyan-500/10 text-cyan-100",
                     ].join(" ")}
-                    disabled={loading}
                   >
-                    {state === "speaking" ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
-                    {state === "speaking" ? "继续回答" : "结束回答"}
-                  </button>
+                    <div className="whitespace-pre-wrap break-words">{m.content}</div>
+                  </div>
+                ))}
+                <div ref={chatBottomRef} />
+              </div>
+            ) : (
+              <div className="text-sm text-slate-500">点击开始后，面试官会直接提问。</div>
+            )}
+          </div>
+
+          {/* Input area (sticky bottom) */}
+          <div className="sticky bottom-0 shrink-0 border-t border-white/10 bg-[#0b0f16]/95 px-4 py-3 backdrop-blur">
+            {/* phase hint (once) */}
+            {!phaseHintShown && !interviewEnded ? (
+              <div className="mb-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-[11px] text-slate-300">
+                提示：流程是「作答 → 确认 → 面试官回应 → 下一题」。这条提示只会出现一次。
+              </div>
+            ) : null}
+            {!phaseHintShown && messages.length > 0 ? (
+              <div className="hidden" />
+            ) : null}
+
+            {micError ? (
+              <div className="mb-2 rounded-xl border border-rose-500/25 bg-rose-500/10 px-3 py-2 text-xs text-rose-100">
+                {micError}
+              </div>
+            ) : null}
+            {asrFallbackNotice ? (
+              <div className="mb-2 rounded-xl border border-sky-500/25 bg-sky-500/10 px-3 py-2 text-xs text-sky-100">
+                {asrFallbackNotice}
+              </div>
+            ) : null}
+            {requestError ? (
+              <div className="mb-2 rounded-xl border border-rose-500/25 bg-rose-500/10 px-3 py-2 text-xs text-rose-100">
+                {requestError}
+              </div>
+            ) : null}
+
+            <div className="mb-1 text-[11px] text-slate-500">
+              {questionPhase === "listening"
+                ? state === "recording"
+                  ? "作答中…"
+                  : "阶段 1：作答"
+                : questionPhase === "confirming"
+                  ? "阶段 2：确认回答"
+                  : questionPhase === "reviewing"
+                    ? "阶段 3：面试官回应"
+                    : "阶段 4：下一题"}
+            </div>
+
+            {/* Start / Ended */}
+            {state === "idle" && messages.length === 0 && !interviewEnded ? (
+              <div className="flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (typeof window !== "undefined") {
+                      window.localStorage.setItem(PHASE_HINT_LS_KEY, "1");
+                      setPhaseHintShown(true);
+                    }
+                    startInterview();
+                  }}
+                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-purple-500/25 bg-purple-500/10 px-4 py-2.5 text-sm font-semibold text-purple-100 transition hover:bg-purple-500/15"
+                >
+                  <Play className="h-4 w-4" />
+                  开始
+                </button>
+                <button
+                  type="button"
+                  onClick={requestEarlyEndInterview}
+                  className="inline-flex items-center justify-center rounded-2xl border border-rose-500/25 bg-rose-500/10 px-4 py-2.5 text-sm font-semibold text-rose-100 transition hover:bg-rose-500/15"
+                >
+                  结束面试
+                </button>
+              </div>
+            ) : interviewEnded ? (
+              <div className="space-y-2">
+                {finishedSummary ? (
+                  <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-center">
+                    <div className="text-sm font-semibold text-emerald-100">
+                      面试已结束，共完成 {finishedSummary.x}/{finishedSummary.y} 道题
+                    </div>
+                    <div className="mt-1 text-xs text-emerald-100/90">
+                      {finishedSummary.minutes > 0 ? `用时：${finishedSummary.minutes} 分钟` : "用时：—"}
+                    </div>
+                  </div>
                 ) : null}
                 <button
                   type="button"
-                  onClick={endInterview}
-                  className="inline-flex items-center gap-2 rounded-2xl border border-rose-500/25 bg-rose-500/10 px-4 py-2 text-sm font-semibold text-rose-100 transition hover:bg-rose-500/15"
+                  disabled={reportBtnLoading || !onGenerateReport}
+                  onClick={() => void handleGenerateReport()}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-emerald-500/35 bg-emerald-500/15 px-5 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/25 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  <X className="h-4 w-4" />
-                  结束面试
+                  {reportBtnLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+                      AI 正在评估…
+                    </>
+                  ) : (
+                    <>生成评分报告</>
+                  )}
                 </button>
               </div>
-            </div>
-          )}
+            ) : (
+              <>
+                {/* Voice mode (simplified): mic + hint + input */}
+                {questionPhase === "listening" ? (
+                  <div className="flex items-end gap-2">
+                    <button
+                      type="button"
+                      onClick={state === "recording" ? endAnswer : beginRecording}
+                      disabled={loading || state === "processing"}
+                      className={[
+                        "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border transition",
+                        state === "recording"
+                          ? "border-red-500/45 bg-red-500/15 text-red-200"
+                          : "border-cyan-500/25 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-500/15",
+                        "disabled:cursor-not-allowed disabled:opacity-50",
+                      ].join(" ")}
+                      aria-label={state === "recording" ? "结束录音" : "开始录音"}
+                      title={state === "recording" ? "结束录音" : "开始录音"}
+                    >
+                      {state === "recording" ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                    </button>
 
-          {/* Floating control bar (active states) */}
-          {showControls ? (
-            <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
-              <div className="pointer-events-auto flex items-center gap-2 rounded-2xl border border-white/10 bg-black/35 px-3 py-2 shadow-[0_10px_30px_rgba(0,0,0,0.45)] backdrop-blur">
-                <button
-                  type="button"
-                  onClick={endInterview}
-                  className="inline-flex items-center gap-2 rounded-xl border border-rose-500/25 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-100 transition hover:bg-rose-500/15"
-                >
-                  <X className="h-4 w-4" />
-                  结束面试
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMuted((v) => !v)}
-                  className={[
-                    "inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition",
-                    muted
-                      ? "border-amber-500/25 bg-amber-500/10 text-amber-100 hover:bg-amber-500/15"
-                      : "border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.07]",
-                  ].join(" ")}
-                  aria-pressed={muted}
-                >
-                  {muted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-                  {muted ? "静音中" : "静音"}
-                </button>
-              </div>
-            </div>
-          ) : null}
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1 text-[11px] text-slate-500">
+                        点击录音，或直接在输入框打字
+                      </div>
+                      <textarea
+                        ref={answerInputRef}
+                        value={
+                          state === "recording" && voiceCaptureMode === "browser"
+                            ? `${speechLiveUi.accumulatedFinal}${speechLiveUi.interim}`.trim()
+                            : textAnswerBuffer
+                        }
+                        onChange={(e) => setTextAnswerBuffer(e.target.value)}
+                        disabled={loading || state === "processing"}
+                        rows={1}
+                        placeholder={state === "recording" ? "录音中…（转写会显示在这里）" : "输入你的回答…"}
+                        className="min-h-11 max-h-[120px] w-full resize-none overflow-y-auto rounded-2xl border border-white/10 bg-neutral-950/60 px-4 py-3 text-sm leading-relaxed text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-cyan-500/35 focus:ring-1 focus:ring-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                        onKeyDown={(e) => {
+                          if (e.key !== "Enter") return;
+                          if (e.shiftKey) return; // Shift+Enter 换行
+                          e.preventDefault();
+                          const t = textAnswerBuffer.trim();
+                          if (!t) return;
+                          setUserTranscript(t);
+                          setAnswerDraft(t);
+                          setTextAnswerBuffer("");
+                          setQuestionPhase("confirming");
+                          setCaption("请确认文字回答，可修改后再提交。");
+                          if (typeof window !== "undefined" && window.localStorage.getItem(PHASE_HINT_LS_KEY) !== "1") {
+                            window.localStorage.setItem(PHASE_HINT_LS_KEY, "1");
+                            setPhaseHintShown(true);
+                          }
+                        }}
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const t = textAnswerBuffer.trim();
+                        if (!t) return;
+                        setUserTranscript(t);
+                        setAnswerDraft(t);
+                        setTextAnswerBuffer("");
+                        setQuestionPhase("confirming");
+                        setCaption("请确认文字回答，可修改后再提交。");
+                        if (typeof window !== "undefined" && window.localStorage.getItem(PHASE_HINT_LS_KEY) !== "1") {
+                          window.localStorage.setItem(PHASE_HINT_LS_KEY, "1");
+                          setPhaseHintShown(true);
+                        }
+                      }}
+                      disabled={loading || !textAnswerBuffer.trim() || state === "processing"}
+                      className="inline-flex h-11 items-center justify-center rounded-2xl border border-cyan-500/25 bg-cyan-500/10 px-4 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/15 disabled:cursor-not-allowed disabled:opacity-50"
+                      aria-label="发送"
+                      title="发送"
+                    >
+                      发送
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={requestEarlyEndInterview}
+                      className="inline-flex h-11 items-center justify-center rounded-2xl border border-rose-500/25 bg-rose-500/10 px-4 text-sm font-semibold text-rose-100 transition hover:bg-rose-500/15"
+                    >
+                      结束面试
+                    </button>
+                  </div>
+                ) : questionPhase === "confirming" ? (
+                  <div className="flex items-end gap-2">
+                    <div className="min-w-0 flex-1">
+                      <textarea
+                        ref={confirmInputRef}
+                        value={answerDraft}
+                        onChange={(e) => setAnswerDraft(e.target.value)}
+                        disabled={interviewEnded || loading}
+                        rows={1}
+                        className="min-h-11 max-h-[120px] w-full resize-none overflow-y-auto rounded-2xl border border-white/10 bg-neutral-950/60 px-4 py-3 text-sm leading-relaxed text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-cyan-500/35 focus:ring-1 focus:ring-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                        placeholder="可编辑你的回答…"
+                        onKeyDown={(e) => {
+                          if (e.key !== "Enter") return;
+                          if (e.shiftKey) return;
+                          e.preventDefault();
+                          if (!answerDraft.trim()) return;
+                          submitConfirmedAnswer();
+                        }}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={submitConfirmedAnswer}
+                      className="inline-flex h-11 items-center justify-center rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-4 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={loading || !answerDraft.trim()}
+                    >
+                      确认提交
+                    </button>
+                    <button
+                      type="button"
+                      onClick={reRecord}
+                      className="inline-flex h-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-semibold text-slate-200 transition hover:bg-white/[0.07]"
+                      disabled={loading}
+                    >
+                      重新输入
+                    </button>
+                    <button
+                      type="button"
+                      onClick={requestEarlyEndInterview}
+                      className="inline-flex h-11 items-center justify-center rounded-2xl border border-rose-500/25 bg-rose-500/10 px-4 text-sm font-semibold text-rose-100 transition hover:bg-rose-500/15"
+                    >
+                      结束面试
+                    </button>
+                  </div>
+                ) : questionPhase === "waiting" ? (
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-xs text-slate-500">{caption}</div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={goNextQuestionOrFinish}
+                        className="inline-flex h-11 items-center justify-center rounded-2xl border border-purple-500/25 bg-purple-500/10 px-4 text-sm font-semibold text-purple-100 transition hover:bg-purple-500/15 disabled:cursor-not-allowed disabled:opacity-50"
+                        disabled={loading}
+                      >
+                        {currentQuestion >= totalQ ? "查看面试结果" : "下一题"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={requestEarlyEndInterview}
+                        className="inline-flex h-11 items-center justify-center rounded-2xl border border-rose-500/25 bg-rose-500/10 px-4 text-sm font-semibold text-rose-100 transition hover:bg-rose-500/15"
+                      >
+                        结束面试
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-xs text-slate-500">
+                      {state === "processing" ? "处理中…" : caption}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={requestEarlyEndInterview}
+                      className="inline-flex h-11 items-center justify-center rounded-2xl border border-rose-500/25 bg-rose-500/10 px-4 text-sm font-semibold text-rose-100 transition hover:bg-rose-500/15"
+                    >
+                      结束面试
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

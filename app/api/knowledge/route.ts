@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { fetchKnowledgeFromNotion } from "@/lib/notion";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export async function GET() {
   try {
@@ -12,12 +13,27 @@ export async function GET() {
       count: items.length,
       sample: items.slice(0, 3),
     });
-    return NextResponse.json({ items });
+    return NextResponse.json(
+      { items },
+      {
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      }
+    );
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error("[/api/knowledge] fetch failed:", error);
     const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message, items: [] }, { status: 500 });
+    return NextResponse.json(
+      { error: message, items: [] },
+      {
+        status: 500,
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      }
+    );
   }
 }
 

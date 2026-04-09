@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import {
   archiveKnowledgePageInNotion,
   fetchKnowledgeDetailFromNotion,
+  updateKnowledgeItemStudyStatusInNotion,
   updateKnowledgeItemTitleInNotion,
 } from "@/lib/notion";
+import { notionErrorToRouteBody } from "@/lib/notion-errors";
 
 export const dynamic = "force-dynamic";
 
@@ -23,8 +25,8 @@ export async function DELETE(
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error("[/api/knowledge/:id] DELETE failed:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const { status, body } = notionErrorToRouteBody(error);
+    return NextResponse.json(body, { status });
   }
 }
 
@@ -39,19 +41,30 @@ export async function PATCH(
       return NextResponse.json({ error: "Missing id" }, { status: 400 });
     }
 
-    const body = (await req.json().catch(() => null)) as { title?: unknown } | null;
+    const body = (await req.json().catch(() => null)) as {
+      title?: unknown;
+      status?: unknown;
+    } | null;
+
     const rawTitle = typeof body?.title === "string" ? body.title : "";
-    if (!rawTitle.trim()) {
-      return NextResponse.json({ error: "title 不能为空" }, { status: 400 });
+    const rawStatus = typeof body?.status === "string" ? body.status : "";
+
+    if (rawTitle.trim()) {
+      const title = await updateKnowledgeItemTitleInNotion(pageId, rawTitle);
+      return NextResponse.json({ ok: true, title });
     }
 
-    const title = await updateKnowledgeItemTitleInNotion(pageId, rawTitle);
-    return NextResponse.json({ ok: true, title });
+    if (rawStatus.trim()) {
+      await updateKnowledgeItemStudyStatusInNotion(pageId, rawStatus);
+      return NextResponse.json({ ok: true });
+    }
+
+    return NextResponse.json({ error: "Nothing to update." }, { status: 400 });
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error("[/api/knowledge/:id] PATCH failed:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const { status, body } = notionErrorToRouteBody(error);
+    return NextResponse.json(body, { status });
   }
 }
 
@@ -73,8 +86,8 @@ export async function GET(
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error("[/api/knowledge/:id] fetch failed:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const { status, body } = notionErrorToRouteBody(error);
+    return NextResponse.json(body, { status });
   }
 }
 

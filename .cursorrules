@@ -1,0 +1,36 @@
+You are an AI coding agent working in this repo. Follow these project constraints.
+
+## Tech stack
+- Next.js (App Router) + TypeScript
+- Tailwind CSS
+- Vercel AI SDK (`ai`, `@ai-sdk/google`, etc.)
+- Notion API (`@notionhq/client`)
+- Mermaid.js
+
+## Model usage policy
+- Left-side document parsing + Feynman chat: **Gemini 2.5 Flash** (Google provider / SDK).
+- Interviewer assessment: **DeepSeek Chat**.
+- Prefer robust fallback behavior when Gemini free-tier quota/429 occurs.
+
+## API routing conventions
+- All API routes live under `app/api/**/route.ts` using **Route Handlers**.
+- Prefer `runtime = "nodejs"` when using Node-only SDKs (Notion, undici agents, etc.).
+
+## Data storage policy
+- Persist all user/session/knowledge data via **Notion API**.
+- Do **not** introduce any other databases (Postgres/Redis/Supabase/etc.) unless explicitly requested.
+
+## Streaming policy (Vercel limits)
+- Vercel Hobby plan serverless timeout is ~10s.
+- Any long-running operation must use **streaming**.
+- For streaming responses, use Vercel AI SDK `streamText(...)` (and its response helpers) as the standard pattern.
+
+## Learning session writeback policy
+- During interview flow, keep intermediate data in **frontend state**.
+- At the end, write to Notion **once** (single settlement action), not on every turn.
+
+## Notion rate limit
+- Notion API has ~**3 requests/second** rate limit.
+- When doing batch writes/updates, implement a request **queue / throttling** mechanism.
+- Avoid concurrent bursts of Notion requests from a single route handler.
+

@@ -1,6 +1,7 @@
 import { unstable_noStore as noStore } from "next/cache";
 import type { Client } from "@notionhq/client";
 import { createNotionClient } from "@/lib/notion-client";
+import { withNotionRetryOnce } from "@/lib/notion-retry";
 
 type NotionJson = Record<string, unknown>;
 
@@ -146,6 +147,61 @@ export async function archiveKnowledgePageInNotion(pageId: string): Promise<void
   await notion.pages.update({
     page_id: pageId,
     archived: true,
+  });
+}
+
+/**
+ * 更新知识库页面的「学习状态」属性（优先 Status，其次 Select）。
+ */
+export async function updateKnowledgeItemStudyStatusInNotion(
+  pageId: string,
+  nextStatus: string
+): Promise<void> {
+  noStore();
+
+  const notionToken = process.env.NOTION_API_KEY;
+  if (!notionToken) throw new Error("Missing NOTION_API_KEY");
+  if (!pageId) throw new Error("Missing pageId");
+  const statusName = String(nextStatus ?? "").trim();
+  if (!statusName) throw new Error("Missing statusName");
+
+  const notion = createNotionClient(notionToken);
+  const page = (await notion.pages.retrieve({ page_id: pageId })) as NotionJson & {
+    properties?: NotionJson;
+  };
+  const props = (page.properties as NotionJson | undefined) ?? {};
+
+  // Prefer exact key first, then common variants.
+  const candidates = ["学习状态", "Status", "状态"];
+  let key: string | null = null;
+  for (const c of candidates) {
+    if (c in props) {
+      key = c;
+      break;
+    }
+  }
+  if (!key) {
+    // Try to find any status/select typed property with similar name
+    for (const [k, v] of Object.entries(props)) {
+      const t = String((v as { type?: string } | undefined)?.type ?? "");
+      if (t !== "status" && t !== "select") continue;
+      if (k.includes("学习") || k.includes("状态") || k.toLowerCase().includes("status")) {
+        key = k;
+        break;
+      }
+    }
+  }
+  if (!key) throw new Error("页面没有可写入的学习状态属性");
+
+  const propType = String((props[key] as { type?: string } | undefined)?.type ?? "");
+  await notion.pages.update({
+    page_id: pageId,
+    properties: {
+      [key]:
+        propType === "status"
+          ? { status: { name: statusName } }
+          : { select: { name: statusName } },
+    } as unknown as Parameters<Client["pages"]["update"]>[0]["properties"],
   });
 }
 
@@ -316,6 +372,54 @@ async function fetchAllBlockChildrenOrdered(
   return out;
 }
 
+/** 与 ingest 写入的 H2 及常见手工标题对齐；须先于 isAiSectionHeadingTitle 判断，避免「…资料原文…」被误判 */
+function isRawSectionHeadingTitle(title: string): boolean {
+  const t = title.replace(/\s+/g, " ").trim();
+  const lower = t.toLowerCase();
+  if (!t) return false;
+  if (t.includes("资料原文") || lower.includes("rawtext")) return true;
+  if (t.includes("原始资料") || t.includes("原始正文") || t.includes("摘录原文")) return true;
+  return false;
+}
+
+/** 与 DB 属性「核心知识提炼 / AI 提炼大纲」及 ingest 的 H2 对齐 */
+function isAiSectionHeadingTitle(title: string): boolean {
+  const t = title.replace(/\s+/g, " ").trim();
+  const lower = t.toLowerCase();
+  if (!t) return false;
+  if (t.includes("AI 提炼大纲") || t.includes("AI提炼大纲")) return true;
+  if (t.startsWith("AI 提炼（") || lower.includes("aisummary")) return true;
+  if (t.includes("AI Markdown")) return true;
+  if (t.includes("核心知识提炼") || t.includes("核心知识大纲")) return true;
+  return false;
+}
+
+/** 段落形式的「章节标题」（Notion 中常被误存为 paragraph 而非 heading） */
+function isParagraphStyleSectionDivider(type: string): boolean {
+  return type === "paragraph" || type === "callout" || type === "quote";
+}
+
+/** 未进入 raw 段时，section 为 null 的内容会被丢弃；此处把「首个 AI 大纲标题之前」的块补回为原文 */
+function markdownFragmentsBeforeFirstAiHeading(blocks: NotionJson[]): string[] {
+  const parts: string[] = [];
+  for (const b of blocks) {
+    const type = String(b.type ?? "");
+    const text = blockRichTextToPlain(b);
+    const t = text.replace(/\s+/g, " ").trim();
+    if (type === "heading_2" || type === "heading_1" || type === "heading_3") {
+      if (isAiSectionHeadingTitle(t)) break;
+      if (isRawSectionHeadingTitle(t)) continue;
+    } else if (isParagraphStyleSectionDivider(type) && t) {
+      if (isAiSectionHeadingTitle(t)) break;
+      if (isRawSectionHeadingTitle(t)) continue;
+    }
+    const fragment = notionBlockToMarkdownFragment(b);
+    if (!fragment) continue;
+    parts.push(fragment);
+  }
+  return parts;
+}
+
 async function fetchPageBodySplit(notion: Client, pageId: string): Promise<{ rawText: string; aiSummary: string }> {
   const blocks = await fetchAllBlockChildrenOrdered(notion, pageId);
   let section: "raw" | "ai" | null = null;
@@ -325,18 +429,22 @@ async function fetchPageBodySplit(notion: Client, pageId: string): Promise<{ raw
   for (const b of blocks) {
     const type = String(b.type ?? "");
     const text = blockRichTextToPlain(b);
+    const t = text.replace(/\s+/g, " ").trim();
     if (type === "heading_2" || type === "heading_1" || type === "heading_3") {
-      const title = text.replace(/\s+/g, " ").trim();
-      if (title.includes("资料原文") || title.toLowerCase().includes("rawtext")) {
+      if (isRawSectionHeadingTitle(t)) {
         section = "raw";
         continue;
       }
-      if (
-        title.includes("AI 提炼大纲") ||
-        title.startsWith("AI 提炼（") ||
-        title.toLowerCase().includes("aisummary") ||
-        title.includes("AI Markdown")
-      ) {
+      if (isAiSectionHeadingTitle(t)) {
+        section = "ai";
+        continue;
+      }
+    } else if (isParagraphStyleSectionDivider(type) && t) {
+      if (isRawSectionHeadingTitle(t)) {
+        section = "raw";
+        continue;
+      }
+      if (isAiSectionHeadingTitle(t)) {
         section = "ai";
         continue;
       }
@@ -347,9 +455,16 @@ async function fetchPageBodySplit(notion: Client, pageId: string): Promise<{ raw
     else if (section === "ai") aiParts.push(fragment);
   }
 
+  let rawText = rawParts.join("\n\n").trim();
+  const aiSummary = aiParts.join("\n\n").trim();
+
+  if (!rawText && aiSummary) {
+    rawText = markdownFragmentsBeforeFirstAiHeading(blocks).join("\n\n").trim();
+  }
+
   return {
-    rawText: rawParts.join("\n\n").trim(),
-    aiSummary: aiParts.join("\n\n").trim(),
+    rawText,
+    aiSummary,
   };
 }
 
@@ -466,6 +581,10 @@ export async function fetchKnowledgeFromNotion(): Promise<KnowledgeItem[]> {
 }
 
 export async function fetchKnowledgeDetailFromNotion(pageId: string): Promise<KnowledgeDetail> {
+  return withNotionRetryOnce(() => fetchKnowledgeDetailFromNotionOnce(pageId));
+}
+
+async function fetchKnowledgeDetailFromNotionOnce(pageId: string): Promise<KnowledgeDetail> {
   noStore();
 
   const notionToken = process.env.NOTION_API_KEY;
@@ -553,8 +672,13 @@ export async function fetchKnowledgeDetailFromNotion(pageId: string): Promise<Kn
       ) ?? "";
 
     const split = await fetchPageBodySplit(notion, pageId);
-    const rawText = split.rawText || (await fetchAllBlockChildrenPlain(notion, pageId));
-    const outlineMarkdown = split.aiSummary || outlineFromProps;
+    let rawText = split.rawText.trim();
+    const aiBody = split.aiSummary.trim();
+    // 已从页面 body 解析出 AI 段时，禁止用「整页 plain」回填 raw，否则大纲会整块出现在资料原文 tab
+    if (!rawText && !aiBody) {
+      rawText = (await fetchAllBlockChildrenPlain(notion, pageId)).trim();
+    }
+    const outlineMarkdown = aiBody || outlineFromProps;
 
     return {
       id: String(page.id ?? pageId),

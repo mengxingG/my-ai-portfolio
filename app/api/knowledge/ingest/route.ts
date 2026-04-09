@@ -51,13 +51,15 @@ if (process.env.NODE_ENV === "development") {
 }
 
 function createIngestGoogleProvider(apiKey: string) {
+  const baseURL = process.env.GOOGLE_GEMINI_BASE_URL?.trim() || undefined;
   if (process.env.NODE_ENV === "development" && customFetch) {
     return createGoogleGenerativeAI({
       apiKey,
+      baseURL,
       fetch: customFetch as typeof fetch,
     });
   }
-  return createGoogleGenerativeAI({ apiKey });
+  return createGoogleGenerativeAI({ apiKey, baseURL });
 }
 
 const extractTextFromPDF = (buffer: Buffer): Promise<string> => {
@@ -739,11 +741,7 @@ export async function POST(req: Request) {
 
     const allowedModelIds = new Set([
       "gemini-2.5-flash",
-      "gemini-2.0-flash",
       "gemini-2.5-pro",
-      "gemini-2.0-flash-001",
-      "gemini-2.0-flash-lite-001",
-      "gemini-2.0-flash-lite",
       "gemini-2.5-flash-lite",
     ]);
     const modelId = allowedModelIds.has(modelIdRaw) ? modelIdRaw : "gemini-2.5-flash";

@@ -60,7 +60,8 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
   const [carouselPaused, setCarouselPaused] = useState(false);
   /** 点击特色项目按钮后锁定：轮播停转，直到在页面上点击非豁免区域（空白/其他模块） */
   const [featuredSelectionPinned, setFeaturedSelectionPinned] = useState(false);
-  const [activeFeaturedIndex, setActiveFeaturedIndex] = useState(0);
+  // Default to the newest featured project (Feynman Hub)
+  const [activeFeaturedIndex, setActiveFeaturedIndex] = useState(4);
   const carouselInnerRef = useRef<HTMLDivElement>(null);
   const carouselRotationRef = useRef(0);
   const carouselFocusTimeoutRef = useRef<number | null>(null);
@@ -239,6 +240,16 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
 
   const featuredProjects = React.useMemo(
     () => [
+      {
+        id: "feynman-hub",
+        title: "Feynman Hub",
+        badge: "Featured",
+        badgeClass: "border border-cyan-500/40 bg-cyan-500/10 text-cyan-200/90",
+        description:
+          "类 NotebookLM 的双模态智能学习系统：费曼学习法 + AI 模拟面试 + 间隔复习。专为 ADHD 友好设计，学习数据写回 Notion 知识库。",
+        tags: ["Gemini 2.5", "DeepSeek", "Next.js", "Notion API", "Mermaid.js"],
+        hasDetail: true,
+      },
       {
         id: "knowyourai",
         title: "KnowYourAI.co",
@@ -607,7 +618,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           </motion.div>
         </motion.section>
 
-        <motion.section
+          <motion.section
           id="featured"
           className="scroll-mt-20 py-10"
           data-parallax="0.014"
@@ -808,7 +819,90 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
             whileInView="show"
             viewport={{ once: true, amount: 0.2, margin: "0px 0px -10% 0px" }}
           >
-            {featuredProjects[activeFeaturedIndex]?.id === "ai-news-radar" ? (
+            {featuredProjects[activeFeaturedIndex]?.id === "feynman-hub" ? (
+              <div className="holo-card rounded-2xl p-5 sm:p-6">
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <h3
+                    className="text-lg font-semibold text-slate-50"
+                    style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}
+                  >
+                    Feynman Learning Hub —— NotebookLM 风格的双模态学习系统
+                  </h3>
+                  <span className="shrink-0 rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-mono uppercase text-cyan-200/90">
+                    FEATURED
+                  </span>
+                </div>
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <div className="space-y-3">
+                    <section>
+                      <h4 className="text-sm font-semibold text-white">🚀 项目概述</h4>
+                      <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                        学了就忘？面试答不上来？这个工具让你用费曼技巧真正理解知识，再用 AI 面试官检验你是不是真懂了。
+                        学习数据自动沉淀到 Notion，薄弱环节精准复习。
+                      </p>
+                      <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                      「上传 PDF/视频 → AI 用大白话帮你拆解核心概念 → 你用费曼技巧复述检验理解 → AI 面试官递增难度考核 → 评分报告精准标出知识盲点 → 薄弱环节自动进入间隔复习。全程数据写回 Notion，学习过程有宠物陪伴。
+                      </p>
+                    </section>
+
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      <div className="liquid-glass-card rounded-xl border border-white/10 bg-black/25 p-3">
+                        <div className="text-xs font-semibold text-cyan-200">学 + 考 闭环</div>
+                        <div className="mt-1 text-xs leading-relaxed text-slate-400">
+                          费曼学习验证理解，AI 面试官检验你能不能在压力下讲清楚。答错的知识点自动进入复习队列。
+                        </div>
+                      </div>
+                      <div className="liquid-glass-card rounded-xl border border-white/10 bg-black/25 p-3">
+                        <div className="text-xs font-semibold text-cyan-200">Notion 原生集成</div>
+                        <div className="mt-1 text-xs leading-relaxed text-slate-400">
+                          学习数据直接写回你的 Notion 知识库，不用在另一个 App 里管理笔记。掌握度、复习计划、费曼笔记全部沉淀。
+                        </div>
+                      </div>
+                      <div className="liquid-glass-card rounded-xl border border-white/10 bg-black/25 p-3">
+                        <div className="text-xs font-semibold text-cyan-200">ADHD 友好设计</div>
+                        <div className="mt-1 text-xs leading-relaxed text-slate-400">
+                          「只学 5 分钟」一键启动，正计时不倒计时，宠物伴侣只奖励不惩罚。启动门槛低到不会引发抗拒。
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {["Gemini 2.5", "DeepSeek", "Next.js", "Notion API", "Mermaid.js"].map((t) => (
+                        <span key={`fh-${t}`} className="tech-tag">
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <Link
+                        href="/projects/feynman-hub"
+                        className="glow-btn glow-btn--primary glow-btn--resume inline-flex"
+                      >
+                        查看 Case Study →
+                      </Link>
+                      <Link href="/learning" className="glow-btn glow-btn--secondary inline-flex">
+                        体验 Demo →
+                      </Link>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <figure className="w-full overflow-hidden rounded-2xl border border-white/12 bg-black/25 shadow-[0_12px_36px_rgba(0,0,0,0.38)]">
+                      <Image
+                        src="/images/feynman-hub/learning-fullview.png"
+                        alt="Feynman Learning Hub 学习页面：双栏布局与费曼对话"
+                        width={1920}
+                        height={1080}
+                        className="h-auto w-full object-contain"
+                        sizes="(max-width: 1024px) 100vw, min(560px, 45vw)"
+                      />
+                    </figure>
+                    <p className="text-xs text-slate-400">Learning 双栏布局全貌</p>
+                    <p className="text-[11px] text-slate-500">
+                      6 个 API 路由 · 双模型协作 · Notion 双表数据流 · 两周独立开发
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : featuredProjects[activeFeaturedIndex]?.id === "ai-news-radar" ? (
               <div className="holo-card rounded-2xl p-5 sm:p-6">
                 <div className="mb-3 flex items-start justify-between gap-3">
                   <h3 className="text-lg font-semibold text-slate-50" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>

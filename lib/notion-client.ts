@@ -1,15 +1,23 @@
 import { Client } from "@notionhq/client";
-import { HttpsProxyAgent } from "https-proxy-agent";
 
-export const createNotionClient = (token: string) => {
-  // ⚠️ 注意：这里默认写了 7897，如果用户的代理是 7890，请修改此处
-  const proxyUrl = "http://127.0.0.1:7897";
+/** Notion 直连，不使用 HTTPS_PROXY / 本地代理，避免 ETIMEDOUT 或错误路由 */
+const NOTION_FETCH_TIMEOUT_MS = 10_000;
 
-  // 仅在本地开发环境启用底层代理
-  const agent = process.env.NODE_ENV === "development" ? new HttpsProxyAgent(proxyUrl) : undefined;
+function createDirectFetchWithTimeout(timeoutMs: number): typeof fetch {
+  return async (input, init) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await fetch(input, { ...init, signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+}
 
+export function createNotionClient(token: string) {
   return new Client({
     auth: token,
-    agent,
+    fetch: createDirectFetchWithTimeout(NOTION_FETCH_TIMEOUT_MS),
   });
-};
+}
