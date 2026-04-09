@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useCallback, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { FEYNMAN_LEARNING_DEMO_HREF } from "@/lib/feynman-demo-link";
 import { useRouter } from "next/navigation";
 import {
   motion,
@@ -61,7 +62,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
   /** 点击特色项目按钮后锁定：轮播停转，直到在页面上点击非豁免区域（空白/其他模块） */
   const [featuredSelectionPinned, setFeaturedSelectionPinned] = useState(false);
   // Default to the newest featured project (Feynman Hub)
-  const [activeFeaturedIndex, setActiveFeaturedIndex] = useState(4);
+  const [activeFeaturedIndex, setActiveFeaturedIndex] = useState(0);
   const carouselInnerRef = useRef<HTMLDivElement>(null);
   const carouselRotationRef = useRef(0);
   const carouselFocusTimeoutRef = useRef<number | null>(null);
@@ -242,45 +243,13 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
     () => [
       {
         id: "feynman-hub",
-        title: "Feynman Hub",
+        title: "Feynman 陪伴学习",
         badge: "Featured",
         badgeClass: "border border-cyan-500/40 bg-cyan-500/10 text-cyan-200/90",
         description:
           "类 NotebookLM 的双模态智能学习系统：费曼学习法 + AI 模拟面试 + 间隔复习。专为 ADHD 友好设计，学习数据写回 Notion 知识库。",
         tags: ["Gemini 2.5", "DeepSeek", "Next.js", "Notion API", "Mermaid.js"],
         hasDetail: true,
-      },
-      {
-        id: "knowyourai",
-        title: "KnowYourAI.co",
-        badge: "Featured",
-        badgeClass:
-          "border border-amber-500/40 bg-amber-500/10 text-amber-200/90",
-        description:
-          "面向 AI 产品经理与开发者的知识索引与能力地图项目，聚焦模型能力评测、实用工具链整理与可执行方法论沉淀。",
-        tags: ["Product Strategy", "AI Workflow", "Knowledge Base"],
-        hasDetail: false,
-      },
-      {
-        id: "agentive",
-        title: "AGENTIVE",
-        badge: "Featured",
-        badgeClass:
-          "border border-purple-500/40 bg-purple-500/10 text-purple-200/90",
-        description:
-          "多 Agent 协同执行框架实践，打通任务拆解、工具调用与审计追踪，提升复杂业务流自动化可控性与交付效率。",
-        tags: ["Agents", "Orchestration", "Automation"],
-        hasDetail: false,
-      },
-      {
-        id: "syntax",
-        title: "SYNTAX",
-        badge: "Featured",
-        badgeClass: "border border-cyan-500/40 bg-cyan-500/10 text-cyan-200/90",
-        description:
-          "AI-native 开发效率项目，围绕 Prompt Engineering、代码辅助与自动化验证构建统一研发闭环，缩短从想法到上线的路径。",
-        tags: ["Vibe Coding", "PromptOps", "Next.js"],
-        hasDetail: false,
       },
       {
         id: "ai-news-radar",
@@ -838,10 +807,10 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                       <h4 className="text-sm font-semibold text-white">🚀 项目概述</h4>
                       <p className="mt-2 text-sm leading-relaxed text-slate-300">
                         学了就忘？面试答不上来？这个工具让你用费曼技巧真正理解知识，再用 AI 面试官检验你是不是真懂了。
-                        学习数据自动沉淀到 Notion，薄弱环节精准复习。
+                        学习数据自动沉淀到 Notion，薄弱环节精准复习。宠物陪伴，学习过程不枯燥。
                       </p>
                       <p className="mt-2 text-sm leading-relaxed text-slate-300">
-                      「上传 PDF/视频 → AI 用大白话帮你拆解核心概念 → 你用费曼技巧复述检验理解 → AI 面试官递增难度考核 → 评分报告精准标出知识盲点 → 薄弱环节自动进入间隔复习。全程数据写回 Notion，学习过程有宠物陪伴。
+                     🌟 上传 PDF/视频 → AI 用大白话帮你拆解核心概念 → 你用费曼技巧复述检验理解 → AI 面试官递增难度考核 → 评分报告精准标出知识盲点 → 薄弱环节自动进入间隔复习
                       </p>
                     </section>
 
@@ -879,7 +848,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                       >
                         查看 Case Study →
                       </Link>
-                      <Link href="/learning" className="glow-btn glow-btn--secondary inline-flex">
+                      <Link href={FEYNMAN_LEARNING_DEMO_HREF} className="glow-btn glow-btn--secondary inline-flex">
                         体验 Demo →
                       </Link>
                     </div>

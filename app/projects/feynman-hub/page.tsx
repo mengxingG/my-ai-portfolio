@@ -1,5 +1,6 @@
 import { MermaidFlowchartZoom } from "@/app/components/MermaidFlowchartZoom";
 import { MermaidSimple } from "@/app/components/MermaidSimple";
+import { FEYNMAN_LEARNING_DEMO_HREF } from "@/lib/feynman-demo-link";
 import Image from "next/image";
 
 const FEYNMAN_HUB_IMG = "/images/feynman-hub";
@@ -202,7 +203,7 @@ export default function FeynmanHubCaseStudyPage() {
               </div>
 
               <div className="flex shrink-0 flex-wrap items-center gap-2">
-                <a href="/learning" className="glow-btn glow-btn--primary glow-btn--resume inline-flex">
+                <a href={FEYNMAN_LEARNING_DEMO_HREF} className="glow-btn glow-btn--primary glow-btn--resume inline-flex">
                   体验 Demo →
                 </a>
               </div>
@@ -998,7 +999,7 @@ export default function FeynmanHubCaseStudyPage() {
                 </div>
 
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <a href="/learning" className="glow-btn glow-btn--primary glow-btn--resume inline-flex">
+                  <a href={FEYNMAN_LEARNING_DEMO_HREF} className="glow-btn glow-btn--primary glow-btn--resume inline-flex">
                     体验 Demo →
                   </a>
                   <a href="/projects/featured" className="glow-btn glow-btn--secondary inline-flex">

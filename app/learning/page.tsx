@@ -1960,6 +1960,8 @@ function LearningPageInner() {
   const [tab, setTab] = useState<LearningTabKey>("raw");
   const [uploadOpen, setUploadOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  /** 资料原文为空时，点费曼 / 面试入口的说明弹窗 */
+  const [materialGateOpen, setMaterialGateOpen] = useState(false);
   /** 空内容点发送时，显示在输入区右侧按钮组上方（不使用全局 fixed toast） */
   const [chatEmptySendHint, setChatEmptySendHint] = useState<string | null>(null);
   const [refineLoading, setRefineLoading] = useState(false);
@@ -2119,6 +2121,25 @@ function LearningPageInner() {
       active = false;
     };
   }, [linkedItemId]);
+
+  /** 体验 Demo / 深链：条目不存或详情拉取失败时回退到知识库列表 */
+  useEffect(() => {
+    const id = linkedItemId?.trim();
+    if (!id) return;
+    if (linkedItemLoading) return;
+    if (linkedItemError && !linkedItem) {
+      router.replace("/knowledge");
+    }
+  }, [linkedItemId, linkedItem, linkedItemError, linkedItemLoading, router]);
+
+  useEffect(() => {
+    const id = linkedItemId?.trim();
+    if (!id) return;
+    if (linkedDetailLoading) return;
+    if (linkedDetailError && !linkedDetail) {
+      router.replace("/knowledge");
+    }
+  }, [linkedItemId, linkedDetail, linkedDetailError, linkedDetailLoading, router]);
 
   useEffect(() => {
     return () => {
@@ -2371,6 +2392,23 @@ function LearningPageInner() {
     sessionAiSummary,
     sessionRawText,
   ]);
+
+  /** 与左侧「资料原文」一致：无正文则不应进入费曼 / 面试（需先选资料或保存原文） */
+  const hasSubmittableRaw = useMemo(() => {
+    const raw = String(sessionRawText || linkedDetail?.rawText || "")
+      .replace(/\r\n/g, "\n")
+      .trim();
+    return raw.length > 0;
+  }, [sessionRawText, linkedDetail?.rawText]);
+
+  useEffect(() => {
+    if (!materialGateOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMaterialGateOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [materialGateOpen]);
 
   useEffect(() => {
     if (!titleEditMode) {
@@ -3471,6 +3509,19 @@ function LearningPageInner() {
   }
 
   async function handleModeSelect(nextMode: LearningModeKey) {
+    const id = linkedItemId?.trim();
+    if (id) {
+      if (libraryLoading || linkedItemLoading || linkedDetailLoading) {
+        setToast("资料加载中，请稍候…");
+        window.setTimeout(() => setToast(null), 2200);
+        return;
+      }
+    }
+    if (!id || !hasSubmittableRaw) {
+      setMaterialGateOpen(true);
+      return;
+    }
+
     // 前置同步：先把知识库状态写成“进行中”，成功后再切换 UI
     await syncInProgressStatus();
 
@@ -5484,6 +5535,53 @@ function LearningPageInner() {
 
   return (
     <div className="h-screen overflow-hidden bg-neutral-950 text-slate-100">
+      {materialGateOpen ? (
+        <div
+          className="fixed inset-0 z-[95] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          onClick={() => setMaterialGateOpen(false)}
+          role="presentation"
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="learning-material-gate-title"
+            className="relative w-full max-w-md rounded-2xl border border-white/12 bg-neutral-950/95 p-6 shadow-[0_24px_80px_rgba(0,0,0,0.55)] ring-1 ring-white/10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 text-slate-400 hover:bg-white/[0.06] hover:text-slate-200"
+              aria-label="关闭"
+              onClick={() => setMaterialGateOpen(false)}
+            >
+              ✕
+            </button>
+            <h2 id="learning-material-gate-title" className="pr-8 text-lg font-semibold text-slate-50">
+              请先选择学习资料
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-slate-400">
+              当前「资料原文」中没有可提交的正文。请返回 Learning
+              Dashboard（知识库）选择一条已有资料，或先上传并保存原文后再开始费曼学习或模拟面试。
+            </p>
+            <div className="mt-6 flex flex-wrap gap-2">
+              <Link
+                href="/knowledge"
+                className="inline-flex items-center justify-center rounded-xl border border-cyan-500/35 bg-cyan-500/15 px-4 py-2.5 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/25"
+                onClick={() => setMaterialGateOpen(false)}
+              >
+                前往 Learning Dashboard
+              </Link>
+              <button
+                type="button"
+                className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/[0.05] px-4 py-2.5 text-sm font-semibold text-slate-200 hover:bg-white/[0.08]"
+                onClick={() => setMaterialGateOpen(false)}
+              >
+                关闭
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {isMapOpen && mermaidCode ? (
         <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/80 p-4">
           <div className="relative flex h-[80vh] w-[92vw] max-w-6xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-neutral-950/70 shadow-[0_30px_120px_rgba(0,0,0,0.75)] ring-1 ring-white/10 backdrop-blur">
