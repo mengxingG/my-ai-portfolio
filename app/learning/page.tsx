@@ -1944,6 +1944,8 @@ function LearningPageInner() {
   const searchParams = useSearchParams();
   const linkedTitle = searchParams.get("title")?.trim() || "";
   const linkedItemId = searchParams.get("itemId")?.trim() || "";
+  const reviewFromDashboard = searchParams.get("review") === "1";
+  const reviewSessionId = searchParams.get("sessionId")?.trim() ?? "";
 
   const [linkedItem, setLinkedItem] = useState<KnowledgeItem | null>(null);
   const [linkedItemLoading, setLinkedItemLoading] = useState(false);
@@ -1962,6 +1964,11 @@ function LearningPageInner() {
   const [toast, setToast] = useState<string | null>(null);
   /** 资料原文为空时，点费曼 / 面试入口的说明弹窗 */
   const [materialGateOpen, setMaterialGateOpen] = useState(false);
+  /** Dashboard「复习」入口：居中展示历史面试报告 */
+  const [reviewReportOverlayOpen, setReviewReportOverlayOpen] = useState(false);
+  const [reviewArchiveLoading, setReviewArchiveLoading] = useState(false);
+  const enteredViaReviewRef = useRef(false);
+  const lastReviewBootstrapKeyRef = useRef("");
   /** 空内容点发送时，显示在输入区右侧按钮组上方（不使用全局 fixed toast） */
   const [chatEmptySendHint, setChatEmptySendHint] = useState<string | null>(null);
   const [refineLoading, setRefineLoading] = useState(false);
@@ -2567,6 +2574,53 @@ function LearningPageInner() {
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
+
+  useEffect(() => {
+    if (!reviewFromDashboard || !reviewSessionId || !linkedItemId?.trim()) return;
+    if (linkedItemLoading || linkedDetailLoading) return;
+
+    const key = `${reviewSessionId}::${linkedItemId}`;
+    if (lastReviewBootstrapKeyRef.current === key) return;
+    lastReviewBootstrapKeyRef.current = key;
+
+    void (async () => {
+      setReviewArchiveLoading(true);
+      try {
+        const res = await fetch(
+          `/api/session/${encodeURIComponent(reviewSessionId)}/interview-report?knowledgePageId=${encodeURIComponent(linkedItemId)}`,
+          { cache: "no-store" }
+        );
+        const data = (await res.json()) as { report?: InterviewEvaluation; error?: string };
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        if (!data.report) throw new Error("报告数据为空");
+        setInterviewReport(data.report);
+        setReviewReportOverlayOpen(true);
+        enteredViaReviewRef.current = true;
+      } catch (e) {
+        lastReviewBootstrapKeyRef.current = "";
+        setToast(e instanceof Error ? e.message : "无法加载历史面试报告");
+        window.setTimeout(() => setToast(null), 3400);
+      } finally {
+        setReviewArchiveLoading(false);
+        const t =
+          linkedTitle.trim() || linkedItem?.title || linkedDetail?.title || "";
+        router.replace(
+          `/learning?itemId=${encodeURIComponent(linkedItemId)}&title=${encodeURIComponent(t)}`,
+          { scroll: false }
+        );
+      }
+    })();
+  }, [
+    reviewFromDashboard,
+    reviewSessionId,
+    linkedItemId,
+    linkedItemLoading,
+    linkedDetailLoading,
+    linkedTitle,
+    linkedItem?.title,
+    linkedDetail?.title,
+    router,
+  ]);
 
   useEffect(() => {
     // leaving interview mode resets to config panel (pure frontend)
@@ -3324,6 +3378,65 @@ function LearningPageInner() {
     },
     [documentContext, pushAssistantMessage, runLearningChatStream, saveSession, startTimer]
   );
+
+  const handleReviewBackToFeynman = useCallback(() => {
+    const report = interviewReport;
+    setReviewReportOverlayOpen(false);
+    if (!report) {
+      resetInterviewFlow();
+      setMode("story");
+      setActiveMode("feynman");
+      learningModeForSessionRef.current = "feynman";
+      enteredViaReviewRef.current = false;
+      return;
+    }
+
+    const qLines = (report.questions || [])
+      .map((q, i) => {
+        const missed = (q.missedPoints || []).filter(Boolean).join("；");
+        const ans = String(q.userAnswer ?? "").trim();
+        const ansShort = ans.length > 220 ? `${ans.slice(0, 220)}…` : ans;
+        return [
+          `【第 ${i + 1} 题】得分 ${q.score}/100`,
+          `题干：${q.questionText || "—"}`,
+          ansShort ? `你上次作答摘要：${ansShort}` : "",
+          `AI 反馈：${q.feedback || "—"}`,
+          missed ? `遗漏点：${missed}` : "",
+        ]
+          .filter(Boolean)
+          .join("\n");
+      })
+      .join("\n\n");
+
+    const prompt = `
+<System>用户从 Dashboard 复习入口查看历史面试报告后，回到费曼学习，希望针对上次考核薄弱项补强。</System>
+<Context>
+【上次面试总分】${report.overallScore}/100
+【逐题摘要（用于你设计追问，勿机械复述）】
+${qLines}
+
+【整体改进建议】
+${report.improvements || "（无）"}
+</Context>
+<Instructions>
+你是费曼学习助手。请严格依据【当前学习文档】，围绕上面各题的「反馈 / 遗漏点」设计跟进：优先从得分最低或问题最重的一题开始，用 1～2 个简短的费曼式追问，引导用户用自己的话讲清楚；说明你会按题逐个帮用户补齐，本次先只处理第一个聚焦点。不要一次把所有题目罗列成清单让用户背诵。
+</Instructions>
+<Constraints>
+- 必须结合文档内容核对与举例，不得编造文档未出现的细节。
+- 单次回复不超过 480 字。
+</Constraints>
+`.trim();
+
+    resetInterviewFlow();
+    setMode("story");
+    setActiveMode("feynman");
+    learningModeForSessionRef.current = "feynman";
+    enteredViaReviewRef.current = false;
+
+    requestAnimationFrame(() => {
+      void submitSyntheticLearningChat(messagesRef.current, prompt, "feynman");
+    });
+  }, [interviewReport, resetInterviewFlow, submitSyntheticLearningChat]);
 
   const handleChatRetry = useCallback(
     (errorMessageId: string) => {
@@ -5534,7 +5647,7 @@ function LearningPageInner() {
       : "ring-1 ring-white/10 shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_0_18px_rgba(0,0,0,0.25)]";
 
   return (
-    <div className="h-screen overflow-hidden bg-neutral-950 text-slate-100">
+    <div className="h-dvh max-h-dvh overflow-hidden bg-neutral-950 text-slate-100">
       {materialGateOpen ? (
         <div
           className="fixed inset-0 z-[95] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
@@ -5579,6 +5692,39 @@ function LearningPageInner() {
                 关闭
               </button>
             </div>
+          </div>
+        </div>
+      ) : null}
+      {(reviewReportOverlayOpen && interviewReport) || reviewArchiveLoading ? (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/75 p-3 backdrop-blur-sm"
+          role="presentation"
+        >
+          <div
+            className="flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/12 bg-[#0f1115] shadow-[0_24px_80px_rgba(0,0,0,0.6)] sm:max-w-2xl"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="历史面试评分报告"
+          >
+            {reviewArchiveLoading ? (
+              <div className="grid place-items-center p-12 text-slate-300">
+                <Loader2 className="h-8 w-8 animate-spin text-cyan-300" aria-hidden />
+                <p className="mt-3 text-sm">正在加载历史面试报告…</p>
+              </div>
+            ) : interviewReport ? (
+              <InterviewReportCard
+                historyMode
+                report={interviewReport}
+                saving={false}
+                saveSuccessTick={0}
+                onSaveToNotion={() => {}}
+                onReconfigure={() => {}}
+                onReInterview={() => {}}
+                onBackToLearning={handleReviewBackToFeynman}
+                backToLearningLabel="回到费曼学习"
+              />
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -5820,7 +5966,7 @@ function LearningPageInner() {
 
       {/* Header + Split */}
       <div className="flex h-full flex-col">
-        <div className="flex items-center justify-between gap-3 border-b border-white/5 bg-neutral-950/60 px-5 py-3 text-sm">
+        <div className="flex flex-col gap-2 border-b border-white/5 bg-neutral-950/60 px-3 py-3 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-5">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <Link
@@ -5828,7 +5974,8 @@ function LearningPageInner() {
                 onClick={() => pauseFocus()}
                 className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] px-3 py-1.5 text-slate-200 transition hover:bg-white/[0.06]"
               >
-                ← 返回 Learning Dashboard
+                <span className="sm:hidden">← 返回</span>
+                <span className="hidden sm:inline">← 返回 Learning Dashboard</span>
               </Link>
               {linkedItemId ? (
                 <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-[11px] font-mono text-cyan-200">
@@ -5850,16 +5997,18 @@ function LearningPageInner() {
               ) : null}
             </div>
           </div>
-          <div className="text-xs text-slate-500">URL: /learning?itemId=...&amp;title=...</div>
+          <div className="hidden text-xs text-slate-500 lg:block">
+            URL: /learning?itemId=...&amp;title=...
+          </div>
         </div>
 
-        <div className="flex min-h-0 flex-1">
+        <div className="flex min-h-0 flex-1 flex-col md:flex-row">
           {/* Left: Reader / Workspace */}
-          <div className="w-1/2 min-w-0 border-r border-white/5 bg-neutral-900/25">
+          <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col border-b border-white/5 bg-neutral-900/25 md:w-1/2 md:border-b-0 md:border-r">
             <div className="flex h-full min-h-0 flex-col">
               {/* Title */}
-              <div className="px-5 py-4">
-                <div className="flex items-start justify-between gap-4">
+              <div className="px-3 py-4 sm:px-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                   <div className="min-w-0 flex-1">
                     <div className="text-xs font-mono text-cyan-200/80">Learning Now</div>
                     {linkedItemId && titleEditMode ? (
@@ -5952,7 +6101,7 @@ function LearningPageInner() {
                   <button
                     type="button"
                     onClick={() => setUploadOpen(true)}
-                    className="hidden shrink-0 items-center gap-2 rounded-xl border border-cyan-500/35 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-500/20 md:inline-flex"
+                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-cyan-500/35 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-200 transition hover:bg-cyan-500/20 sm:px-4 sm:text-sm"
                   >
                     <span className="text-base leading-none">+</span> 添加新资料
                   </button>
@@ -5960,13 +6109,13 @@ function LearningPageInner() {
               </div>
 
               {/* Tabs */}
-              <div className="flex items-center gap-4 px-5 py-3">
-                <div className="flex items-center gap-2">
+              <div className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-center sm:gap-4 sm:px-5">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setTab("raw")}
                     className={[
-                      "rounded-xl border px-4 py-2 text-sm transition",
+                      "rounded-xl border px-2.5 py-1.5 text-xs transition sm:px-4 sm:py-2 sm:text-sm",
                       tab === "raw"
                         ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-200"
                         : "border-white/10 bg-white/[0.03] text-slate-300 hover:bg-white/5",
@@ -5983,7 +6132,7 @@ function LearningPageInner() {
                       setQuizFeedback("none");
                     }}
                     className={[
-                      "rounded-xl border px-4 py-2 text-sm transition",
+                      "rounded-xl border px-2.5 py-1.5 text-xs transition sm:px-4 sm:py-2 sm:text-sm",
                       tab === "outline"
                         ? "border-purple-500/40 bg-purple-500/10 text-purple-200"
                         : "border-white/10 bg-white/[0.03] text-slate-300 hover:bg-white/5",
@@ -5995,7 +6144,7 @@ function LearningPageInner() {
                     type="button"
                     onClick={() => setTab("diagram")}
                     className={[
-                      "rounded-xl border px-4 py-2 text-sm transition",
+                      "rounded-xl border px-2.5 py-1.5 text-xs transition sm:px-4 sm:py-2 sm:text-sm",
                       tab === "diagram"
                         ? "border-purple-500/40 bg-purple-500/10 text-purple-200"
                         : "border-white/10 bg-white/[0.03] text-slate-300 hover:bg-white/5",
@@ -6007,7 +6156,7 @@ function LearningPageInner() {
                     type="button"
                     onClick={() => setTab("library")}
                     className={[
-                      "rounded-xl border px-4 py-2 text-sm transition",
+                      "rounded-xl border px-2.5 py-1.5 text-xs transition sm:px-4 sm:py-2 sm:text-sm",
                       tab === "library"
                         ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-200"
                         : "border-white/10 bg-white/[0.03] text-slate-300 hover:bg-white/5",
@@ -6034,7 +6183,7 @@ function LearningPageInner() {
                   "min-h-0 flex-1 overflow-auto pb-10",
                   tab === "diagram"
                     ? "flex flex-col px-0"
-                    : "px-5",
+                    : "px-3 sm:px-5",
                   tab === "raw" || tab === "outline" || tab === "diagram"
                     ? ""
                     : "scrollbar-hidden",
@@ -6048,7 +6197,7 @@ function LearningPageInner() {
                   className={[
                     tab === "diagram"
                       ? "flex min-h-full min-w-0 flex-1 flex-col border-0 bg-transparent p-0 shadow-none"
-                      : "rounded-2xl border border-white/10 bg-white/[0.03] p-5 shadow-sm",
+                      : "rounded-2xl border border-white/10 bg-white/[0.03] p-4 shadow-sm sm:p-5",
                   ].join(" ")}
                 >
                   {tab === "raw" ? (
@@ -6974,11 +7123,11 @@ function LearningPageInner() {
           </div>
 
           {/* Right: Mentor Chat */}
-          <div className="w-1/2 min-w-0 bg-neutral-950/40">
+          <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col bg-neutral-950/40 md:w-1/2">
             <div className="flex h-full min-h-0 flex-col">
               {/* Mode switch + Pet card */}
-              <div className="relative border-b border-white/5 px-5 py-3">
-                <div className="mt-3 flex items-stretch gap-3">
+              <div className="relative border-b border-white/5 px-3 py-3 sm:px-5">
+                <div className="mt-3 flex flex-col items-stretch gap-3 md:flex-row md:items-stretch">
                   {/* Left 65%: modes */}
                   {!(
                     activeMode === "interview" &&
@@ -6986,7 +7135,7 @@ function LearningPageInner() {
                     interviewReport &&
                     !interviewReportLoading
                   ) ? (
-                    <div className="min-w-0 flex-[0_0_65%]">
+                    <div className="min-w-0 w-full md:flex-[0_0_65%]">
                       <div className="grid grid-cols-2 gap-x-3 gap-y-5">
                         <button
                           type="button"
@@ -7038,15 +7187,15 @@ function LearningPageInner() {
                         </button>
 
                         {/* Model selector: under Quick5 (right column) */}
-                        <div className="hidden sm:flex col-start-2 items-center justify-end gap-3 pt-2">
-                          <div className="text-[15px] font-mono font-semibold text-slate-400">
+                        <div className="col-span-2 flex flex-col gap-2 pt-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
+                          <div className="text-[13px] font-mono font-semibold text-slate-400 sm:text-[15px]">
                             Model
                           </div>
                           <select
                             value={learningChatModelId}
                             disabled={chatSending}
                             onChange={handleLearningChatModelSelectChange}
-                            className="h-8 w-[260px] cursor-pointer rounded-xl border border-white/10 bg-neutral-950/60 px-3 text-[13px] font-semibold text-slate-100 outline-none transition hover:border-white/15 focus:border-cyan-500/35 focus:ring-1 focus:ring-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="h-9 w-full min-w-0 cursor-pointer rounded-xl border border-white/10 bg-neutral-950/60 px-3 text-[13px] font-semibold text-slate-100 outline-none transition hover:border-white/15 focus:border-cyan-500/35 focus:ring-1 focus:ring-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50 sm:h-8 sm:w-[260px]"
                             aria-label="选择对话模型"
                           >
                             {LEARNING_CHAT_MODEL_OPTIONS.map((o) => (
@@ -7061,7 +7210,7 @@ function LearningPageInner() {
                   ) : null}
 
                   {/* Right 35%: PokeFocusPet */}
-                  <div className="min-w-0 flex-[0_0_35%]">
+                  <div className="min-h-[140px] min-w-0 w-full md:min-h-0 md:flex-[0_0_35%]">
                     <PokeFocusPet
                       floating={false}
                       compact
@@ -7157,7 +7306,7 @@ function LearningPageInner() {
                   <div className="flex min-h-0 flex-1">
                     <div
                       ref={chatScrollContainerRef}
-                      className="flex-1 min-h-0 overflow-auto px-5 pb-6 pt-3 scrollbar-hidden"
+                      className="min-h-0 flex-1 overflow-auto px-3 pb-6 pt-3 scrollbar-hidden sm:px-5"
                     >
                       <div ref={scrollRef} className="flex min-h-full flex-col gap-4 pb-2">
                         {messages.map((m) => (
@@ -7510,7 +7659,7 @@ function LearningPageInner() {
                   </div>
 
                   {/* Input */}
-                  <div className="border-t border-white/5 bg-neutral-950/35 px-5 py-4">
+                  <div className="border-t border-white/5 bg-neutral-950/35 px-3 py-4 sm:px-5">
                     {voiceCloudModeBanner ? (
                       <div className="mb-2 rounded-xl border border-sky-500/25 bg-sky-500/10 px-3 py-2 text-xs text-sky-100">
                         {voiceCloudModeBanner}

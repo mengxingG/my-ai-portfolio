@@ -794,7 +794,7 @@ export default function LearningDashboard() {
                         <div className="truncate text-sm font-semibold text-slate-100">{it.knowledgeTitle}</div>
                       </div>
                       <Link
-                        href={`/learning?itemId=${encodeURIComponent(it.knowledgePageId)}&title=${encodeURIComponent(it.knowledgeTitle)}`}
+                        href={`/learning?itemId=${encodeURIComponent(it.knowledgePageId)}&title=${encodeURIComponent(it.knowledgeTitle)}&review=1&sessionId=${encodeURIComponent(it.sessionId)}`}
                         className="shrink-0 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-semibold text-emerald-100 transition hover:bg-emerald-500/20"
                       >
                         复习

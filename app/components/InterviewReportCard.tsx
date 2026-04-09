@@ -29,6 +29,8 @@ export function InterviewReportCard(props: {
   saving?: boolean;
   /** 父组件在保存成功时递增，用于触发就地提示 */
   saveSuccessTick?: number;
+  /** 仅从 Notion 拉取的历史报告：隐藏保存 / 重新面试等 */
+  historyMode?: boolean;
   onSaveToNotion: () => void;
   /** 头部「重新配置」：回到配置（清空当前报告） */
   onReconfigure: () => void;
@@ -36,16 +38,21 @@ export function InterviewReportCard(props: {
   onReInterview: () => void;
   /** 底部「返回学习」：切回费曼模式 */
   onBackToLearning: () => void;
+  /** 覆盖底部「返回学习」按钮文案 */
+  backToLearningLabel?: string;
 }) {
   const {
     report,
     saving,
     saveSuccessTick,
+    historyMode = false,
     onSaveToNotion,
     onReconfigure,
     onReInterview,
     onBackToLearning,
+    backToLearningLabel,
   } = props;
+  const backLabel = backToLearningLabel ?? "返回学习";
   const overall = useMemo(() => Math.max(0, Math.min(100, Math.round(report.overallScore))), [report.overallScore]);
   const [openIndex, setOpenIndex] = useState<number | null>(0);
   const statusLabel = String(report.suggestedStatus ?? "").trim() || "—";
@@ -71,7 +78,9 @@ export function InterviewReportCard(props: {
             {/* 第一行：标题 + 状态 | 重新配置 */}
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <h2 className="text-lg font-semibold text-slate-100 sm:text-xl">面试评分报告</h2>
+                <h2 className="text-lg font-semibold text-slate-100 sm:text-xl">
+                  {historyMode ? "历史面试评分报告" : "面试评分报告"}
+                </h2>
                 <span
                   className={[
                     "shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-semibold",
@@ -81,18 +90,24 @@ export function InterviewReportCard(props: {
                   {statusLabel}
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={onReconfigure}
-                className="inline-flex shrink-0 items-center gap-2 rounded-2xl border border-cyan-500/25 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-500/15 sm:text-sm"
-              >
-                <SlidersHorizontal className="h-4 w-4" aria-hidden />
-                重新配置
-              </button>
+              {historyMode ? null : (
+                <button
+                  type="button"
+                  onClick={onReconfigure}
+                  className="inline-flex shrink-0 items-center gap-2 rounded-2xl border border-cyan-500/25 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-500/15 sm:text-sm"
+                >
+                  <SlidersHorizontal className="h-4 w-4" aria-hidden />
+                  重新配置
+                </button>
+              )}
             </div>
 
             {/* 第二行：副标题 */}
-            <p className="mt-3 text-sm text-slate-400">每题可展开查看反馈与遗漏点</p>
+            <p className="mt-3 text-sm text-slate-400">
+              {historyMode
+                ? "复习模式：来自上次考核的归档报告，可展开逐题复盘"
+                : "每题可展开查看反馈与遗漏点"}
+            </p>
 
             {/* 第三行：总分居中 + 刻度 */}
             <div className="mt-8 text-center">
@@ -220,35 +235,39 @@ export function InterviewReportCard(props: {
 
       <div className="shrink-0 border-t border-white/10 bg-[#0b0f16] px-5 py-4 sm:px-6">
         <div className="mx-auto flex w-full max-w-[720px] flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end sm:gap-3">
-          <div className="relative w-full sm:w-auto">
-            {saveOk ? (
-              <div className="absolute -top-10 left-1/2 w-max -translate-x-1/2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-100 shadow-xl backdrop-blur">
-                保存成功
+          {historyMode ? null : (
+            <>
+              <div className="relative w-full sm:w-auto">
+                {saveOk ? (
+                  <div className="absolute -top-10 left-1/2 w-max -translate-x-1/2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-100 shadow-xl backdrop-blur">
+                    保存成功
+                  </div>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={onSaveToNotion}
+                  disabled={saving}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-cyan-500/25 bg-cyan-500/10 px-4 py-2.5 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/15 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[9rem]"
+                >
+                  {saving ? (
+                    <Loader2 className="h-4 w-4 motion-safe:animate-spin" aria-hidden />
+                  ) : (
+                    <Save className="h-4 w-4" aria-hidden />
+                  )}
+                  {saving ? "保存中…" : "保存到 Notion"}
+                </button>
               </div>
-            ) : null}
-            <button
-              type="button"
-              onClick={onSaveToNotion}
-              disabled={saving}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-cyan-500/25 bg-cyan-500/10 px-4 py-2.5 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/15 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[9rem]"
-            >
-              {saving ? (
-                <Loader2 className="h-4 w-4 motion-safe:animate-spin" aria-hidden />
-              ) : (
-                <Save className="h-4 w-4" aria-hidden />
-              )}
-              {saving ? "保存中…" : "保存到 Notion"}
-            </button>
-          </div>
-          <button
-            type="button"
-            onClick={onReInterview}
-            disabled={saving}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-purple-500/25 bg-purple-500/10 px-4 py-2.5 text-sm font-semibold text-purple-100 transition hover:bg-purple-500/15 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[9rem]"
-          >
-            <RefreshCw className="h-4 w-4" aria-hidden />
-            重新面试
-          </button>
+              <button
+                type="button"
+                onClick={onReInterview}
+                disabled={saving}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-purple-500/25 bg-purple-500/10 px-4 py-2.5 text-sm font-semibold text-purple-100 transition hover:bg-purple-500/15 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[9rem]"
+              >
+                <RefreshCw className="h-4 w-4" aria-hidden />
+                重新面试
+              </button>
+            </>
+          )}
           <button
             type="button"
             onClick={onBackToLearning}
@@ -256,7 +275,7 @@ export function InterviewReportCard(props: {
             className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-slate-200 transition hover:bg-white/[0.07] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[9rem]"
           >
             <BookOpen className="h-4 w-4" aria-hidden />
-            返回学习
+            {backLabel}
           </button>
         </div>
       </div>
