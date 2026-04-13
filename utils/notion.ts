@@ -1,5 +1,6 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { createNotionClient } from "@/lib/notion-client";
+import { canonicalAINewsSource } from "@/utils/ai-news-source-canonical";
 
 type NotionJson = Record<string, unknown>;
 
@@ -175,6 +176,10 @@ export type AINews = {
   originalText: string;
   date: string;
   url: string;
+  /** Notion `Starred` checkbox */
+  starred: boolean;
+  /** Notion `TimeRange`（select / rich_text）；用于首页与雷达页分档展示 */
+  timeRange?: string;
 };
 
 function newsRichTextPlain(prop: unknown): string {
@@ -191,10 +196,20 @@ function newsTitlePlain(prop: unknown): string {
   return t[0]?.plain_text ?? "";
 }
 
-function normalizeNewsSource(selectName: string): "X" | "YouTube" {
-  const n = (selectName || "").trim().toLowerCase();
-  if (n === "x" || n === "twitter") return "X";
-  return "YouTube";
+
+function newsTimeRangePlain(prop: unknown): string {
+  if (prop && typeof prop === "object" && "select" in prop) {
+    const name = (prop as { select?: { name?: string } }).select?.name;
+    if (typeof name === "string" && name.trim()) return name.trim();
+  }
+  return newsRichTextPlain(prop);
+}
+
+function newsStarredCheckbox(prop: unknown): boolean {
+  if (prop && typeof prop === "object" && "checkbox" in prop) {
+    return Boolean((prop as { checkbox?: boolean }).checkbox);
+  }
+  return false;
 }
 
 function mapNotionPageToAINews(page: NotionJson): AINews | null {
@@ -231,14 +246,21 @@ function mapNotionPageToAINews(page: NotionJson): AINews | null {
         ? String(dateStart).slice(0, 10)
         : "";
 
+  const timeRangeRaw = newsTimeRangePlain(props.TimeRange);
+  const timeRange = timeRangeRaw || undefined;
+
+  const starred = newsStarredCheckbox(props.Starred);
+
   return {
     id: String(page.id ?? ""),
-    source: normalizeNewsSource(sourceName),
+    source: canonicalAINewsSource(sourceName),
     author,
     title,
     originalText,
     date,
     url,
+    starred,
+    timeRange,
   };
 }
 

@@ -70,6 +70,75 @@ body {
     0 0 56px rgba(168, 85, 247, 0.15);
 }
 
+/* AI 资讯雷达：Feynman case study 对齐 — 16px 圆角 + 渐变描边 + 紫色悬停光晕 */
+.ai-news-radar-card {
+  border-radius: 16px;
+  background: rgba(12, 10, 18, 0.72);
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  border: 1px solid rgba(168, 85, 247, 0.14);
+  box-shadow:
+    0 0 0 1px rgba(168, 85, 247, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.ai-news-radar-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(192, 132, 252, 0.42),
+    rgba(99, 102, 241, 0.22),
+    rgba(34, 211, 238, 0.2)
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.75;
+  z-index: 0;
+}
+
+.ai-news-radar-card:hover {
+  border-color: rgba(192, 132, 252, 0.45);
+  box-shadow:
+    0 0 0 1px rgba(168, 85, 247, 0.4),
+    0 0 32px rgba(168, 85, 247, 0.28),
+    0 0 64px rgba(168, 85, 247, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.ai-news-radar-card:hover::before {
+  opacity: 1;
+}
+
+.ai-news-radar-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* DegradationSimulator：管线流动高光 */
+@keyframes degradation-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.degradation-flow-shimmer {
+  animation: degradation-shimmer 0.9s ease-in-out infinite;
+}
+
 @keyframes holo-pulse {
   0%,
   100% {

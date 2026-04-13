@@ -10,7 +10,7 @@ export async function GET() {
   } catch (error) {
     console.error("【API 路由通道报错（AI News Radar）】:", error);
     return NextResponse.json(
-      { error: "无法获取 AI News Radar 数据" },
+      { error: "无法获取 AI 资讯雷达数据" },
       { status: 500 }
     );
   }

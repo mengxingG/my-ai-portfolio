@@ -67,6 +67,14 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
   const carouselRotationRef = useRef(0);
   const carouselFocusTimeoutRef = useRef<number | null>(null);
 
+  /** Framer `useReducedMotion()` 在 SSR 为 null；若客户端为 true 会与服务端 initial 不一致，触发 Hydration 报错 */
+  const [motionPreferenceReady, setMotionPreferenceReady] = useState(false);
+  useEffect(() => {
+    setMotionPreferenceReady(true);
+  }, []);
+  const hydrateSafeReducedMotion =
+    motionPreferenceReady && prefersReducedMotion === true;
+
   useEffect(() => {
     const closeMenus = (e: MouseEvent) => {
       if (navRef.current && !navRef.current.contains(e.target as Node)) {
@@ -142,21 +150,25 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
    */
 
   const sectionVariants = {
-    hidden: { opacity: 0, y: prefersReducedMotion ? 0 : 26 },
+    hidden: { opacity: 0, y: hydrateSafeReducedMotion ? 0 : 26 },
     show: {
       opacity: 1,
       y: 0,
       transition: {
-        duration: prefersReducedMotion ? 0 : 0.65,
+        duration: hydrateSafeReducedMotion ? 0 : 0.65,
         ease: [0.22, 1, 0.36, 1] as const,
-        staggerChildren: prefersReducedMotion ? 0 : 0.08,
-        delayChildren: prefersReducedMotion ? 0 : 0.06,
+        staggerChildren: hydrateSafeReducedMotion ? 0 : 0.08,
+        delayChildren: hydrateSafeReducedMotion ? 0 : 0.06,
       },
     },
   };
 
   const itemVariants = {
-    hidden: { opacity: 0, y: prefersReducedMotion ? 0 : 18, scale: prefersReducedMotion ? 1 : 0.985 },
+    hidden: {
+      opacity: 0,
+      y: hydrateSafeReducedMotion ? 0 : 18,
+      scale: hydrateSafeReducedMotion ? 1 : 0.985,
+    },
     show: {
       opacity: 1,
       y: 0,
@@ -178,8 +190,8 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
     hidden: {},
     show: {
       transition: {
-        staggerChildren: prefersReducedMotion ? 0 : 0.11,
-        delayChildren: prefersReducedMotion ? 0 : 0.06,
+        staggerChildren: hydrateSafeReducedMotion ? 0 : 0.11,
+        delayChildren: hydrateSafeReducedMotion ? 0 : 0.06,
       },
     },
   };
@@ -187,9 +199,9 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
   const staggerListItem = {
     hidden: {
       opacity: 0,
-      y: prefersReducedMotion ? 0 : 28,
-      scale: prefersReducedMotion ? 1 : 0.94,
-      filter: prefersReducedMotion ? "blur(0px)" : "blur(14px)",
+      y: hydrateSafeReducedMotion ? 0 : 28,
+      scale: hydrateSafeReducedMotion ? 1 : 0.94,
+      filter: hydrateSafeReducedMotion ? "blur(0px)" : "blur(14px)",
     },
     show: {
       opacity: 1,
@@ -203,8 +215,8 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
   const sublineWordVariants = {
     hidden: {
       opacity: 0,
-      y: prefersReducedMotion ? 0 : 16,
-      filter: prefersReducedMotion ? "blur(0px)" : "blur(10px)",
+      y: hydrateSafeReducedMotion ? 0 : 16,
+      filter: hydrateSafeReducedMotion ? "blur(0px)" : "blur(10px)",
     },
     show: {
       opacity: 1,
@@ -218,8 +230,8 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
     hidden: {},
     show: {
       transition: {
-        staggerChildren: prefersReducedMotion ? 0 : 0.035,
-        delayChildren: prefersReducedMotion ? 0 : 0.15,
+        staggerChildren: hydrateSafeReducedMotion ? 0 : 0.035,
+        delayChildren: hydrateSafeReducedMotion ? 0 : 0.15,
       },
     },
   };
@@ -228,8 +240,8 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
   const cardRevealVariants = {
     hidden: {
       opacity: 0,
-      y: prefersReducedMotion ? 0 : 28,
-      filter: prefersReducedMotion ? "blur(0px)" : "blur(16px)",
+      y: hydrateSafeReducedMotion ? 0 : 28,
+      filter: hydrateSafeReducedMotion ? "blur(0px)" : "blur(16px)",
     },
     show: {
       opacity: 1,
@@ -253,15 +265,15 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
       },
       {
         id: "ai-news-radar",
-        title: "AI 资讯雷达",
-        badge: "Core",
-        badgeClass:
-          "border border-emerald-500/40 bg-emerald-500/10 text-emerald-200/90",
+        title: "AI News Radar",
+        badge: "FEATURED",
+        badgeClass: "border border-cyan-500/40 bg-cyan-500/10 text-cyan-200/90",
         description:
-          "端到端全自动情报聚合系统：Google/YouTube API 抓取多源数据，GPT-4o mini 清洗去重与双语翻译，Make.com 调度 Coze 每日写入 Notion。",
-        tags: ["Coze", "Make.com", "Notion API", "GPT-4o mini", "Automation"],
+          "双引擎驱动的自动化情报聚合平台：FastAPI 深挖社区共识，Coze 狙击领袖动态，Notion Headless CMS 闭环。",
+        tags: ["Next.js", "FastAPI", "Coze", "Make.com", "Notion API", "Python"],
+        metricsFooter: "异构双引擎 · Make.com 中枢调度 · Notion 实时推流 · Next.js 直连",
         ctaHref: "/ai-news",
-        ctaText: "👉 实时查看 Notion 情报库",
+        ctaText: "体验 Demo →",
         hasDetail: true,
       },
     ],
@@ -380,7 +392,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
   return (
     <main className="gmx-main relative min-h-screen text-slate-100 antialiased">
       {/* z-0：负 z-index 会把画布压到 body 底色之下，看起来像「背景只剩纯色」 */}
-      <AgenticPlexusBackground reducedMotion={Boolean(prefersReducedMotion)} />
+      <AgenticPlexusBackground reducedMotion={hydrateSafeReducedMotion} />
       <div className="pointer-events-none fixed inset-0 z-[1]" aria-hidden>
         <div className="absolute inset-0 bg-black/26" />
         <div
@@ -394,7 +406,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
 
       <div className="relative z-10 mx-auto w-full max-w-6xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
         <motion.header
-          initial={{ opacity: 0, y: prefersReducedMotion ? 0 : -18 }}
+          initial={{ opacity: 0, y: hydrateSafeReducedMotion ? 0 : -18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: "spring" as const, stiffness: 140, damping: 20 }}
           className="liquid-glass-nav sticky top-4 z-[45] flex flex-wrap items-center justify-between gap-4 rounded-2xl px-4 py-4 sm:px-5"
@@ -518,7 +530,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
             <MagneticWrap strength={0.42} padding={48}>
               <motion.a
                 href="/resume.pdf"
-                whileHover={prefersReducedMotion ? undefined : { scale: 1.04 }}
+                whileHover={hydrateSafeReducedMotion ? undefined : { scale: 1.04 }}
                 whileTap={{ scale: 0.98 }}
                 transition={{ type: "spring" as const, stiffness: 260, damping: 18 }}
                 className="glow-btn glow-btn--primary glow-btn--resume"
@@ -529,7 +541,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
             <MagneticWrap strength={0.38} padding={48}>
               <motion.a
                 href="#about"
-                whileHover={prefersReducedMotion ? undefined : { scale: 1.03 }}
+                whileHover={hydrateSafeReducedMotion ? undefined : { scale: 1.03 }}
                 whileTap={{ scale: 0.98 }}
                 transition={{ type: "spring" as const, stiffness: 240, damping: 18 }}
                 className="glow-btn glow-btn--secondary"
@@ -622,12 +634,12 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                   }}
                   aria-pressed={lockedActive}
                   whileHover={
-                    prefersReducedMotion
+                    hydrateSafeReducedMotion
                       ? undefined
                       : { scale: 1.035, y: -2 }
                   }
                   whileTap={
-                    prefersReducedMotion
+                    hydrateSafeReducedMotion
                       ? undefined
                       : { scale: [1, 0.94, 1.02, 1], transition: { duration: 0.38 } }
                   }
@@ -708,6 +720,9 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                     </Link>
                   </div>
                 ) : null}
+                {"metricsFooter" in project && project.metricsFooter ? (
+                  <p className="mt-4 text-[11px] leading-relaxed text-slate-500">{project.metricsFooter}</p>
+                ) : null}
               </article>
             ))}
           </div>
@@ -772,6 +787,9 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                               {project.ctaText}
                             </Link>
                           </div>
+                        ) : null}
+                        {"metricsFooter" in project && project.metricsFooter ? (
+                          <p className="mt-4 text-[11px] leading-relaxed text-slate-500">{project.metricsFooter}</p>
                         ) : null}
                       </motion.article>
                     </div>
@@ -874,46 +892,90 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
             ) : featuredProjects[activeFeaturedIndex]?.id === "ai-news-radar" ? (
               <div className="holo-card rounded-2xl p-5 sm:p-6">
                 <div className="mb-3 flex items-start justify-between gap-3">
-                  <h3 className="text-lg font-semibold text-slate-50" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
-                    AI 资讯雷达 (AI News Radar) —— 端到端全自动情报聚合系统
+                  <h3
+                    className="text-lg font-semibold text-slate-50"
+                    style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}
+                  >
+                    AI News Radar —— 双引擎驱动的自动化情报聚合平台
                   </h3>
-                  <span className="shrink-0 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-mono uppercase text-emerald-200/90">Core Case</span>
+                  <span className="shrink-0 rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-mono uppercase text-cyan-200/90">
+                    FEATURED
+                  </span>
                 </div>
                 <div className="grid gap-4 lg:grid-cols-2">
                   <div className="space-y-3">
-                    <figure className="liquid-glass-card w-full overflow-hidden rounded-xl shadow-[0_12px_24px_rgba(0,0,0,0.28)]">
-                      <Image src="/image/news.png" alt="AI News Radar 新闻展示截图" width={1200} height={600} className="h-auto w-full object-contain" />
-                    </figure>
-                    <p className="text-xs text-slate-400">News 输出预览</p>
-                  </div>
-                  <div className="space-y-3">
                     <section>
                       <h4 className="text-sm font-semibold text-white">🚀 项目概述</h4>
-                      <p className="mt-2 text-sm leading-relaxed text-slate-300">这是一个无需人工干预、每日自动运行的 AI 情报系统。通过整合低代码工作流引擎与 LLM，实现从「多源抓取 → 智能过滤清洗 → 双语摘要翻译 → 结构化入库」的完整闭环，显著降低信息噪音。</p>
+                      <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                        每天被海量 AI 噪音淹没？这是一个运行在云端的全自动情报雷达。系统采用创新的&ldquo;异构双引擎&rdquo;架构：利用
+                        FastAPI 引擎深度挖掘社区高分共识，结合 Coze 节点精准狙击行业领袖一手动态。每天自动清洗、打分并结构化存入私人
+                        Notion 数据库，将信息焦虑转化为高密度的洞察资产。
+                      </p>
+                      <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                        🌟 核心业务流：社区深度解析 (FastAPI 9:30 AM) + 领袖动态狙击 (Coze 10:42 AM) ➔
+                        大模型多维去噪与打分 ➔ 统一写入 Notion 数据库 ➔ Next.js 前端实时渲染
+                      </p>
                     </section>
-                    <section>
-                      <h4 className="text-sm font-semibold text-white">🛠️ 技术架构</h4>
-                      <ol className="mt-2 space-y-1.5 text-sm text-slate-300">
-                        <li className="liquid-glass-card rounded-lg px-3 py-2">1. Make.com：Cron Job 定时触发与 API 路由调度</li>
-                        <li className="liquid-glass-card rounded-lg px-3 py-2">2. Coze Workflow：多节点工作流串联与逻辑控制</li>
-                        <li className="liquid-glass-card rounded-lg px-3 py-2">3. Google Web Search API + YouTube API：多源数据抓取</li>
-                        <li className="liquid-glass-card rounded-lg px-3 py-2">4. GPT-4o mini：数据清洗、去重、双语摘要翻译</li>
-                        <li className="liquid-glass-card rounded-lg px-3 py-2">5. Notion API：结构化数据库自动写入与展示</li>
-                      </ol>
-                    </section>
-                    <section>
-                      <h4 className="text-sm font-semibold text-white">📈 核心痛点与突破</h4>
-                      <ul className="mt-2 space-y-1.5 text-sm text-slate-300">
-                        <li className="liquid-glass-card rounded-lg px-3 py-2">双重去重（Title + Date 组合键 + 语义判重），有效拦截洗稿与重复报道。</li>
-                        <li className="liquid-glass-card rounded-lg px-3 py-2">Node.js 时间校准与正则校验，解决 Notion API 对时间戳格式敏感导致的写入崩溃。</li>
-                        <li className="liquid-glass-card rounded-lg px-3 py-2">引入 Make.com 作为独立调度层，跨平台触发 Coze，提升稳定性与灵活性。</li>
-                      </ul>
-                    </section>
-                    <div className="flex flex-wrap gap-1.5">
-                      <span className="tech-tag">Coze</span><span className="tech-tag">Make.com</span><span className="tech-tag">Notion API</span><span className="tech-tag">GPT-4o mini</span><span className="tech-tag">Automation</span>
+
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      <div className="liquid-glass-card rounded-xl border border-white/10 bg-black/25 px-4 py-4">
+                        <div className="text-xs font-semibold text-cyan-200">
+                          特性 1：异构双引擎（重装运算 + 敏捷狙击）
+                        </div>
+                        <div className="mt-1.5 text-xs leading-[1.6] text-slate-400">
+                          拒绝单一工具的妥协。Coze 绕过 X API 限制，定点狙击大佬快讯；但面对 YouTube 动辄十万字的字幕与 Hacker
+                          News 的深水区辩论，其算力与时长极易触顶。因此引入 Python 自建微服务作为&ldquo;重装引擎&rdquo;，负责高并发抓取与重度大模型打分运算。Python
+                          挖深共识，Coze 抢占先机，互为表里。
+                        </div>
+                      </div>
+                      <div className="liquid-glass-card rounded-xl border border-white/10 bg-black/25 px-4 py-4">
+                        <div className="text-xs font-semibold text-cyan-200">特性 2：优雅降级与抗脆弱设计</div>
+                        <div className="mt-1.5 text-xs leading-[1.6] text-slate-400">
+                          深度定制健壮的开源基座，直面真实世界的网络泥潭。当面临 YouTube 字幕解析受阻或严格反爬限制时，系统自动触发
+                          yt-dlp 底层回退或安全跳过策略。用微服务容错机制吞吐异常，确保每日 AI 简报「局部可降级，全局不宕机」。
+                        </div>
+                      </div>
+                      <div className="liquid-glass-card rounded-xl border border-white/10 bg-black/25 px-4 py-4">
+                        <div className="text-xs font-semibold text-cyan-200">特性 3：Notion 原生 CMS 闭环</div>
+                        <div className="mt-1.5 text-xs leading-[1.6] text-slate-400">
+                          告别传统数据库的繁重维护。通过 Make.com 自动化桥接，将 Notion 打造为灵活的 Headless
+                          CMS。数据抓取即入库，前端页面秒级同步更新，完美适配 Rapid Validation 理念。
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-sm text-slate-300">将每日获取前沿 AI 资讯的耗时从 <span className="font-semibold text-cyan-300">40 分钟/天</span> 缩减至<span className="font-semibold text-purple-300"> 0 分钟/天</span>，构建个人高价值情报知识库。</p>
-                    <div><Link href="/ai-news" className="glow-btn glow-btn--primary glow-btn--resume inline-flex">👉 实时查看 Notion 情报库</Link></div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {["Next.js", "FastAPI", "Coze", "Make.com", "Notion API", "Python"].map((t) => (
+                        <span key={`anr-${t}`} className="tech-tag">
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <Link href="/projects/ai-news-radar" className="glow-btn glow-btn--primary glow-btn--resume inline-flex">
+                        查看 Case Study →
+                      </Link>
+                      <Link href="/ai-news" className="glow-btn glow-btn--secondary inline-flex">
+                        体验 Demo →
+                      </Link>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <figure className="w-full overflow-hidden rounded-2xl border border-white/12 bg-black/25 shadow-[0_12px_36px_rgba(0,0,0,0.38)]">
+                      <Image
+                        src="/image/news-dashboard.png"
+                        alt="AI News Radar界面"
+                        width={1200}
+                        height={600}
+                        className="h-auto w-full object-contain"
+                        sizes="(max-width: 1024px) 100vw, min(560px, 45vw)"
+                      />
+                    </figure>
+                    <p className="text-xs text-slate-400">
+                      自动化流转全貌：Make.com 调度台 · FastAPI 云端引擎 · Notion 数据库实时推流
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      Next.js · FastAPI · Coze · Make.com · Notion API · Python
+                    </p>
                   </div>
                 </div>
               </div>
@@ -1132,7 +1194,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                   initial="hidden"
                   whileInView="show"
                   viewport={{ once: true, amount: 0.15, margin: "0px 0px -8% 0px" }}
-                  transition={{ delay: prefersReducedMotion ? 0 : idx * 0.06 }}
+                  transition={{ delay: hydrateSafeReducedMotion ? 0 : idx * 0.06 }}
                 >
                 <TiltCard tiltMax={8} className="block h-full">
                 <Link

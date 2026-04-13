@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Sparkles } from "lucide-react";
 import { fetchAINewsRadarFromNotion, type AINews } from "@/utils/notion";
 import AINewsRadarClient from "./AINewsRadarClient";
 import StarfieldBackground from "@/app/components/StarfieldBackground";
@@ -16,25 +15,33 @@ export default async function AINewsRadar() {
   }
 
   return (
-    <div className="relative min-h-screen text-slate-100 antialiased selection:bg-cyan-500/30">
+    <div className="relative min-h-screen text-slate-100 antialiased selection:bg-purple-500/30">
       <StarfieldBackground />
-      <div className="relative z-10 mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-        <header className="mb-12 border-b border-white/10 pb-8">
+      <div className="pointer-events-none fixed inset-0 z-[1]" aria-hidden>
+        <div className="absolute inset-0 bg-black/35" />
+        <div
+          className="absolute inset-0 mix-blend-screen opacity-[0.22]"
+          style={{
+            background:
+              "radial-gradient(ellipse 120% 55% at 50% 0%, rgba(168, 85, 247, 0.35) 0%, transparent 55%), radial-gradient(ellipse 90% 50% at 80% 100%, rgba(192, 132, 252, 0.2) 0%, transparent 50%)",
+          }}
+        />
+      </div>
+
+      <div className="relative z-10 mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+        <header className="mb-6 flex flex-wrap items-center gap-4 border-b border-purple-500/15 pb-6">
           <Link
             href="/"
-            className="mb-6 inline-block text-sm font-medium text-slate-400 transition hover:text-cyan-300"
+            className="text-sm font-medium text-slate-400 transition hover:text-purple-300"
           >
             ← 返回首页
           </Link>
-          <div className="flex items-center gap-3">
-            <Sparkles className="h-8 w-8 text-cyan-400" />
-            <h1 className="text-3xl font-bold tracking-tight text-slate-50 sm:text-4xl">
-              AI 资讯雷达
-            </h1>
-          </div>
-          <p className="mt-4 max-w-2xl text-slate-400">
-            全自动收集全球顶级 AI 研究员与权威媒体的最新动态，由大模型自动清洗、翻译并生成一句话摘要。
-          </p>
+          <h1
+            className="text-xl font-semibold tracking-tight text-slate-50 sm:text-2xl"
+            style={{ fontFamily: '"Geist", "Inter", "SF Pro Display", system-ui, sans-serif' }}
+          >
+            📡 AI 资讯雷达
+          </h1>
         </header>
 
         {newsList.length === 0 ? (
