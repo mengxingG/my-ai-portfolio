@@ -14,9 +14,13 @@ import {
 } from "framer-motion";
 import { AINewsWidget } from "@/app/components/AINewsWidget";
 import { FontSizeSwitcher } from "@/app/components/FontSizeSwitcher";
-import { AgenticPlexusBackground } from "@/app/components/AgenticPlexusBackground";
 import { MagneticWrap } from "@/app/components/MagneticWrap";
 import { TiltCard } from "@/app/components/TiltCard";
+import { CosmicPortalHero } from "@/app/components/CosmicPortalHero";
+import BreathingParticles from "@/components/BreathingParticles";
+import ReflectBackground from "@/components/ReflectBackground";
+import { TimelineBento } from "@/components/TimelineBento";
+import WallOfLoveBackground from "@/components/WallOfLoveBackground";
 import type { AINews } from "@/utils/notion";
 
 type Article = {
@@ -74,6 +78,13 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
   }, []);
   const hydrateSafeReducedMotion =
     motionPreferenceReady && prefersReducedMotion === true;
+
+
+  // Motion tokens: unify cadence across homepage sections
+  const EASE_STANDARD = [0.22, 1, 0.36, 1] as const;
+  const SPRING_GENTLE = { type: "spring" as const, stiffness: 102, damping: 20, mass: 0.72 };
+  const SPRING_SNAPPY = { type: "spring" as const, stiffness: 148, damping: 20, mass: 0.7 };
+  const DUR_REVEAL = hydrateSafeReducedMotion ? 0 : 0.56;
 
   useEffect(() => {
     const closeMenus = (e: MouseEvent) => {
@@ -155,8 +166,8 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
       opacity: 1,
       y: 0,
       transition: {
-        duration: hydrateSafeReducedMotion ? 0 : 0.65,
-        ease: [0.22, 1, 0.36, 1] as const,
+        duration: DUR_REVEAL,
+        ease: EASE_STANDARD,
         staggerChildren: hydrateSafeReducedMotion ? 0 : 0.08,
         delayChildren: hydrateSafeReducedMotion ? 0 : 0.06,
       },
@@ -173,7 +184,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
       opacity: 1,
       y: 0,
       scale: 1,
-      transition: { type: "spring" as const, stiffness: 120, damping: 20, mass: 0.7 },
+      transition: SPRING_GENTLE,
     },
   };
 
@@ -208,7 +219,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
       y: 0,
       scale: 1,
       filter: "blur(0px)",
-      transition: { type: "spring" as const, stiffness: 86, damping: 19, mass: 0.72 },
+      transition: SPRING_GENTLE,
     },
   };
 
@@ -222,7 +233,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
       opacity: 1,
       y: 0,
       filter: "blur(0px)",
-      transition: { type: "spring" as const, stiffness: 100, damping: 20, mass: 0.65 },
+      transition: SPRING_GENTLE,
     },
   };
 
@@ -247,7 +258,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
       opacity: 1,
       y: 0,
       filter: "blur(0px)",
-      transition: { type: "spring" as const, stiffness: 88, damping: 20, mass: 0.75 },
+      transition: SPRING_GENTLE,
     },
   };
 
@@ -373,7 +384,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
       el.style.transition = "none";
       el.style.transform = `rotateY(${current}deg)`;
       void el.offsetHeight;
-      el.style.transition = "transform 0.58s cubic-bezier(0.22, 1, 0.36, 1)";
+      el.style.transition = "transform 0.54s cubic-bezier(0.22, 1, 0.36, 1)";
       requestAnimationFrame(() => {
         el.style.transform = `rotateY(${target}deg)`;
       });
@@ -390,32 +401,21 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
   };
 
   return (
-    <main className="gmx-main relative min-h-screen text-slate-100 antialiased">
-      {/* z-0：负 z-index 会把画布压到 body 底色之下，看起来像「背景只剩纯色」 */}
-      <AgenticPlexusBackground reducedMotion={hydrateSafeReducedMotion} />
-      <div className="pointer-events-none fixed inset-0 z-[1]" aria-hidden>
-        <div className="absolute inset-0 bg-black/26" />
-        <div
-          className="agentic-foreground-vignette absolute inset-0 mix-blend-screen"
-          style={{
-            background:
-              "radial-gradient(ellipse 130% 58% at 50% 100%, rgba(192, 132, 252, 0.28) 0%, transparent 56%)",
-          }}
-        />
-      </div>
-
+    <main className="reflect-theme-shell relative min-h-screen text-bento-text antialiased">
+      <BreathingParticles />
+      <ReflectBackground />
       <div className="relative z-10 mx-auto w-full max-w-6xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
         <motion.header
           initial={{ opacity: 0, y: hydrateSafeReducedMotion ? 0 : -18 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ type: "spring" as const, stiffness: 140, damping: 20 }}
-          className="liquid-glass-nav sticky top-4 z-[45] flex flex-wrap items-center justify-between gap-4 rounded-2xl px-4 py-4 sm:px-5"
+          transition={SPRING_SNAPPY}
+          className="liquid-glass-nav reflect-nav sticky top-4 z-[45] flex flex-wrap items-center justify-between gap-4 rounded-2xl px-4 py-4 sm:px-5"
           style={{
             border: navBorder,
             boxShadow: navShadow,
           }}
         >
-          <a href="#hero" className="font-semibold tracking-tight text-slate-100" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
+          <a href="#hero" className="font-semibold tracking-tight text-bento-text" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
             龚梦星·Gong Mengxing
           </a>
           <div className="flex items-center gap-4">
@@ -424,45 +424,45 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
               initial="hidden"
               animate="show"
               variants={sectionVariants}
-              className="flex items-center gap-4 text-sm font-medium text-slate-400"
+              className="flex items-center gap-4 text-sm font-medium text-bento-muted"
             >
-              <a href="#hero" className="nav-link text-slate-300 hover:text-cyan-300">首页</a>
+              <a href="#hero" className="nav-link text-bento-muted hover:text-bento-text">首页</a>
               <div className="nav-dropdown group relative">
                 <button
                   type="button"
                   onClick={() => { setProjectOpen((o) => !o); setKnowledgeOpen(false); }}
-                  className="nav-link cursor-pointer border-none bg-transparent text-slate-300 hover:text-cyan-300"
+                  className="nav-link cursor-pointer border-none bg-transparent text-bento-muted hover:text-bento-text"
                   aria-expanded={projectOpen}
                   aria-haspopup="true"
                 >
                   项目库
                 </button>
                 <div
-                  className={`nav-dropdown-panel liquid-glass-card absolute left-0 top-full z-50 mt-1 min-w-[10rem] rounded-lg border border-cyan-500/25 py-1 shadow-xl transition-all duration-200 group-hover:opacity-100 group-hover:pointer-events-auto ${projectOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
+                  className={`nav-dropdown-panel liquid-glass-card absolute left-0 top-full z-50 mt-1 min-w-[10rem] rounded-lg border border-purple-400/25 py-1 shadow-xl transition-all duration-200 group-hover:opacity-100 group-hover:pointer-events-auto ${projectOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
                 >
-                  <a href="/projects/core" className="block px-4 py-2.5 text-left text-slate-300 hover:bg-cyan-500/10 hover:text-cyan-300">核心项目</a>
-                  <a href="/projects/featured" className="block px-4 py-2.5 text-left text-slate-300 hover:bg-cyan-500/10 hover:text-cyan-300">特色项目</a>
+                  <a href="/projects/core" className="block px-4 py-2.5 text-left text-bento-muted hover:bg-purple-500/10 hover:text-bento-text">核心项目</a>
+                  <a href="/projects/featured" className="block px-4 py-2.5 text-left text-bento-muted hover:bg-purple-500/10 hover:text-bento-text">特色项目</a>
                 </div>
               </div>
               <div className="nav-dropdown group relative">
                 <button
                   type="button"
                   onClick={() => { setKnowledgeOpen((o) => !o); setProjectOpen(false); }}
-                  className="nav-link cursor-pointer border-none bg-transparent text-slate-300 hover:text-cyan-300"
+                  className="nav-link cursor-pointer border-none bg-transparent text-bento-muted hover:text-bento-text"
                   aria-expanded={knowledgeOpen}
                   aria-haspopup="true"
                 >
                   知识库
                 </button>
                 <div
-                  className={`nav-dropdown-panel liquid-glass-card absolute left-0 top-full z-50 mt-1 min-w-[10rem] rounded-lg border border-cyan-500/25 py-1 shadow-xl transition-all duration-200 group-hover:opacity-100 group-hover:pointer-events-auto ${knowledgeOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
+                  className={`nav-dropdown-panel liquid-glass-card absolute left-0 top-full z-50 mt-1 min-w-[10rem] rounded-lg border border-purple-400/25 py-1 shadow-xl transition-all duration-200 group-hover:opacity-100 group-hover:pointer-events-auto ${knowledgeOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
                 >
-                  <a href="/knowledge" className="block px-4 py-2.5 text-left text-slate-300 hover:bg-cyan-500/10 hover:text-cyan-300">Learning Dashboard</a>
-                  <a href="/knowledge/ai" className="block px-4 py-2.5 text-left text-slate-300 hover:bg-cyan-500/10 hover:text-cyan-300">AI 知识</a>
-                  <a href="/knowledge/insights" className="block px-4 py-2.5 text-left text-slate-300 hover:bg-cyan-500/10 hover:text-cyan-300">资讯收集</a>
+                  <a href="/knowledge" className="block px-4 py-2.5 text-left text-bento-muted hover:bg-purple-500/10 hover:text-bento-text">Learning Dashboard</a>
+                  <a href="/knowledge/ai" className="block px-4 py-2.5 text-left text-bento-muted hover:bg-purple-500/10 hover:text-bento-text">AI 知识</a>
+                  <a href="/knowledge/insights" className="block px-4 py-2.5 text-left text-bento-muted hover:bg-purple-500/10 hover:text-bento-text">资讯收集</a>
                 </div>
               </div>
-              <a href="#about" className="nav-link text-slate-300 hover:text-cyan-300">关于我</a>
+              <a href="#about" className="nav-link text-bento-muted hover:text-bento-text">关于我</a>
             </motion.nav>
             <FontSizeSwitcher />
           </div>
@@ -470,12 +470,14 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
 
         <motion.section
           id="hero"
-          className="scroll-mt-20 flex flex-col items-center py-12 text-center sm:py-16"
+          className="reflect-stage reflect-stage--hero relative isolate overflow-hidden scroll-mt-20 flex flex-col items-center py-12 text-center sm:py-16"
           initial="hidden"
           whileInView="show"
           viewport={{ once: true, amount: 0.25 }}
           variants={sectionVariants}
         >
+          <CosmicPortalHero />
+
           <motion.div
             variants={itemVariants}
             className="profile-neon-breath relative mb-5 h-24 w-24 shrink-0 overflow-hidden rounded-full border-2 border-white/10 sm:h-28 sm:w-28"
@@ -496,7 +498,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           </motion.div>
 
           <motion.h2
-            className="mt-3 max-w-3xl text-lg font-semibold leading-snug text-slate-100 sm:text-xl md:text-2xl"
+            className="mt-3 max-w-3xl text-lg font-semibold leading-snug text-bento-text sm:text-xl md:text-2xl"
             style={{ fontFamily: '"Geist", "Inter", "SF Pro Text", system-ui, sans-serif' }}
             variants={sublineContainerVariants}
             initial="hidden"
@@ -516,13 +518,13 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
 
           <motion.p
             variants={itemVariants}
-            className="mt-4 max-w-2xl text-base font-light leading-relaxed text-slate-100 sm:text-lg"
+            className="mt-4 max-w-2xl text-base font-light leading-relaxed text-bento-text/90 sm:text-lg"
             style={{ fontFamily: '"Geist", "Inter", "SF Pro Text", system-ui, sans-serif' }}
           >
             {HERO_BODY}
           </motion.p>
 
-          <motion.p variants={itemVariants} className="mt-2 text-xs text-slate-500 sm:text-sm">
+          <motion.p variants={itemVariants} className="mt-2 text-xs text-bento-muted sm:text-sm">
             Agentic Workflow · Rapid Validation · Production-ready Delivery
           </motion.p>
 
@@ -532,7 +534,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                 href="/resume.pdf"
                 whileHover={hydrateSafeReducedMotion ? undefined : { scale: 1.04 }}
                 whileTap={{ scale: 0.98 }}
-                transition={{ type: "spring" as const, stiffness: 260, damping: 18 }}
+                transition={SPRING_SNAPPY}
                 className="glow-btn glow-btn--primary glow-btn--resume"
               >
                 查看简历
@@ -543,7 +545,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                 href="#about"
                 whileHover={hydrateSafeReducedMotion ? undefined : { scale: 1.03 }}
                 whileTap={{ scale: 0.98 }}
-                transition={{ type: "spring" as const, stiffness: 240, damping: 18 }}
+                transition={SPRING_SNAPPY}
                 className="glow-btn glow-btn--secondary"
               >
                 联系我
@@ -601,22 +603,24 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
 
           <motion.section
           id="featured"
-          className="scroll-mt-20 py-10"
+          className="reflect-stage reflect-stage--beam scroll-mt-20 py-10"
           data-parallax="0.014"
           initial="hidden"
           whileInView="show"
           viewport={{ once: true, amount: 0.2 }}
           variants={sectionVariants}
         >
-          <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl" style={{ fontFamily: '"Geist", "Inter", "SF Pro Display", system-ui, sans-serif' }}>
-            AI Projects · 个人独立开发项目
-          </h2>
-          <p className="mt-2 text-sm font-light text-slate-500">
-            {featuredSelectionPinned
-              ? "已锁定当前项目 · 点击页面空白或其他模块区域恢复自动旋转"
-              : "随便点击，了解我的独立开发项目"}
-          </p>
 
+          <section className="mx-auto max-w-7xl px-4 pb-20 pt-8">
+            <span className="reflect-section-kicker">Workflow</span>
+            <h2 className="mb-8 mt-3 text-2xl font-bold tracking-tight text-bento-text">
+              AI PM 的数字工作流· 个人独立开发项目
+            </h2>
+            <TimelineBento />
+          </section>
+
+          {false && (
+          <>
           <div
             className="featured-carousel-controls mt-4 flex flex-wrap gap-2.5"
             data-featured-pin-exempt
@@ -643,7 +647,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                       ? undefined
                       : { scale: [1, 0.94, 1.02, 1], transition: { duration: 0.38 } }
                   }
-                  transition={{ type: "spring" as const, stiffness: 400, damping: 22 }}
+                  transition={SPRING_SNAPPY}
                   className={[
                     "group relative isolate overflow-hidden rounded-2xl px-4 py-2.5 text-left shadow-lg transition-[box-shadow,background-color] duration-300 sm:min-w-[11rem]",
                     "border border-white/[0.12] bg-gradient-to-br from-white/[0.08] via-purple-500/[0.06] to-cyan-500/[0.05]",
@@ -697,17 +701,17 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
             {featuredProjects.map((project) => (
               <article
                 key={`featured-mobile-${project.id}`}
-                className="holo-card min-w-[86%] snap-center rounded-2xl p-5"
+                className="bento-card flex min-w-[86%] snap-center flex-col p-6"
               >
                 <div className="flex items-start justify-between gap-3">
-                  <h3 className="text-base font-semibold text-slate-50" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
+                  <h3 className="text-base font-semibold text-bento-text" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
                     {project.title}
                   </h3>
                   <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-mono uppercase ${project.badgeClass}`}>
                     {project.badge}
                   </span>
                 </div>
-                <p className="mt-3 text-sm leading-relaxed text-slate-400">{project.description}</p>
+                <p className="mt-3 text-sm leading-relaxed text-bento-muted">{project.description}</p>
                 <div className="mt-4 flex flex-wrap gap-1.5">
                   {project.tags.map((tag) => (
                     <span key={`${project.id}-${tag}`} className="tech-tag">{tag}</span>
@@ -721,7 +725,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                   </div>
                 ) : null}
                 {"metricsFooter" in project && project.metricsFooter ? (
-                  <p className="mt-4 text-[11px] leading-relaxed text-slate-500">{project.metricsFooter}</p>
+                  <p className="mt-4 text-[11px] leading-relaxed text-bento-muted">{project.metricsFooter}</p>
                 ) : null}
               </article>
             ))}
@@ -752,7 +756,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                       <motion.article
                         onMouseEnter={() => setCarouselPaused(true)}
                         onMouseLeave={() => setCarouselPaused(false)}
-                        className="holo-card rounded-2xl p-5"
+                        className="bento-card flex flex-col p-6"
                         style={{
                           pointerEvents: isFocused ? "auto" : "none",
                           opacity: isFocused ? 1 : rearOpacity,
@@ -764,7 +768,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                         }}
                       >
                         <div className="flex items-start justify-between gap-3">
-                          <h3 className="text-base font-semibold text-slate-50" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
+                          <h3 className="text-base font-semibold text-bento-text" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
                             {project.title}
                           </h3>
                           <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-mono uppercase ${project.badgeClass}`}>
@@ -772,7 +776,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                           </span>
                         </div>
                         <p
-                          className={`mt-3 text-sm leading-relaxed ${isFocused ? "text-slate-300" : "text-slate-500"}`}
+                          className="mt-3 text-sm leading-relaxed text-bento-muted"
                         >
                           {project.description}
                         </p>
@@ -789,7 +793,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                           </div>
                         ) : null}
                         {"metricsFooter" in project && project.metricsFooter ? (
-                          <p className="mt-4 text-[11px] leading-relaxed text-slate-500">{project.metricsFooter}</p>
+                          <p className="mt-4 text-[11px] leading-relaxed text-bento-muted">{project.metricsFooter}</p>
                         ) : null}
                       </motion.article>
                     </div>
@@ -807,47 +811,47 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
             viewport={{ once: true, amount: 0.2, margin: "0px 0px -10% 0px" }}
           >
             {featuredProjects[activeFeaturedIndex]?.id === "feynman-hub" ? (
-              <div className="holo-card rounded-2xl p-5 sm:p-6">
+              <div className="bento-card flex flex-col p-6">
                 <div className="mb-3 flex items-start justify-between gap-3">
                   <h3
-                    className="text-lg font-semibold text-slate-50"
+                    className="text-lg font-semibold text-bento-text"
                     style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}
                   >
-                    Feynman Learning Hub —— NotebookLM 风格的双模态学习系统
+                    费曼学习工具 —— NotebookLM 风格的双模态学习系统
                   </h3>
-                  <span className="shrink-0 rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-mono uppercase text-cyan-200/90">
+                  <span className="shrink-0 rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-mono uppercase text-bento-muted">
                     FEATURED
                   </span>
                 </div>
                 <div className="grid gap-4 lg:grid-cols-2">
                   <div className="space-y-3">
                     <section>
-                      <h4 className="text-sm font-semibold text-white">🚀 项目概述</h4>
-                      <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                      <h4 className="text-sm font-semibold text-bento-text">🚀 项目概述</h4>
+                      <p className="mt-2 text-sm leading-relaxed text-bento-muted">
                         学了就忘？面试答不上来？这个工具让你用费曼技巧真正理解知识，再用 AI 面试官检验你是不是真懂了。
                         学习数据自动沉淀到 Notion，薄弱环节精准复习。宠物陪伴，学习过程不枯燥。
                       </p>
-                      <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                      <p className="mt-2 text-sm leading-relaxed text-bento-muted">
                      🌟 上传 PDF/视频 → AI 用大白话帮你拆解核心概念 → 你用费曼技巧复述检验理解 → AI 面试官递增难度考核 → 评分报告精准标出知识盲点 → 薄弱环节自动进入间隔复习
                       </p>
                     </section>
 
                     <div className="grid gap-2 sm:grid-cols-3">
                       <div className="liquid-glass-card rounded-xl border border-white/10 bg-black/25 p-3">
-                        <div className="text-xs font-semibold text-cyan-200">学 + 考 闭环</div>
-                        <div className="mt-1 text-xs leading-relaxed text-slate-400">
+                        <div className="text-xs font-semibold text-bento-text">学 + 考 闭环</div>
+                        <div className="mt-1 text-xs leading-relaxed text-bento-muted">
                           费曼学习验证理解，AI 面试官检验你能不能在压力下讲清楚。答错的知识点自动进入复习队列。
                         </div>
                       </div>
                       <div className="liquid-glass-card rounded-xl border border-white/10 bg-black/25 p-3">
-                        <div className="text-xs font-semibold text-cyan-200">Notion 原生集成</div>
-                        <div className="mt-1 text-xs leading-relaxed text-slate-400">
+                        <div className="text-xs font-semibold text-bento-text">Notion 原生集成</div>
+                        <div className="mt-1 text-xs leading-relaxed text-bento-muted">
                           学习数据直接写回你的 Notion 知识库，不用在另一个 App 里管理笔记。掌握度、复习计划、费曼笔记全部沉淀。
                         </div>
                       </div>
                       <div className="liquid-glass-card rounded-xl border border-white/10 bg-black/25 p-3">
-                        <div className="text-xs font-semibold text-cyan-200">ADHD 友好设计</div>
-                        <div className="mt-1 text-xs leading-relaxed text-slate-400">
+                        <div className="text-xs font-semibold text-bento-text">ADHD 友好设计</div>
+                        <div className="mt-1 text-xs leading-relaxed text-bento-muted">
                           「只学 5 分钟」一键启动，正计时不倒计时，宠物伴侣只奖励不惩罚。启动门槛低到不会引发抗拒。
                         </div>
                       </div>
@@ -875,43 +879,43 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                     <figure className="w-full overflow-hidden rounded-2xl border border-white/12 bg-black/25 shadow-[0_12px_36px_rgba(0,0,0,0.38)]">
                       <Image
                         src="/images/feynman-hub/learning-fullview.png"
-                        alt="Feynman Learning Hub 学习页面：双栏布局与费曼对话"
+                        alt="费曼学习工具 学习页面：双栏布局与费曼对话"
                         width={1920}
                         height={1080}
                         className="h-auto w-full object-contain"
                         sizes="(max-width: 1024px) 100vw, min(560px, 45vw)"
                       />
                     </figure>
-                    <p className="text-xs text-slate-400">Learning 双栏布局全貌</p>
-                    <p className="text-[11px] text-slate-500">
+                    <p className="text-xs text-bento-muted">Learning 双栏布局全貌</p>
+                    <p className="text-[11px] text-bento-muted">
                       6 个 API 路由 · 双模型协作 · Notion 双表数据流 · 两周独立开发
                     </p>
                   </div>
                 </div>
               </div>
             ) : featuredProjects[activeFeaturedIndex]?.id === "ai-news-radar" ? (
-              <div className="holo-card rounded-2xl p-5 sm:p-6">
+              <div className="bento-card flex flex-col p-6">
                 <div className="mb-3 flex items-start justify-between gap-3">
                   <h3
-                    className="text-lg font-semibold text-slate-50"
+                    className="text-lg font-semibold text-bento-text"
                     style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}
                   >
                     AI News Radar —— 双引擎驱动的自动化情报聚合平台
                   </h3>
-                  <span className="shrink-0 rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-mono uppercase text-cyan-200/90">
+                  <span className="shrink-0 rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-mono uppercase text-bento-muted">
                     FEATURED
                   </span>
                 </div>
                 <div className="grid gap-4 lg:grid-cols-2">
                   <div className="space-y-3">
                     <section>
-                      <h4 className="text-sm font-semibold text-white">🚀 项目概述</h4>
-                      <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                      <h4 className="text-sm font-semibold text-bento-text">🚀 项目概述</h4>
+                      <p className="mt-2 text-sm leading-relaxed text-bento-muted">
                         每天被海量 AI 噪音淹没？这是一个运行在云端的全自动情报雷达。系统采用创新的&ldquo;异构双引擎&rdquo;架构：利用
                         FastAPI 引擎深度挖掘社区高分共识，结合 Coze 节点精准狙击行业领袖一手动态。每天自动清洗、打分并结构化存入私人
                         Notion 数据库，将信息焦虑转化为高密度的洞察资产。
                       </p>
-                      <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                      <p className="mt-2 text-sm leading-relaxed text-bento-muted">
                         🌟 核心业务流：社区深度解析 (FastAPI 9:30 AM) + 领袖动态狙击 (Coze 10:42 AM) ➔
                         大模型多维去噪与打分 ➔ 统一写入 Notion 数据库 ➔ Next.js 前端实时渲染
                       </p>
@@ -919,27 +923,26 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
 
                     <div className="grid gap-2 sm:grid-cols-3">
                       <div className="liquid-glass-card rounded-xl border border-white/10 bg-black/25 px-4 py-4">
-                        <div className="text-xs font-semibold text-cyan-200">
+                        <div className="text-xs font-semibold text-bento-text">
                           特性 1：异构双引擎（重装运算 + 敏捷狙击）
                         </div>
-                        <div className="mt-1.5 text-xs leading-[1.6] text-slate-400">
+                        <div className="mt-1.5 text-xs leading-[1.6] text-bento-muted">
                           拒绝单一工具的妥协。Coze 绕过 X API 限制，定点狙击大佬快讯；但面对 YouTube 动辄十万字的字幕与 Hacker
                           News 的深水区辩论，其算力与时长极易触顶。因此引入 Python 自建微服务作为&ldquo;重装引擎&rdquo;，负责高并发抓取与重度大模型打分运算。Python
                           挖深共识，Coze 抢占先机，互为表里。
                         </div>
                       </div>
                       <div className="liquid-glass-card rounded-xl border border-white/10 bg-black/25 px-4 py-4">
-                        <div className="text-xs font-semibold text-cyan-200">特性 2：优雅降级与抗脆弱设计</div>
-                        <div className="mt-1.5 text-xs leading-[1.6] text-slate-400">
-                          深度定制健壮的开源基座，直面真实世界的网络泥潭。当面临 YouTube 字幕解析受阻或严格反爬限制时，系统自动触发
-                          yt-dlp 底层回退或安全跳过策略。用微服务容错机制吞吐异常，确保每日 AI 简报「局部可降级，全局不宕机」。
+                        <div className="text-xs font-semibold text-bento-text">特性 2：优雅降级与抗脆弱设计</div>
+                        <div className="mt-1.5 text-xs leading-[1.6] text-bento-muted">
+                         当面临 YouTube 字幕解析受阻或严格反爬限制时，系统自动触发yt-dlp 底层回退或安全跳过策略。用微服务容错机制吞吐异常，确保每日 AI 简报「局部可降级，全局不宕机」。
                         </div>
                       </div>
                       <div className="liquid-glass-card rounded-xl border border-white/10 bg-black/25 px-4 py-4">
-                        <div className="text-xs font-semibold text-cyan-200">特性 3：Notion 原生 CMS 闭环</div>
-                        <div className="mt-1.5 text-xs leading-[1.6] text-slate-400">
-                          告别传统数据库的繁重维护。通过 Make.com 自动化桥接，将 Notion 打造为灵活的 Headless
-                          CMS。数据抓取即入库，前端页面秒级同步更新，完美适配 Rapid Validation 理念。
+                        <div className="text-xs font-semibold text-bento-text">特性 3：Notion 原生 CMS 闭环</div>
+                        <div className="mt-1.5 text-xs leading-[1.6] text-bento-muted">
+                          通过 Make.com 自动化桥接，将 Notion 打造为灵活的 Headless
+                          CMS。数据抓取即入库，前端页面秒级同步更新。
                         </div>
                       </div>
                     </div>
@@ -970,67 +973,71 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                         sizes="(max-width: 1024px) 100vw, min(560px, 45vw)"
                       />
                     </figure>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-bento-muted">
                       自动化流转全貌：Make.com 调度台 · FastAPI 云端引擎 · Notion 数据库实时推流
                     </p>
-                    <p className="text-[11px] text-slate-500">
+                    <p className="text-[11px] text-bento-muted">
                       Next.js · FastAPI · Coze · Make.com · Notion API · Python
                     </p>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="holo-card min-h-[260px] rounded-2xl border border-dashed border-white/15 p-5 sm:p-6" />
+              <div className="bento-card flex min-h-[260px] flex-col p-6" />
             )}
           </motion.div>
+          </>
+          )}
         </motion.section>
 
 
         <motion.section
           id="about"
-          className="scroll-mt-20 py-10"
-          initial="hidden"
-          whileInView="show"
+          className="reflect-stage scroll-mt-20 py-10"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.2 }}
-          variants={sectionVariants}
+          transition={{ duration: 0.62, type: "spring", stiffness: 78, damping: 24, mass: 0.85 }}
         >
-          <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl" style={{ fontFamily: '"Geist", "Inter", "SF Pro Display", system-ui, sans-serif' }}>
+          <WallOfLoveBackground />
+          <span className="reflect-section-kicker">About</span>
+          <h2 className="mt-3 text-2xl font-bold tracking-tight text-bento-text sm:text-3xl" style={{ fontFamily: '"Geist", "Inter", "SF Pro Display", system-ui, sans-serif' }}>
             关于我
           </h2>
-          <p className="mt-2 text-sm font-light text-slate-500">About · New Paradigm</p>
+          <p className="mt-2 text-sm font-light text-bento-muted">About · New Paradigm</p>
           <motion.div
             variants={cardRevealVariants}
             initial="hidden"
             whileInView="show"
             viewport={{ once: true, amount: 0.22, margin: "-0px 0px -8% 0px" }}
-            className="holo-card mt-5 rounded-2xl p-5 sm:p-7"
+            className="bento-card mt-5 rounded-2xl p-5 sm:p-7"
           >
-            <p className="text-sm font-light leading-relaxed text-slate-400">
+            <p className="text-sm font-light leading-relaxed text-bento-muted">
               我专注将 Agentic Workflow 与业务闭环深度结合，持续用 Vibe Coding + Rapid Validation 模式，把复杂想法快速转化为可运行、可验证、可迭代的商业级 AI 产品。
             </p>
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
               <div className="liquid-glass-card rounded-xl p-4">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">Vibe Coding 深度实践</h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-bento-text">Vibe Coding 深度实践</h3>
+                <p className="mt-2 text-sm leading-relaxed text-bento-muted">
                   能熟练利用 Claude Code (CC) 与 Cursor 完成产品从 0 到 1 的全流程。独立完成需求梳理、UI 设计、前后端开发及 Vercel 自动化部署。
                 </p>
               </div>
               <div className="liquid-glass-card rounded-xl p-4">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">AI Agent 提效专家</h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-bento-text">AI Agent 提效专家</h3>
+                <p className="mt-2 text-sm leading-relaxed text-bento-muted">
                   深度使用 OpenClaw、Claude Code 等前沿 Agent 工具优化业务流。具备通过 AI 自动化工作流提升团队 5-10 倍交付效率的实战经验。
                 </p>
               </div>
               <div className="liquid-glass-card rounded-xl p-4">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">快速原型验证</h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-bento-text">快速原型验证</h3>
+                <p className="mt-2 text-sm leading-relaxed text-bento-muted">
                   拥有在 24 小时内将商业想法转化为可运行产品的“极速交付”能力，快速验证需求与价值闭环。
                 </p>
               </div>
             </div>
             <div className="liquid-glass-card mt-4 rounded-xl p-4">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">AI-Native Stack</h3>
-              <p className="mt-2 text-sm text-slate-400">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-bento-text">AI-Native Stack</h3>
+              <p className="mt-2 text-sm text-bento-muted">
                 Tools
               </p>
               <div className="mt-2 flex flex-wrap gap-2">
@@ -1038,7 +1045,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                   <span key={item} className="tech-tag">{item}</span>
                 ))}
               </div>
-              <p className="mt-3 text-sm text-slate-400">
+              <p className="mt-3 text-sm text-bento-muted">
                 Frameworks
               </p>
               <div className="mt-2 flex flex-wrap gap-2">
@@ -1052,17 +1059,19 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
 
         <motion.section
           id="projects"
-          className="scroll-mt-20 py-10"
+          className="reflect-stage reflect-stage--radar scroll-mt-20 py-10"
           data-parallax="0.018"
-          initial="hidden"
-          whileInView="show"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.2 }}
-          variants={sectionVariants}
+          transition={{ duration: 0.62, type: "spring", stiffness: 78, damping: 24, mass: 0.85 }}
         >
-          <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl" style={{ fontFamily: '"Geist", "Inter", "SF Pro Display", system-ui, sans-serif' }}>
+          <span className="reflect-section-kicker">Projects</span>
+          <h2 className="mt-3 text-2xl font-bold tracking-tight text-bento-text sm:text-3xl" style={{ fontFamily: '"Geist", "Inter", "SF Pro Display", system-ui, sans-serif' }}>
             AI Projects · 核心项目
           </h2>
-          <p className="mt-2 text-sm font-light text-slate-500">Flagship · Agentic delivery</p>
+          <p className="mt-2 text-sm font-light text-bento-muted">Flagship · Agentic delivery</p>
+          <div className="pointer-events-none absolute left-1/2 top-[22%] z-[-1] h-[700px] w-[980px] -translate-x-1/2 rounded-full bg-purple-700/16 blur-[180px]" />
           <motion.div
             className="mt-5 space-y-4"
             variants={staggerListContainer}
@@ -1072,48 +1081,48 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           >
             <motion.div variants={staggerListItem}>
               <TiltCard className="block overflow-visible">
-                <article className="holo-card overflow-hidden rounded-2xl">
-              <div className="p-5 sm:p-6">
+                <article className="bento-card flex flex-col overflow-hidden p-6">
+              <div className="flex flex-col">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-50 sm:text-xl" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
+                    <h3 className="text-lg font-semibold text-bento-text sm:text-xl" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
                       金融合规智能助手
                     </h3>
-                    <p className="mt-1 text-sm font-mono text-slate-500">Financial Compliance Intelligent Assistant</p>
+                    <p className="mt-1 text-sm font-mono text-bento-muted">Financial Compliance Intelligent Assistant</p>
                   </div>
                   <span className="status-badge status-badge--ready">READY</span>
                 </div>
-                <p className="mt-3 text-sm leading-relaxed text-slate-400">
+                <p className="mt-3 text-sm leading-relaxed text-bento-muted">
                   A RAG-based AI agent for intelligent Q&A and audit assistance in financial institutions. 将复杂规则审计时间显著缩短，关键合规问答可溯源到具体条款与解释。
                 </p>
               </div>
               <div className="grid gap-3 border-t border-white/5 p-5 sm:grid-cols-3 sm:p-6">
                 <div className="liquid-glass-card rounded-xl p-4">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">目标用户与痛点</h4>
-                  <ul className="mt-2 space-y-1.5 text-sm text-slate-300">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-bento-text">目标用户与痛点</h4>
+                  <ul className="mt-2 space-y-1.5 text-sm text-bento-muted">
                     <li>· 合规/内控：法规口径不一致、解释成本高</li>
                     <li>· 业务/产品：需求变更频繁、边界难对齐</li>
                     <li>· 审计：缺少可追溯证据链与可复核记录</li>
                   </ul>
                 </div>
                 <div className="liquid-glass-card rounded-xl p-4">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">核心业务模块</h4>
-                  <ul className="mt-2 space-y-1.5 text-sm text-slate-300">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-bento-text">核心业务模块</h4>
+                  <ul className="mt-2 space-y-1.5 text-sm text-bento-muted">
                     <li>· 法规知识库：条款拆解、版本管理、标签体系</li>
                     <li>· 合规问答：引用到条款/解释口径/案例</li>
                     <li>· 审计工作台：可追溯对话、结论复核与导出</li>
                   </ul>
                 </div>
                 <div className="liquid-glass-card rounded-xl p-4">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">底层架构设计</h4>
-                  <ul className="mt-2 space-y-1.5 text-sm text-slate-300">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-bento-text">底层架构设计</h4>
+                  <ul className="mt-2 space-y-1.5 text-sm text-bento-muted">
                     <li>· RAG：法规切片 + 向量检索 + 结构化引用</li>
                     <li>· Agent：工具调用编排、权限与操作审计</li>
                     <li>· 证据链：来源/版本/置信度/决策日志全记录</li>
                   </ul>
                 </div>
               </div>
-              <p className="border-t border-white/10 px-5 py-3 text-sm text-slate-300 sm:px-6">
+              <p className="border-t border-white/10 px-5 py-3 text-sm text-bento-muted sm:px-6">
                 ▶ 业务成效：构建 RAG 自动化评测集，合规审查耗时缩减 40%，实现 100% 溯源审计。
               </p>
               <div className="border-t border-white/10 px-5 py-3 sm:px-6">
@@ -1133,13 +1142,14 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
 
         <motion.section
           id="insights"
-          className="scroll-mt-20 py-10"
+          className="reflect-stage reflect-stage--nebula scroll-mt-20 py-10"
           data-parallax="0.008"
-          initial="hidden"
-          whileInView="show"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.2 }}
-          variants={sectionVariants}
+          transition={{ duration: 0.62, type: "spring", stiffness: 78, damping: 24, mass: 0.85 }}
         >
+          <span className="reflect-section-kicker">Radar</span>
           <motion.div
             variants={cardRevealVariants}
             initial="hidden"
@@ -1152,18 +1162,19 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
 
         <motion.section
           id="knowledge"
-          className="scroll-mt-20 py-10"
+          className="reflect-stage reflect-stage--dome scroll-mt-20 py-10"
           data-parallax="0.01"
-          initial="hidden"
-          whileInView="show"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.2 }}
-          variants={sectionVariants}
+          transition={{ duration: 0.62, type: "spring", stiffness: 78, damping: 24, mass: 0.85 }}
         >
-          <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl" style={{ fontFamily: '"Geist", "Inter", "SF Pro Display", system-ui, sans-serif' }}>
-            AI 知识沉淀
+          <span className="reflect-section-kicker">Knowledge</span>
+          <h2 className="mt-3 text-2xl font-bold tracking-tight text-bento-text sm:text-3xl" style={{ fontFamily: '"Geist", "Inter", "SF Pro Display", system-ui, sans-serif' }}>
+            AI 知识博客园
           </h2>
-          <p className="mt-2 text-sm font-light text-slate-500">Best Practices &amp; Curation</p>
-          <motion.div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <p className="mt-2 text-sm font-light text-bento-muted">Best Practices &amp; Curation</p>
+          <motion.div className="mt-5 grid gap-6 sm:grid-cols-2">
             {articlesLoading ? (
               <>
                 {[1, 2].map((i) => (
@@ -1173,17 +1184,17 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                     initial="hidden"
                     whileInView="show"
                     viewport={{ once: true, amount: 0.15, margin: "0px 0px -8% 0px" }}
-                    className="holo-card rounded-2xl p-5"
+                    className="bento-card rounded-2xl p-5"
                   >
-                    <div className="knowledge-loading-skeleton h-6 w-3/4 rounded bg-slate-600/50" />
-                    <div className="knowledge-loading-skeleton mt-3 h-4 w-full rounded bg-slate-600/40" />
-                    <div className="knowledge-loading-skeleton mt-2 h-4 w-5/6 rounded bg-slate-600/40" />
-                    <div className="knowledge-loading-skeleton mt-4 h-3 w-24 rounded bg-cyan-500/30" />
+                    <div className="knowledge-loading-skeleton h-6 w-3/4 rounded bg-purple-400/20" />
+                    <div className="knowledge-loading-skeleton mt-3 h-4 w-full rounded bg-purple-300/15" />
+                    <div className="knowledge-loading-skeleton mt-2 h-4 w-5/6 rounded bg-purple-300/15" />
+                    <div className="knowledge-loading-skeleton mt-4 h-3 w-24 rounded bg-purple-400/25" />
                   </motion.div>
                 ))}
               </>
             ) : articles.length === 0 ? (
-              <div className="holo-card col-span-full rounded-2xl p-5 text-sm text-slate-400">
+              <div className="bento-card col-span-full rounded-2xl p-5 text-sm text-bento-muted">
                 暂无文章数据，请检查 Notion 数据库连接与字段映射。
               </div>
             ) : (
@@ -1200,15 +1211,15 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                 <Link
                   href={`/articles/${article.id}`}
                   prefetch
-                  className="holo-card group block h-full rounded-2xl p-5 transition hover:border-purple-500/30"
+                  className="bento-card group block h-full rounded-2xl p-5 transition hover:border-purple-500/30"
                 >
-                  <h3 className="text-lg font-semibold text-slate-50 group-hover:text-cyan-300" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
+                  <h3 className="text-lg font-semibold text-bento-text group-hover:text-purple-200" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
                     {article.title}
                   </h3>
-                  <p className="mt-2 text-sm text-slate-400">
+                  <p className="mt-2 text-sm text-bento-muted">
                     {article.summary}
                   </p>
-                  <span className="mt-4 inline-block text-xs font-medium text-cyan-400/90">进入详情 →</span>
+                  <span className="mt-4 inline-block text-xs font-medium text-purple-200/90">进入详情 →</span>
                 </Link>
                 </TiltCard>
                 </motion.div>
@@ -1236,14 +1247,19 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           </div>
         </motion.div>
 
-        <footer className="pt-4 text-xs text-slate-500">
+        <footer className="pt-4 text-xs text-bento-muted">
           © {new Date().getFullYear()} 龚梦星 Gong Mengxing · AI 产品经理
         </footer>
       </div>
 
+      <div className="absolute inset-0 z-[-1] overflow-hidden pointer-events-none">
+        <div className="absolute top-[1500px] left-[-24%] h-[1180px] w-[1180px] rounded-full bg-purple-800/12 blur-[210px]" />
+        <div className="absolute top-[2200px] right-[-26%] h-[1320px] w-[1320px] rounded-full bg-fuchsia-800/12 blur-[230px]" />
+      </div>
+
       <style jsx global>{`
         html { scroll-behavior: smooth; }
-        :root { --glow-cyan: #06b6d4; --glow-purple: #b026ff; }
+        :root { --glow-cyan: #a855f7; --glow-purple: #c084fc; }
         .nav-link { position: relative; transition: color 0.2s ease; }
         .nav-link::after {
           content: ""; position: absolute; left: 0; bottom: -2px; width: 0; height: 1px;
@@ -1257,17 +1273,17 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           font-family: "IBM Plex Mono", "SF Mono", monospace;
         }
         .glow-btn--primary {
-          background: rgba(0,0,0,0.4); border: 1px solid rgba(6,182,212,0.5); color: rgb(207 250 254);
-          box-shadow: 0 0 0 1px rgba(6,182,212,0.2), 0 0 20px rgba(6,182,212,0.15);
+          background: rgba(0,0,0,0.4); border: 1px solid rgba(168,85,247,0.5); color: rgb(245 243 255);
+          box-shadow: 0 0 0 1px rgba(168,85,247,0.2), 0 0 20px rgba(168,85,247,0.15);
         }
-        .glow-btn--primary:hover { box-shadow: 0 0 0 1px rgba(6,182,212,0.5), 0 0 28px rgba(6,182,212,0.35); }
+        .glow-btn--primary:hover { box-shadow: 0 0 0 1px rgba(168,85,247,0.5), 0 0 28px rgba(168,85,247,0.35); }
         .glow-btn--resume {
-          box-shadow: 0 0 0 1px rgba(6,182,212,0.45), 0 0 30px rgba(6,182,212,0.35), 0 0 50px rgba(176,38,255,0.2);
+          box-shadow: 0 0 0 1px rgba(168,85,247,0.45), 0 0 30px rgba(168,85,247,0.35), 0 0 50px rgba(176,38,255,0.2);
           animation: resume-pulse 1.8s ease-in-out infinite;
         }
         @keyframes resume-pulse {
-          0%, 100% { box-shadow: 0 0 0 1px rgba(6,182,212,0.45), 0 0 30px rgba(6,182,212,0.35), 0 0 50px rgba(176,38,255,0.2); }
-          50% { box-shadow: 0 0 0 1px rgba(6,182,212,0.7), 0 0 38px rgba(6,182,212,0.5), 0 0 66px rgba(176,38,255,0.28); }
+          0%, 100% { box-shadow: 0 0 0 1px rgba(168,85,247,0.45), 0 0 30px rgba(168,85,247,0.35), 0 0 50px rgba(176,38,255,0.2); }
+          50% { box-shadow: 0 0 0 1px rgba(168,85,247,0.7), 0 0 38px rgba(168,85,247,0.5), 0 0 66px rgba(176,38,255,0.28); }
         }
         .glow-btn--secondary {
           background: rgba(0,0,0,0.3); border: 1px solid rgba(176,38,255,0.4); color: rgb(226 232 240);
@@ -1306,7 +1322,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
         .tech-tag {
           display: inline-block; padding: 0.25rem 0.75rem; font-size: 0.75rem;
           font-family: "IBM Plex Mono", "SF Mono", monospace;
-          color: rgb(165 243 252); background: rgba(6,182,212,0.06); border: 1px solid rgba(6,182,212,0.25); border-radius: 9999px;
+          color: rgb(233 213 255); background: rgba(168,85,247,0.1); border: 1px solid rgba(168,85,247,0.3); border-radius: 9999px;
         }
         .stack-marquee {
           position: relative;

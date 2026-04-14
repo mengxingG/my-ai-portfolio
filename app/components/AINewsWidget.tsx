@@ -112,10 +112,15 @@ export function AINewsWidget({ news }: { news: AINews[] }) {
                 rel="noopener noreferrer"
                 aria-label="查看原文"
               >
-                <div className="pointer-events-none absolute right-3 bottom-3 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/50 px-2 py-1 text-[11px] text-slate-200 opacity-0 transition-all group-hover:opacity-100 group-hover:translate-y-0.5">
+                <a
+                  href={item.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="pointer-events-auto absolute right-3 bottom-3 z-[4] flex items-center gap-1.5 rounded-full border border-white/10 bg-black/50 px-2 py-1 text-[11px] text-slate-200 opacity-0 transition-all group-hover:opacity-100 group-hover:translate-y-0.5 hover:border-purple-400/40 hover:text-white"
+                >
                   <span>查看原文</span>
                   <ExternalLink className="h-3 w-3 text-purple-300" />
-                </div>
+                </a>
 
                 <div className="flex flex-1 flex-col">
                   <div className="mb-3 flex min-w-0 items-center gap-1.5">

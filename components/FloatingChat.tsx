@@ -90,7 +90,7 @@ function FloatingChatInner() {
       {open ? (
         <div
           data-featured-pin-exempt
-          className="liquid-glass-card pointer-events-auto flex max-h-[min(560px,calc(100vh-6rem))] w-[min(100vw-2rem,22rem)] sm:w-[24rem] flex-col overflow-hidden rounded-2xl shadow-[0_0_0_1px_rgba(168,85,247,0.12),0_24px_64px_rgba(0,0,0,0.45)]"
+          className="pointer-events-auto flex max-h-[min(560px,calc(100vh-6rem))] w-[min(100vw-2rem,22rem)] sm:w-[24rem] flex-col overflow-hidden rounded-2xl bg-white/[0.03] backdrop-blur-lg border border-white/[0.05] shadow-[0_0_0_1px_rgba(168,85,247,0.12),0_24px_64px_rgba(0,0,0,0.45)]"
           role="dialog"
           aria-label="梦星数字分身对话"
         >
@@ -155,7 +155,7 @@ function FloatingChatInner() {
           <form
             ref={formRef}
             onSubmit={onSubmit}
-            className="border-t border-white/10 p-3 pt-2"
+            className="border-t border-white/10 bg-black/25 p-3 pt-2"
           >
             <div
               className="floating-chat-quick-replies mb-2.5 flex gap-2 overflow-x-auto overflow-y-hidden py-0.5"
@@ -168,7 +168,7 @@ function FloatingChatInner() {
                   type="button"
                   disabled={busy}
                   onClick={() => handleQuickReply(label)}
-                  className="liquid-glass-card shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-left text-[11px] leading-snug text-slate-300 shadow-sm transition hover:border-gray-500 hover:bg-[rgba(20,20,20,0.75)] hover:text-slate-100 disabled:pointer-events-none disabled:opacity-45"
+                  className="shrink-0 whitespace-nowrap rounded-full border border-white/[0.05] bg-white/[0.03] px-3 py-1.5 text-left text-[11px] leading-snug text-slate-300 shadow-sm backdrop-blur-lg transition hover:border-gray-500 hover:bg-[rgba(20,20,20,0.75)] hover:text-slate-100 disabled:pointer-events-none disabled:opacity-45"
                 >
                   {label}
                 </button>
@@ -182,7 +182,7 @@ function FloatingChatInner() {
                 autoComplete="off"
                 placeholder="粘贴 JD 或随便聊聊…"
                 disabled={busy}
-                className="liquid-glass-card min-w-0 flex-1 rounded-xl px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-purple-500/45 focus:ring-1 focus:ring-purple-500/35 disabled:opacity-60"
+                className="min-w-0 flex-1 rounded-xl border border-white/[0.05] bg-white/[0.03] px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 outline-none backdrop-blur-lg focus:border-purple-500/45 focus:ring-1 focus:ring-purple-500/35 disabled:opacity-60"
               />
               <button
                 type="submit"

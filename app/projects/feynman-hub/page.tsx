@@ -10,9 +10,9 @@ const screenshotFrameClass =
   "overflow-hidden rounded-2xl border border-white/12 bg-black/25 shadow-[0_12px_36px_rgba(0,0,0,0.38)]";
 
 export const metadata = {
-  title: "Feynman Learning Hub · Case Study",
+  title: "费曼学习工具 · Case Study",
   description:
-    "Feynman Learning Hub：NotebookLM 风格的双模态智能学习系统（费曼学习法 + AI 模拟面试 + 间隔复习）",
+    "费曼学习工具：NotebookLM 风格的双模态智能学习系统（费曼学习法 + AI 模拟面试 + 间隔复习）",
 };
 
 type TocItem = { id: string; label: string; children?: TocItem[] };
@@ -182,7 +182,7 @@ export default function FeynmanHubCaseStudyPage() {
                   className="text-2xl font-semibold text-slate-50 sm:text-3xl"
                   style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}
                 >
-                  Feynman Learning Hub
+                  费曼学习工具
                 </h1>
                 <p className="mt-2 text-sm text-slate-400">
                   类 NotebookLM 的双模态智能学习系统。融合费曼学习法 + AI 模拟面试 + 间隔复习，
@@ -213,7 +213,7 @@ export default function FeynmanHubCaseStudyPage() {
               <figure className={screenshotFrameClass}>
                 <Image
                   src={`${FEYNMAN_HUB_IMG}/learning-fullview.png`}
-                  alt="Feynman Learning Hub 学习页面：双栏布局与费曼对话"
+                  alt="费曼学习工具 学习页面：双栏布局与费曼对话"
                   width={1920}
                   height={1080}
                   className="h-auto w-full object-contain"
