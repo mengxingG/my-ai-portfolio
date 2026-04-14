@@ -13,38 +13,50 @@ export default function BreathingParticles() {
     let animationFrameId: number;
     let particles: Particle[] = [];
 
-    // 粒子类
+    /** 轨迹角速度基础值，整体 ×1.2 相对原先向上漂浮的主观速度约快 20% */
+    const SPEED_MULT = 1.2;
+
+    // 粒子类：每颗星沿各自固定椭圆轨道顺时针运动
     class Particle {
       x: number;
       y: number;
       size: number;
       baseSize: number;
-      speedY: number;
+      cx: number;
+      cy: number;
+      rx: number;
+      ry: number;
+      angle: number;
+      angularSpeed: number;
       phase: number;
       breathingSpeed: number;
 
       constructor(canvasWidth: number, canvasHeight: number) {
-        this.x = Math.random() * canvasWidth;
-        this.y = Math.random() * canvasHeight;
-        this.baseSize = Math.random() * 1.5 + 0.5; // 尺寸随机 0.5~2px
+        // 轨道中心：贴近视口正中，收窄后更接近「同心」星带
+        this.cx = canvasWidth * (0.496 + Math.random() * 0.008);
+        this.cy = canvasHeight * (0.496 + Math.random() * 0.008);
+        this.rx = Math.random() * canvasWidth * 0.42 + canvasWidth * 0.08;
+        this.ry = this.rx * (0.48 + Math.random() * 0.22);
+        this.angle = Math.random() * Math.PI * 2;
+        // 顺时针：角度递减；角速度在原常见区间上再 ×1.2
+        this.angularSpeed =
+          (Math.random() * 0.0012 + 0.00035) * SPEED_MULT;
+        this.baseSize = Math.random() * 1.5 + 0.5;
         this.size = this.baseSize;
-        this.speedY = Math.random() * 0.15 + 0.05; // 极慢的向上漂浮
-        this.phase = Math.random() * Math.PI * 2; // 随机初始相位
-        this.breathingSpeed = Math.random() * 0.02 + 0.01; // 呼吸速度
+        this.phase = Math.random() * Math.PI * 2;
+        this.breathingSpeed = (Math.random() * 0.02 + 0.01) * SPEED_MULT;
+        this.x = this.cx + Math.cos(this.angle) * this.rx;
+        this.y = this.cy + Math.sin(this.angle) * this.ry;
       }
 
-      update(canvasHeight: number, time: number) {
-        // 位置移动
-        this.y -= this.speedY;
-        if (this.y < 0) this.y = canvasHeight; // 飘出顶部后从底部重生
+      update(_canvasHeight: number, time: number) {
+        this.angle -= this.angularSpeed;
+        this.x = this.cx + Math.cos(this.angle) * this.rx;
+        this.y = this.cy + Math.sin(this.angle) * this.ry;
 
-        // 呼吸感透明度变化和尺寸变化
         const oscillation = Math.sin(time * this.breathingSpeed + this.phase);
-        
-        // 限制透明度在 10% 到 80% 之间来回变化
         this.size = this.baseSize * (1 + 0.2 * oscillation);
         const alpha = 0.1 + 0.7 * (0.5 * (1 + oscillation));
-        
         return alpha;
       }
 
@@ -67,19 +79,19 @@ export default function BreathingParticles() {
     const resize = () => {
       canvas.width = window.innerWidth;
       // 乘以 1.5 让背景稍长一点，防止滚动到底部露馅
-      canvas.height = window.innerHeight * 1.5; 
+      canvas.height = window.innerHeight * 1.5;
       initParticles();
     };
 
     let time = 0;
     const animate = () => {
       time++;
-      // 每次重绘前清空画布
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      particles.forEach(p => {
+      particles.forEach((p) => {
         const alpha = p.update(canvas.height, time);
         p.draw(ctx, alpha);
       });
+
       animationFrameId = requestAnimationFrame(animate);
     };
 

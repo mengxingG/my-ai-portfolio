@@ -18,6 +18,7 @@ import { MagneticWrap } from "@/app/components/MagneticWrap";
 import { TiltCard } from "@/app/components/TiltCard";
 import { CosmicPortalHero } from "@/app/components/CosmicPortalHero";
 import BreathingParticles from "@/components/BreathingParticles";
+import MeteorShower from "@/components/MeteorShower";
 import ReflectBackground from "@/components/ReflectBackground";
 import { TimelineBento } from "@/components/TimelineBento";
 import WallOfLoveBackground from "@/components/WallOfLoveBackground";
@@ -478,6 +479,16 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
         >
           <CosmicPortalHero />
 
+          <div
+            className="pointer-events-none absolute left-1/2 top-0 z-[5] h-[min(520px,60vh)] w-screen max-w-[100vw] -translate-x-1/2"
+            aria-hidden
+          >
+            <MeteorShower />
+          </div>
+
+          <motion.div
+            className="relative z-10 flex w-full flex-col items-center"
+          >
           <motion.div
             variants={itemVariants}
             className="profile-neon-breath relative mb-5 h-24 w-24 shrink-0 overflow-hidden rounded-full border-2 border-white/10 sm:h-28 sm:w-28"
@@ -598,6 +609,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                 ))}
               </div>
             </div>
+          </motion.div>
           </motion.div>
         </motion.section>
 
