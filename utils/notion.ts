@@ -102,7 +102,7 @@ async function flattenBlocksParallel(
   return out;
 }
 
-/** 文章详情用的 Notion fetch：带 tag，便于 POST /api/revalidate 按需失效（发布后立即更新） */
+/** 文章详情用的 Notion fetch：带 tag + 时间窗，避免每次访问都打 Notion */
 function articleNotionFetchInit(pageId: string) {
   return {
     headers: {
@@ -111,8 +111,8 @@ function articleNotionFetchInit(pageId: string) {
     },
     next: {
       tags: [`article-${pageId}`, "articles"],
-      /** 不设时间窗，只靠 revalidateTag；长期命中缓存 = 极快 */
-      revalidate: false as const,
+      /** 3600s 内复用缓存；需即时更新可继续调 POST /api/revalidate + revalidateTag */
+      revalidate: 3600,
     },
   };
 }
@@ -157,6 +157,107 @@ export async function getArticleDetail(pageId: string) {
     console.error("获取详情失败:", error);
     throw error;
   }
+}
+
+/** 从 block payload 取 plain_text（与文章页 render 使用同一套字段） */
+function blockPayloadToPlain(payload: unknown): string {
+  if (!payload || typeof payload !== "object") return "";
+  const r = payload as Record<string, unknown>;
+  const rt = r.rich_text;
+  if (!Array.isArray(rt)) return "";
+  return (rt as Array<{ plain_text?: string }>)
+    .map((x) => x.plain_text ?? "")
+    .join("");
+}
+
+/**
+ * 将 `getArticleDetail` 已拉取的扁平化 blocks 拼成 Markdown 字符串，仅供对话 **articleContext** 使用。
+ * 不发起任何网络请求，避免对同一篇文章再打第二遍 Notion。
+ */
+export function notionBlocksToArticleContextMarkdown(blocks: NotionBlock[]): string {
+  if (!blocks?.length) return "";
+  const chunks: string[] = [];
+
+  for (const block of blocks) {
+    const type = block.type as string | undefined;
+    if (!type) continue;
+    const payload = (block as Record<string, unknown>)[type];
+
+    switch (type) {
+      case "heading_1":
+        chunks.push(`# ${blockPayloadToPlain(payload)}`);
+        break;
+      case "heading_2":
+        chunks.push(`## ${blockPayloadToPlain(payload)}`);
+        break;
+      case "heading_3":
+        chunks.push(`### ${blockPayloadToPlain(payload)}`);
+        break;
+      case "paragraph":
+        chunks.push(blockPayloadToPlain(payload));
+        break;
+      case "quote": {
+        const t = blockPayloadToPlain(payload);
+        if (t) {
+          chunks.push(
+            t
+              .split("\n")
+              .map((line) => `> ${line}`)
+              .join("\n")
+          );
+        }
+        break;
+      }
+      case "bulleted_list_item":
+        chunks.push(`- ${blockPayloadToPlain(payload)}`);
+        break;
+      case "numbered_list_item":
+        chunks.push(`1. ${blockPayloadToPlain(payload)}`);
+        break;
+      case "to_do": {
+        const pl = payload as { checked?: boolean; rich_text?: unknown[] } | undefined;
+        const checked = pl?.checked ? "x" : " ";
+        const t = blockPayloadToPlain(pl);
+        chunks.push(`- [${checked}] ${t}`);
+        break;
+      }
+      case "callout": {
+        const pl = payload as Record<string, unknown> | undefined;
+        const icon = pl?.icon as { type?: string; emoji?: string } | undefined;
+        const emoji = icon?.type === "emoji" && icon.emoji ? `${icon.emoji} ` : "";
+        const t = blockPayloadToPlain(pl);
+        if (t) chunks.push(`> ${emoji}${t}`.trim());
+        break;
+      }
+      case "code": {
+        const pl = payload as { language?: string } | undefined;
+        const lang = (pl?.language ?? "").toString().toLowerCase();
+        const code = blockPayloadToPlain(pl);
+        chunks.push("```" + lang + "\n" + code + "\n```");
+        break;
+      }
+      case "image": {
+        const imgVal = payload as Record<string, unknown> | undefined;
+        const src =
+          imgVal?.type === "external"
+            ? (imgVal.external as { url?: string } | undefined)?.url
+            : (imgVal?.file as { url?: string } | undefined)?.url;
+        const caption = blockPayloadToPlain({ rich_text: imgVal?.caption });
+        const alt = caption.trim() || "image";
+        chunks.push(`![${alt}](${src ?? ""})`);
+        break;
+      }
+      case "divider":
+        chunks.push("---");
+        break;
+      default: {
+        const t = blockPayloadToPlain(payload);
+        if (t) chunks.push(t);
+      }
+    }
+  }
+
+  return chunks.filter((c) => c.trim().length > 0).join("\n\n");
 }
 
 // 别忘了定义类型导出

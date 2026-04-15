@@ -740,11 +740,11 @@ export async function POST(req: Request) {
     const files = form.getAll("files").filter((x) => x instanceof File) as File[];
 
     const allowedModelIds = new Set([
-      "gemini-2.5-flash",
+      "gemini-3-flash-preview",
       "gemini-2.5-pro",
       "gemini-2.5-flash-lite",
     ]);
-    const modelId = allowedModelIds.has(modelIdRaw) ? modelIdRaw : "gemini-2.5-flash";
+    const modelId = allowedModelIds.has(modelIdRaw) ? modelIdRaw : "gemini-3-flash-preview";
 
     const fragmentIndexRaw = safeTrim(form.get("fragmentIndex"));
     const totalFragmentsRaw = safeTrim(form.get("totalFragments"));

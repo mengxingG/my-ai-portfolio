@@ -1,9 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, isTextUIPart, type UIMessage } from "ai";
+import {
+  mapPortfolioChatError,
+  PortfolioThinkingIndicator,
+} from "@/lib/portfolio-chat-ui";
 
 const INITIAL_GREETING: UIMessage = {
   id: "welcome-local",
@@ -34,22 +38,37 @@ export function FloatingChat() {
   const pathname = usePathname();
   // Hide lobster button inside Learning hub to reduce distraction.
   if (pathname === "/learning" || pathname.startsWith("/learning/")) return null;
+  // Article pages use the in-column ArticleChatWidget; avoid overlapping fixed panel + duplicate chats.
+  if (pathname.startsWith("/articles/")) return null;
 
   return <FloatingChatInner />;
 }
 
 function FloatingChatInner() {
   const [open, setOpen] = useState(true);
+  const [preferDeepSeek, setPreferDeepSeek] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
-  const { messages, sendMessage, status, stop, error } = useChat({
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/chat",
+        body: preferDeepSeek ? { model: "deepseek-chat" as const } : {},
+      }),
+    [preferDeepSeek]
+  );
+
+  const { messages, sendMessage, status, stop, error, clearError, regenerate } = useChat({
     messages: [INITIAL_GREETING],
-    transport: new DefaultChatTransport({ api: "/api/chat" }),
+    transport,
   });
 
   const busy = status === "submitted" || status === "streaming";
+  const errorMapped = error
+    ? mapPortfolioChatError(error.message, { preferDeepSeek })
+    : null;
 
   useEffect(() => {
     if (!open) return;
@@ -97,7 +116,9 @@ function FloatingChatInner() {
           <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
             <div>
               <p className="text-sm font-semibold text-slate-100">梦星 · 数字分身</p>
-              <p className="text-[11px] text-slate-500">AI PM · DeepSeek 驱动</p>
+              <p className="text-[11px] text-slate-500">
+                {preferDeepSeek ? "当前模型：DeepSeek · AI PM" : "默认：Gemini · 可按报错切换 DeepSeek"}
+              </p>
             </div>
             <div className="flex items-center gap-2">
               {busy ? (
@@ -141,14 +162,36 @@ function FloatingChatInner() {
               </div>
             ))}
             {busy ? (
-              <p className="text-center text-xs text-purple-300/90 animate-pulse">
-                数字分身正在思考...
-              </p>
+              <PortfolioThinkingIndicator label="数字分身正在思考" />
             ) : null}
-            {error ? (
-              <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-200">
-                {error.message || "请求失败，请稍后重试。"}
-              </p>
+            {error && errorMapped ? (
+              <div className="rounded-xl border border-amber-500/35 bg-amber-950/35 px-3 py-3 text-xs text-amber-50/95 shadow-[0_0_0_1px_rgba(251,191,36,0.12)]">
+                <p className="leading-relaxed">{errorMapped.summary}</p>
+                {!preferDeepSeek && errorMapped.suggestDeepSeek ? (
+                  <button
+                    type="button"
+                    className="mt-2.5 w-full rounded-lg border border-cyan-500/40 bg-gradient-to-r from-cyan-600/25 to-purple-600/25 px-3 py-2 text-center text-[12px] font-medium text-slate-100 transition hover:border-cyan-400/55 hover:brightness-110"
+                    onClick={() => {
+                      setPreferDeepSeek(true);
+                      clearError();
+                      void regenerate();
+                    }}
+                  >
+                    改用 DeepSeek 重试
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="mt-2.5 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-center text-[12px] font-medium text-slate-200 transition hover:bg-white/10"
+                    onClick={() => {
+                      clearError();
+                      void regenerate();
+                    }}
+                  >
+                    重试
+                  </button>
+                )}
+              </div>
             ) : null}
           </div>
 

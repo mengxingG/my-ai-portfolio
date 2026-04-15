@@ -69,7 +69,7 @@ async function evalWithGemini(transcript: string): Promise<EvaluationResult> {
   const baseURL = process.env.GOOGLE_GEMINI_BASE_URL?.trim() || undefined;
   const google = createGoogleGenerativeAI({ apiKey, baseURL });
   const { text } = await generateText({
-    model: google("gemini-2.5-flash"),
+    model: google("gemini-3-flash-preview"),
     temperature: 0.2,
     prompt: [
       "你是一个严格的学习考核官。请基于对话内容输出 JSON（不要 Markdown code block）。",

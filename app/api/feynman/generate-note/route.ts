@@ -139,7 +139,7 @@ export async function POST(req: Request) {
     const baseURL = process.env.GOOGLE_GEMINI_BASE_URL?.trim() || undefined;
     const google = createGoogleGenerativeAI({ apiKey, baseURL });
     const { text } = await generateText({
-      model: google("gemini-2.5-flash"),
+      model: google("gemini-3-flash-preview"),
       system,
       prompt: [
         "<DOCUMENT_CONTEXT>",

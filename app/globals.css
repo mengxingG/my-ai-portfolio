@@ -2,6 +2,27 @@
 @config "../tailwind.config.ts";
 @plugin "@tailwindcss/typography"; /* 新加这一行，激活排版魔法 */
 
+@keyframes chat-think-dot {
+  0%,
+  70%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.35;
+  }
+  35% {
+    transform: translateY(-5px);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portfolio-chat-thinking [aria-hidden] span {
+    animation: none !important;
+    transform: none;
+    opacity: 0.85;
+  }
+}
+
 :root {
   --background: #09090b;
   --foreground: #fafafa;

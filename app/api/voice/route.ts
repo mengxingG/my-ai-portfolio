@@ -33,7 +33,7 @@ const geminiHttpFetch: typeof fetch = useGoogleAiProxy
 
 /** 默认与 /api/chat 所选 Flash 同级：低延迟；可用 VOICE_GEMINI_MODEL 覆盖 */
 const GEMINI_TRANSCRIBE_MODEL =
-  process.env.VOICE_GEMINI_MODEL?.trim() || "gemini-2.5-flash";
+  process.env.VOICE_GEMINI_MODEL?.trim() || "gemini-3-flash-preview";
 
 const TRANSCRIBE_PROMPT =
   "请将这段音频中的语音逐字转写成文字。只输出说话内容本身，保持说话者的语言（中文则输出中文），不要翻译，不要加任何说明或前后缀。";

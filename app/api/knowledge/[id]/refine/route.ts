@@ -210,7 +210,7 @@ async function callGeminiNotebookLM(inputText: string): Promise<GeminiNotebookLM
   }
 
   const googleProvider = createRefineGoogleProvider(apiKey);
-  const tryModels = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite"] as const;
+  const tryModels = ["gemini-2.5-pro", "gemini-3-flash-preview", "gemini-2.5-flash-lite"] as const;
 
   const prompt = [
     "你是顶级知识架构师（金融合规向：零幻觉、可核验）。请完整阅读下列资料全文，**绝对不能遗漏任何一个核心章节**。",

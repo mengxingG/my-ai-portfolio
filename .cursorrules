@@ -8,7 +8,7 @@ You are an AI coding agent working in this repo. Follow these project constraint
 - Mermaid.js
 
 ## Model usage policy
-- Left-side document parsing + Feynman chat: **Gemini 2.5 Flash** (Google provider / SDK).
+- Left-side document parsing + Feynman chat: **Gemini 3 Flash Preview** (`gemini-3-flash-preview`, Google provider / SDK).
 - Interviewer assessment: **DeepSeek Chat**.
 - Prefer robust fallback behavior when Gemini free-tier quota/429 occurs.
 

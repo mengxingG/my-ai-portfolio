@@ -1,6 +1,15 @@
 import Link from "next/link";
 import { FontSizeSwitcher } from "@/app/components/FontSizeSwitcher";
-import { getArticleDetail, type ArticleDetail, type NotionBlock } from "@/utils/notion";
+import {
+  getArticleDetail,
+  notionBlocksToArticleContextMarkdown,
+  type ArticleDetail,
+  type NotionBlock,
+} from "@/utils/notion";
+import ArticleChatWidget from "@/components/ArticleChatWidget";
+
+/** 与 Notion fetch 上 next.revalidate 对齐，减少冷启与重复拉取 */
+export const revalidate = 3600;
 
 type RichTextItem = {
   plain_text?: string;
@@ -279,8 +288,15 @@ export default async function ArticlePage({
   const { id } = await params;
 
   let data: ArticleDetail | null = null;
+  /** 供 `ArticleChatWidget` → POST /api/chat 的 body.articleContext；由已缓存拉取的 blocks 本地拼接，不二次请求 Notion */
+  let articleMarkdown = "";
   try {
-    data = await getArticleDetail(id);
+    const detail = await getArticleDetail(id);
+    data = detail;
+    const bodyMd = notionBlocksToArticleContextMarkdown(detail.blocks);
+    articleMarkdown = detail.title
+      ? `# ${detail.title}\n\n${bodyMd}`.trim()
+      : bodyMd;
   } catch (err) {
     console.error("页面加载数据失败:", err);
     data = null;
@@ -306,8 +322,18 @@ export default async function ArticlePage({
     : null;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200">
-      <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="min-h-screen overflow-x-hidden bg-slate-950 text-slate-200">
+      {articleMarkdown ? (
+        <script
+          id="article-markdown-context"
+          type="application/json"
+          // 供客户端助手读取：`JSON.parse(document.getElementById("article-markdown-context")!.textContent!)`
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({ pageId: data.id, markdown: articleMarkdown }),
+          }}
+        />
+      ) : null}
+      <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <header className="flex items-center justify-between border-b border-white/10 pb-6">
           <Link
             href="/#knowledge"
@@ -324,16 +350,39 @@ export default async function ArticlePage({
         </header>
 
         <main className="py-10">
-          <h1 className="text-3xl font-bold tracking-tight text-slate-50 sm:text-4xl">
-            {data.title}
-          </h1>
+          <div className="grid grid-cols-1 gap-8 lg:items-start lg:gap-10 lg:[grid-template-columns:minmax(0,2fr)_minmax(0,1fr)]">
+            <section className="min-w-0">
+              <h1 className="text-3xl font-bold tracking-tight text-slate-50 sm:text-4xl">
+                {data.title}
+              </h1>
 
-          <article className="mt-10">
-            {/* 使用 tailwind typography 统一排版 */}
-            <div className="prose prose-invert prose-cyan max-w-none">
-              {renderBlocks(data.blocks)}
-            </div>
-          </article>
+              <article className="mt-10">
+                {/* 使用 tailwind typography 统一排版 */}
+                <div className="prose prose-invert prose-cyan max-w-none">
+                  {renderBlocks(data.blocks)}
+                </div>
+              </article>
+            </section>
+
+            <aside className="min-w-0">
+              {/*
+                桌面端 fixed 贴屏；与主区 2fr_1fr + gap-10 对齐（正文:对话 = 2:1）。
+                W_inner = min(100vw,80rem)-4rem；g=2.5rem；第二列左缘 = 2(W_inner-g)/3 + g，宽 = (W_inner-g)/3。
+              */}
+              <div
+                className={[
+                  "w-full min-w-0 max-w-full",
+                  "max-lg:relative max-lg:flex max-lg:flex-col",
+                  "lg:fixed lg:top-24 lg:bottom-5 lg:z-40 lg:flex lg:min-h-0 lg:flex-col lg:right-auto",
+                  "lg:left-[calc((100vw-min(100vw,80rem))/2+2rem+2*(min(100vw,80rem)-4rem-2.5rem)/3+2.5rem)]",
+                  "lg:w-[calc((min(100vw,80rem)-4rem-2.5rem)/3)]",
+                  "lg:max-w-[calc((min(100vw,80rem)-4rem-2.5rem)/3)]",
+                ].join(" ")}
+              >
+                <ArticleChatWidget articleContext={articleMarkdown} />
+              </div>
+            </aside>
+          </div>
         </main>
       </div>
     </div>

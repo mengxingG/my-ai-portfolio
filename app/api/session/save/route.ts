@@ -188,7 +188,7 @@ async function evaluateWithAI(args: {
       const baseURL = process.env.GOOGLE_GEMINI_BASE_URL?.trim() || undefined;
       const google = createGoogleGenerativeAI({ apiKey: googleKey, baseURL });
       const { text } = await generateText({
-        model: google("gemini-2.5-flash"),
+        model: google("gemini-3-flash-preview"),
         system,
         prompt: user,
         temperature: 0.2,

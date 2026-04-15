@@ -38,6 +38,9 @@ const deepseekProvider = createOpenAICompatible({
   baseURL: "https://api.deepseek.com/v1",
 });
 
+/** 全站 Chat  Gemini 路径统一用 Flash，低延迟；勿在此处默认 Pro（会显著拖慢首 token） */
+const GEMINI_CHAT_MODEL = "gemini-3-flash-preview" as const;
+
 function isGeminiQuotaError(error: unknown): boolean {
   const e = error as { status?: number; statusCode?: number; code?: string; message?: string };
   const status = e?.status ?? e?.statusCode;
@@ -76,6 +79,10 @@ function fallbackHeaders(error: unknown): Record<string, string> {
 }
 
 const SYSTEM_PROMPT_PORTFOLIO = `你是拥有 4 年经验的 AI 产品经理（AI PM）梦星的数字分身。你部署在我的作品集网站上 (mengxing-ai-pm.vercel.app)，负责 24 小时接待 HR、猎头和同行。你需要主动热情地打招呼，并邀请对方提供 JD 进行能力匹配。当被问及实战项目时，请极其专业地讲解“金融合规智能助手”项目——向对方说明该系统的目标用户是交易员 (Traders)、销售 (Sales) 和合规经理 (Compliance Managers)，并清晰拆解核心模块、技术架构以及它带来的核心业务价值。你的语气要自信、专业、Result-driven。`;
+
+function buildArticleAssistantSystemPrompt(articleContext: string) {
+  return `你是一个部署在/articles页面的 AI PM（梦星）个人网站上的数字分身。你的任务是帮助面试官或访客更好地理解当前页面的内容。以下是当前文章的全部内容：\n\n${articleContext}\n\n请基于上述内容回答问题。态度要专业、友好。如果用户问关于当前文章的问题，请详细解答；如果问及超纲内容，请礼貌引导回开发者的专业技能上。`;
+}
 
 function buildLearningSystemPrompt(documentContext: string, learningRole: "feynman" | "interview") {
   const modeHint =
@@ -172,7 +179,6 @@ ${modeHint}
 export const maxDuration = 60;
 
 type ChatModelId =
-  | "gemini-2.5-flash"
   | "gemini-2.5-pro"
   | "gemini-2.5-pro-thinking"
   | "gemini-2.5-flash-image-preview"
@@ -186,18 +192,18 @@ type ChatModelId =
 
 function resolveChatModelId(raw: unknown): ChatModelId {
   const s = typeof raw === "string" ? raw.trim() : "";
+  if (s === "gemini-2.5-flash") return "gemini-3-flash-preview";
   if (
     s === "gemini-2.0-flash" ||
     s === "gemini-2.0-flash-001" ||
     s === "gemini-2.0-flash-lite" ||
     s === "gemini-2.0-flash-lite-001"
   ) {
-    return "gemini-2.5-flash";
+    return "gemini-3-flash-preview";
   }
   if (
     s === "gemini-2.5-pro" ||
     s === "gemini-2.5-pro-thinking" ||
-    s === "gemini-2.5-flash" ||
     s === "gemini-2.5-flash-image-preview" ||
     s === "gemini-3-flash-preview" ||
     s === "gemini-3-pro-preview" ||
@@ -209,19 +215,25 @@ function resolveChatModelId(raw: unknown): ChatModelId {
   ) {
     return s;
   }
-  return "gemini-2.5-pro";
+  return "gemini-3-flash-preview";
 }
 
 type ChatRequestBody = {
   messages: UIMessage[];
+  /** /articles/[id] 阅读助手：整篇文章 Markdown，用于 system prompt */
+  articleContext?: string;
   documentContext?: string;
   learningRole?: "feynman" | "interview";
-  /** Learning 页传入；未传或非法时默认 gemini-2.5-pro */
+  /** Learning 页传入；Google 路径实际固定为常量 GEMINI_CHAT_MODEL（Flash） */
   model?: string;
   /** 默认 true，与 DefaultChatTransport / useChat 流式兼容；Learning 页可用 false 拿 JSON */
   stream?: boolean;
 };
 
+/**
+ * Chat 仅读 request body：messages、articleContext、documentContext 等。
+ * 绝不调用 Notion / 不在此路由内拉 CMS；文章上下文必须由前端（如 ArticleChatWidget body）传入。
+ */
 export async function POST(req: Request) {
   logChatGeminiKeyFingerprintOnce();
 
@@ -245,12 +257,19 @@ export async function POST(req: Request) {
 
   const documentContext =
     typeof body.documentContext === "string" ? body.documentContext.trim() : "";
+  const articleContextRaw = body.articleContext;
+  const isArticleAssistant = typeof articleContextRaw === "string";
+  const articleContext = isArticleAssistant ? articleContextRaw.trim() : "";
+
   const learningRole = body.learningRole === "interview" ? "interview" : "feynman";
   const useStream = body.stream !== false;
+  /** 仅用于选择 DeepSeek；凡走 Google 一律 GEMINI_CHAT_MODEL（Flash），避免 Pro / preflight 拖慢流式首包 */
   const modelId = resolveChatModelId(body.model);
+  const useDeepSeek = modelId === "deepseek-chat";
 
-  const system =
-    documentContext.length > 0
+  const system = isArticleAssistant
+    ? buildArticleAssistantSystemPrompt(articleContext)
+    : documentContext.length > 0
       ? buildLearningSystemPrompt(documentContext, learningRole)
       : SYSTEM_PROMPT_PORTFOLIO;
 
@@ -258,7 +277,7 @@ export async function POST(req: Request) {
 
   if (!useStream) {
     try {
-      if (modelId === "deepseek-chat") {
+      if (useDeepSeek) {
         if (!process.env.DEEPSEEK_API_KEY?.trim()) {
           throw new Error("Missing DEEPSEEK_API_KEY");
         }
@@ -277,7 +296,7 @@ export async function POST(req: Request) {
         throw new Error("Missing GEMINI_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY");
       }
       const { text } = await generateText({
-        model: googleProvider(modelId),
+        model: googleProvider(GEMINI_CHAT_MODEL),
         system,
         messages: modelMessages,
         temperature: 0.4,
@@ -335,7 +354,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    if (modelId === "deepseek-chat") {
+    if (useDeepSeek) {
       if (!process.env.DEEPSEEK_API_KEY?.trim()) {
         return new Response(JSON.stringify({ error: "Missing DEEPSEEK_API_KEY" }), {
           status: 500,
@@ -356,53 +375,23 @@ export async function POST(req: Request) {
     }
 
     /**
-     * IMPORTANT:
-     * Some provider errors (notably Gemini 429 / RESOURCE_EXHAUSTED) may surface
-     * during streaming, after the response has already started, which makes it
-     * impossible to "switch engines" mid-stream.
+     * 不向 Gemini 先发 preflight（generateText）：在 articleContext 很长时，preflight 会完整处理
+     * 同一套 system+messages，导致首 token 前阻塞数十秒，看起来像「流式未生效」。
+     * 直接 streamText 并立刻 toUIMessageStreamResponse，字节才会马上发往客户端（打字机）。
      *
-     * We do a tiny preflight request (maxTokens=1) to catch quota errors early
-     * and fallback to DeepSeek BEFORE starting the stream.
+     * 注意：`useChat` + DefaultChatTransport 需要 **UI Message Stream**，应使用
+     * `toUIMessageStreamResponse()`；旧版 `toDataStreamResponse` / `StreamingTextResponse` 不适用当前客户端。
      */
-    try {
-      await generateText({
-        model: googleProvider(modelId),
-        system,
-        messages: modelMessages,
-        temperature: 0,
-        maxOutputTokens: 1,
-      });
-    } catch (preflightErr: any) {
-      if (isGeminiQuotaError(preflightErr)) {
-        logGeminiQuota("[chat] preflight fallback->deepseek (gemini quota)", preflightErr);
-        if (!process.env.DEEPSEEK_API_KEY?.trim()) {
-          return new Response(JSON.stringify({ error: "Missing DEEPSEEK_API_KEY" }), {
-            status: 500,
-            headers: { "Content-Type": "application/json" },
-          });
-        }
-        const deepseekResult = streamText({
-          model: deepseekProvider("deepseek-chat"),
-          system,
-          messages: modelMessages,
-        });
-        return deepseekResult.toUIMessageStreamResponse({
-          headers: {
-            "x-ai-engine": "deepseek",
-            ...fallbackHeaders(preflightErr),
-          },
-        });
-      }
-      throw preflightErr;
-    }
-
     const result = streamText({
-      model: googleProvider(modelId),
+      model: googleProvider(GEMINI_CHAT_MODEL),
       system,
       messages: modelMessages,
     });
     return result.toUIMessageStreamResponse({
-      headers: { "x-ai-engine": "gemini" },
+      headers: {
+        "x-ai-engine": "gemini",
+        "x-ai-model": GEMINI_CHAT_MODEL,
+      },
     });
   } catch (error: any) {
     if (isGeminiQuotaError(error)) {

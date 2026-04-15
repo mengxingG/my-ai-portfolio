@@ -97,10 +97,9 @@ const LEARNING_DOC_RAW_CTX_MAX = 80_000;
 
 /** 右侧导师对话调用 /api/chat 时的可选模型（id 须与后端 resolve 一致） */
 const LEARNING_CHAT_MODEL_OPTIONS = [
-  { id: "gemini-2.5-flash" as const, label: "Gemini 2.5 Flash⚡️" },
+  { id: "gemini-3-flash-preview" as const, label: "Gemini 3 Flash Preview⚡️" },
   { id: "gemini-2.5-pro" as const, label: "Gemini 2.5 Pro 🧠" },
   { id: "gemini-2.5-pro-thinking" as const, label: "Gemini 2.5 Pro Thinking" },
-  { id: "gemini-3-flash-preview" as const, label: "Gemini 3 Flash Preview" },
   { id: "gemini-3-pro-preview" as const, label: "Gemini 3 Pro Preview" },
   { id: "gemini-3-pro-preview-thinking" as const, label: "Gemini 3 Pro Preview Thinking" },
   { id: "gemini-3-pro-preview-thinking-*" as const, label: "Gemini 3 Pro Preview Thinking *" },
@@ -1421,7 +1420,7 @@ function AddResourceModal({
   const [pastedText, setPastedText] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
   const [materialType, setMaterialType] = useState<string>("未分类");
-  const [modelId, setModelId] = useState("gemini-2.5-flash");
+  const [modelId, setModelId] = useState("gemini-3-flash-preview");
   const [dragOver, setDragOver] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [uiPhase, setUiPhase] = useState<
@@ -1437,7 +1436,7 @@ function AddResourceModal({
       setPastedText("");
       setSourceUrl("");
       setMaterialType("未分类");
-      setModelId("gemini-2.5-flash");
+      setModelId("gemini-3-flash-preview");
       setDragOver(false);
       setSubmitting(false);
       setUiPhase("idle");
@@ -1747,7 +1746,7 @@ function AddResourceModal({
                 className="mt-3 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-100 outline-none focus:border-cyan-500/30 focus:ring-1 focus:ring-cyan-500/20"
                 aria-label="Model selector"
               >
-                <option value="gemini-2.5-flash">Gemini 2.5 Flash (极速首选)</option>
+                <option value="gemini-3-flash-preview">Gemini 3 Flash Preview (极速首选)</option>
                 <option value="gemini-2.5-pro">Gemini 2.5 Pro (深度推理)</option>
                 <optgroup label="备用（更细分）">
                   <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite</option>
@@ -2559,10 +2558,10 @@ function LearningPageInner() {
   );
   const [chatSending, setChatSending] = useState(false);
   const [learningChatModelId, setLearningChatModelId] =
-    useState<LearningChatModelId>("gemini-2.5-flash");
+    useState<LearningChatModelId>("gemini-3-flash-preview");
   const [chatEngineHint, setChatEngineHint] = useState<string | null>(null);
   const [effectiveChatModelId, setEffectiveChatModelId] =
-    useState<LearningChatModelId>("gemini-2.5-flash");
+    useState<LearningChatModelId>("gemini-3-flash-preview");
   const learningChatModelLabel = useMemo(
     () =>
       LEARNING_CHAT_MODEL_OPTIONS.find((o) => o.id === learningChatModelId)?.label ??
@@ -4902,7 +4901,7 @@ ${report.improvements || "（无）"}
     setChatEngineHint(null);
     const label = LEARNING_CHAT_MODEL_OPTIONS.find((o) => o.id === nextId)?.label ?? nextId;
     const toastMsg =
-      nextId === "gemini-2.5-flash"
+      nextId === "gemini-3-flash-preview"
         ? "已切换至 Gemini Flash"
         : nextId === "deepseek-chat"
           ? "已切换至 DeepSeek"
@@ -5278,7 +5277,7 @@ ${report.improvements || "（无）"}
     sessionRawTextRef.current = "";
     sessionAiSummaryRef.current = "";
 
-    const selectedModelId = payload.modelId || "gemini-2.5-flash";
+    const selectedModelId = payload.modelId || "gemini-3-flash-preview";
     const firstFile = payload.files.length === 1 ? payload.files[0]! : null;
     let pdfTotalPages = 0;
     if (firstFile && isPdfFileClient(firstFile)) {
@@ -5965,7 +5964,7 @@ ${report.improvements || "（无）"}
       />
 
       {/* Header + Split */}
-      <div className="flex h-full flex-col">
+      <div className="flex h-full min-h-0 min-w-0 flex-col">
         <div className="flex flex-col gap-2 border-b border-white/5 bg-neutral-950/60 px-3 py-3 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-5">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
@@ -6002,9 +6001,9 @@ ${report.improvements || "（无）"}
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+        <div className="grid min-h-0 min-w-0 flex-1 grid-cols-1 md:grid-cols-2 md:overflow-x-hidden">
           {/* Left: Reader / Workspace */}
-          <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col border-b border-white/5 bg-neutral-900/25 md:w-1/2 md:border-b-0 md:border-r">
+          <div className="flex min-h-0 min-w-0 flex-col overflow-x-hidden border-b border-white/5 bg-neutral-900/25 md:border-b-0 md:border-r md:border-white/5">
             <div className="flex h-full min-h-0 flex-col">
               {/* Title */}
               <div className="px-3 py-4 sm:px-5">
@@ -7123,7 +7122,7 @@ ${report.improvements || "（无）"}
           </div>
 
           {/* Right: Mentor Chat */}
-          <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col bg-neutral-950/40 md:w-1/2">
+          <div className="flex min-h-0 min-w-0 flex-col overflow-x-hidden bg-neutral-950/40">
             <div className="flex h-full min-h-0 flex-col">
               {/* Mode switch + Pet card */}
               <div className="relative border-b border-white/5 px-3 py-3 sm:px-5">

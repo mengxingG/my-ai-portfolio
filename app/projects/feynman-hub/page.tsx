@@ -600,7 +600,7 @@ export default function FeynmanHubCaseStudyPage() {
                           "UI[Next.js 前端\\n双栏学习界面] --> CHAT[/api/chat/]",
                           "UI --> INT[/api/interview/]",
                           "INT --> EVAL[/api/interview/evaluate/]",
-                          "CHAT --> G1[Gemini 2.5 Flash\\n费曼对话 · 文档解析]",
+                          "CHAT --> G1[Gemini 3 Flash Preview\\n费曼对话 · 文档解析]",
                           "EVAL --> D1[DeepSeek Chat\\n面试考核 · 评分报告]",
                           "UI --> N1[Notion 知识输入库]",
                           "CHAT --> N2[Notion 学习会话库]",
@@ -615,7 +615,7 @@ export default function FeynmanHubCaseStudyPage() {
                           [
                             "文档解析 + 费曼对话",
                             <span key="m1" className="font-semibold text-slate-100">
-                              Gemini 2.5 Flash
+                              Gemini 3 Flash Preview
                             </span>,
                             "上下文窗口大、速度快、免费额度够个人用。",
                           ],
