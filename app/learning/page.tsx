@@ -604,101 +604,156 @@ function MermaidBlock({
     return `mm-${(h >>> 0).toString(16)}`;
   }, []);
 
+  const extractTopicTitleFromElement = useCallback((from: Element | null): string => {
+    if (!from) return "";
+    const seen = new Set<SVGGElement>();
+    const chain: SVGGElement[] = [];
+    let cur = from.closest("g") as SVGGElement | null;
+    while (cur && !seen.has(cur)) {
+      seen.add(cur);
+      chain.push(cur);
+      cur = cur.parentElement?.closest("g") as SVGGElement | null;
+    }
+
+    const readTitle = (g: SVGGElement) =>
+      String(
+        (g.querySelector("text, tspan, foreignObject") as SVGElement | null)?.textContent ??
+          g.textContent ??
+          ""
+      )
+        .replace(/\s+/g, " ")
+        .trim();
+    const isNodeLike = (g: SVGGElement) =>
+      /\b(node|mindmap-node)\b/i.test(String(g.getAttribute("class") ?? ""));
+
+    // Pass 1: prefer explicit Mermaid node groups.
+    for (const g of chain) {
+      if (!isNodeLike(g)) continue;
+      const t = readTitle(g);
+      if (t) return t;
+    }
+    // Pass 2: fallback to first readable text on ancestor chain.
+    for (const g of chain) {
+      const t = readTitle(g);
+      if (t) return t;
+    }
+    return "";
+  }, []);
+
   const pickFromEvent = useCallback(
     (e: React.MouseEvent) => {
       if (!onPickTopic) return;
       const target = e.target as HTMLElement | null;
       if (!target) return;
-      const g = (target.closest("g") as SVGGElement | null) ?? null;
-      if (!g) return;
-      const textEl = (g.querySelector("text") as SVGTextElement | null) ?? null;
-      const title = String(textEl?.textContent ?? "").replace(/\s+/g, " ").trim();
+      const title = extractTopicTitleFromElement(target);
       if (!title) return;
       onPickTopic({ id: hashId(title), title, content: "" });
     },
-    [hashId, onPickTopic]
+    [extractTopicTitleFromElement, hashId, onPickTopic]
   );
 
   useEffect(() => {
     // Mermaid 渲染完成后：给节点绑 hover/click（避免 SVG 默认无交互）
     const root = zoomShellRef.current;
     if (!root) return;
-    const svgEl = root.querySelector("svg");
-    if (!svgEl) return;
-    const selector = ".node, .mindmap-node, [class*='node']";
-    const nodes = Array.from(svgEl.querySelectorAll(selector)) as Element[];
-    if (!nodes.length) return;
+    let disposed = false;
+    let cleanup: (() => void) | null = null;
 
-    const cleanups: Array<() => void> = [];
-    for (const el of nodes) {
-      const g = (el as any) as SVGGElement;
-      try {
-        (g as unknown as HTMLElement).style.cursor = onPickTopic ? "pointer" : "";
-      } catch {}
+    
+    const bindClickEvents = () => {
+      if (disposed) return;
+      const svgEl = root.querySelector("svg");
+      if (!svgEl) return;
 
-      const onEnter = () => {
-        try {
-          (g as unknown as HTMLElement).style.opacity = "0.7";
-          (g as unknown as HTMLElement).style.filter = "drop-shadow(0 0 6px #00ffd5)";
-        } catch {}
-      };
-      const onLeave = () => {
-        try {
-          (g as unknown as HTMLElement).style.opacity = "";
-          (g as unknown as HTMLElement).style.filter = "";
-        } catch {}
-      };
-      const onClick = (evt: Event) => {
-        if (!onPickTopic) return;
-        evt.preventDefault();
-        evt.stopPropagation();
-        const textNode =
-          (g.querySelector("text") as SVGTextElement | null) ??
-          (g.querySelector("tspan") as SVGElement | null) ??
-          (g.querySelector("foreignObject") as SVGElement | null);
-        const title = String(textNode?.textContent ?? "").replace(/\s+/g, " ").trim();
-        if (!title) return;
+      const selector = ".node, .mindmap-node, [class*='node']";
+      const nodes = Array.from(svgEl.querySelectorAll(selector)) as Element[];
+      console.log("SVG nodes found:", nodes.length);
 
         // 高亮：恢复上一个
-        const prev = lastActiveNodeRef.current;
-        if (prev && prev !== g) {
-          prev.removeAttribute("data-mmd-clicked");
-          (prev as unknown as HTMLElement).style.filter = "";
-          const prevShape = prev.querySelector("rect, path, polygon, circle, ellipse") as SVGElement | null;
-          if (prevShape) {
-            prevShape.style.stroke = "";
-            prevShape.style.strokeWidth = "";
-          }
-        }
-        lastActiveNodeRef.current = g;
-        g.setAttribute("data-mmd-clicked", "1");
-        (g as unknown as HTMLElement).style.filter = "drop-shadow(0 0 10px rgba(34,211,238,0.35))";
-        const shape = g.querySelector("rect, path, polygon, circle, ellipse") as SVGElement | null;
-        if (shape) {
-          shape.style.stroke = "#00ffd5";
-          shape.style.strokeWidth = "2px";
+        const cleanups: Array<() => void> = [];
+      if (nodes.length > 0) {
+        for (const el of nodes) {
+          const g = (el as any) as SVGGElement;
+          try {
+            (g as unknown as HTMLElement).style.cursor = onPickTopic ? "pointer" : "";
+          } catch {}
+          const onEnter = () => {
+            try {
+              (g as unknown as HTMLElement).style.opacity = "0.7";
+              (g as unknown as HTMLElement).style.filter = "drop-shadow(0 0 6px #00ffd5)";
+            } catch {}
+          };
+          const onLeave = () => {
+            try {
+              (g as unknown as HTMLElement).style.opacity = "";
+              (g as unknown as HTMLElement).style.filter = "";
+            } catch {}
+          };
+          const onClick = (evt: Event) => {
+            if (!onPickTopic) return;
+            const title = extractTopicTitleFromElement(g);
+            if (!title) return;
+            evt.preventDefault();
+            evt.stopPropagation();
+            const prev = lastActiveNodeRef.current;
+            if (prev && prev !== g) {
+              prev.removeAttribute("data-mmd-clicked");
+              (prev as unknown as HTMLElement).style.filter = "";
+              const prevShape = prev.querySelector("rect, path, polygon, circle, ellipse") as SVGElement | null;
+              if (prevShape) {
+                prevShape.style.stroke = "";
+                prevShape.style.strokeWidth = "";
+              }
+            }
+            lastActiveNodeRef.current = g;
+            g.setAttribute("data-mmd-clicked", "1");
+            (g as unknown as HTMLElement).style.filter = "drop-shadow(0 0 10px rgba(34,211,238,0.35))";
+            const shape = g.querySelector("rect, path, polygon, circle, ellipse") as SVGElement | null;
+            if (shape) {
+              shape.style.stroke = "#00ffd5";
+              shape.style.strokeWidth = "2px";
+            }
+            onPickTopic({ id: hashId(title), title, content: title });
+          };
+          g.addEventListener("mouseenter", onEnter);
+          g.addEventListener("mouseleave", onLeave);
+          g.addEventListener("click", onClick);
+          cleanups.push(() => {
+            g.removeEventListener("mouseenter", onEnter);
+            g.removeEventListener("mouseleave", onLeave);
+            g.removeEventListener("click", onClick);
+            try {
+              (g as unknown as HTMLElement).style.cursor = "";
+              (g as unknown as HTMLElement).style.opacity = "";
+            } catch {}
+          });
         }
 
+        cleanup = () => cleanups.forEach((fn) => fn());
+        return;
+      }
+      const delegatedClick = (evt: Event) => {
+        if (!onPickTopic) return;
+        const target = evt.target as Element | null;
+        if (!target) return;
+        const title = extractTopicTitleFromElement(target);
+        if (!title) return;
+        evt.preventDefault();
+        evt.stopPropagation();
         onPickTopic({ id: hashId(title), title, content: title });
       };
 
-      g.addEventListener("mouseenter", onEnter);
-      g.addEventListener("mouseleave", onLeave);
-      g.addEventListener("click", onClick);
-      cleanups.push(() => {
-        g.removeEventListener("mouseenter", onEnter);
-        g.removeEventListener("mouseleave", onLeave);
-        g.removeEventListener("click", onClick);
-        try {
-          (g as unknown as HTMLElement).style.cursor = "";
-          (g as unknown as HTMLElement).style.opacity = "";
-        } catch {}
-      });
-    }
-    return () => {
-      cleanups.forEach((fn) => fn());
+      svgEl.addEventListener("click", delegatedClick);
+      cleanup = () => svgEl.removeEventListener("click", delegatedClick);
     };
-  }, [svg, onPickTopic, hashId]);
+    const timer = window.setTimeout(() => bindClickEvents(), 800);
+    
+    return () => {
+      disposed = true;
+      window.clearTimeout(timer);
+      if (cleanup) cleanup();
+    };
+  }, [svg, onPickTopic, hashId, extractTopicTitleFromElement]);
 
   useEffect(() => {
     let active = true;
