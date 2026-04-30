@@ -6,13 +6,14 @@ import { useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { FEYNMAN_LEARNING_DEMO_HREF } from "@/lib/feynman-demo-link";
 
-const TIMES = ["09:00", "10:30", "14:00", "16:00", "18:30", "20:00"] as const;
+const TIMES = ["09:00", "10:30", "14:00", "15:00", "16:00", "18:30", "20:00"] as const;
 type TimeId = (typeof TIMES)[number];
 
 const TIME_THEME: Record<TimeId, string> = {
   "09:00": "资讯",
   "10:30": "日程",
   "14:00": "学习",
+  "15:00": "面试",
   "16:00": "面试",
   "18:30": "调研",
   "20:00": "策划",
@@ -53,7 +54,7 @@ const TIMELINE_SECTIONS: readonly TimelineSectionData[] = [
       "Python",
     ],
     overview:
-      "每天被海量 AI 噪音淹没？这是一个运行在云端的全自动情报雷达。系统采用创新的「异构双引擎」架构：利用 FastAPI 引擎深度挖掘社区高分共识，结合 Coze 节点精准狙击行业领袖一手动态。每天自动清洗、打分并结构化存入私人 Notion 数据库，将信息焦虑转化为高密度的洞察资产。",
+      "全自动情报雷达，系统采用创新的「异构双引擎」架构：利用 FastAPI 引擎深度挖掘社区高分共识，结合 Coze 节点精准狙击行业领袖一手动态。每天自动清洗、打分并结构化存入私人 Notion 数据库，将信息焦虑转化为高密度的洞察资产。",
     flow:
       "🌟 核心业务流：社区深度解析 (FastAPI) + 领袖动态狙击 (Coze) ➔ 大模型多维去噪与打分 ➔ 统一写入 Notion 数据库 ➔ Next.js 前端实时渲染",
     flowDiagram: "dual-engine",
@@ -142,6 +143,43 @@ const TIMELINE_SECTIONS: readonly TimelineSectionData[] = [
       {
         title: "特性 3：ADHD 友好设计",
         body: "「只学 5 分钟」一键启动，正计时不倒计时，宠物伴侣只奖励不惩罚。启动门槛低到不会引发抗拒。",
+      },
+    ],
+  },
+  {
+    time: "15:00",
+    primaryTitle: "InterviewOS - 全链路 AI 面试教练",
+    tech: ["DeepSeek", "Gemini", "Next.js", "Notion API", "Vercel"],
+    overview:
+      "全链路 AI 面试教练：左侧 JD 解码与简历对齐，右侧高压追问与五维评分。怕背八股文没用？先用 AI 深度拆解岗位需求，再由硅谷级 AI 面试官进行极限压力测试；核心故事库、评分雷达与复盘报告全部沉淀至 Notion。",
+    flow:
+      "🌟 全链路闭环：JD 深度解码 ➔ 简历自动化匹配 ➔ 多模态 AI 模拟面试 ➔ 逻辑漏洞高压追问 ➔ 五维雷达评分与 Notion 复盘",
+    flowDiagram: "linear",
+    flowSteps: [
+      { label: "靶心", sub: "JD 解码" },
+      { label: "弹药", sub: "故事库匹配" },
+      { label: "实战", sub: "模拟面试" },
+      { label: "施压", sub: "高压追问" },
+      { label: "沉淀", sub: "Notion 双表" },
+    ],
+    heroImage: {
+      src: "/image/interview-prep.png",
+      alt: "InterviewOS 全链路 AI 面试教练界面",
+      width: 1200,
+      height: 600,
+    },
+    features: [
+      {
+        title: "特性 1：高压追问与五维评分",
+        body: "摒弃无效的八股文问答。AI 基于 Substance/Structure 等五个维度打分，并针对回答漏洞进行真实的高压追问 (Pushback)。",
+      },
+      {
+        title: "特性 2：故事库与 JD 精准匹配",
+        body: "简历不盲投。系统自动拆解 JD 核心要求，从你的 Notion 故事库中提取高光素材，提供定制化对齐建议。",
+      },
+      {
+        title: "特性 3：Notion 原生闭环",
+        body: "告别「阅后即焚」的聊天框。JD 记录、面试转录稿、AI 深度复盘报告自动写回 Notion，构建长期成长的进度仪表盘。",
       },
     ],
   },
@@ -260,6 +298,10 @@ const TIMELINE_NAV_LINKS: Record<
   "14:00": {
     caseStudyHref: "/projects/feynman-hub",
     startHref: FEYNMAN_LEARNING_DEMO_HREF,
+  },
+  "15:00": {
+    caseStudyHref: "#",
+    startHref: "https://interview.mengxing-ai.it.com/",
   },
   "16:00": {
     caseStudyHref: "/projects/featured",
@@ -503,18 +545,40 @@ function NavigatorBriefCard({
         </h3>
       </button>
       <div className="mt-2.5 flex gap-2">
-        <Link
-          href={caseStudyHref}
-          className={`${navLinkBtnClass} ${active ? linkActive : linkIdle}`}
-        >
-          Case Study
-        </Link>
-        <Link
-          href={startHref}
-          className={`${navLinkBtnClass} ${active ? linkActive : linkIdle}`}
-        >
-          开始使用
-        </Link>
+        {caseStudyHref.startsWith("http") ? (
+          <a
+            href={caseStudyHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`${navLinkBtnClass} ${active ? linkActive : linkIdle}`}
+          >
+            Case Study
+          </a>
+        ) : (
+          <Link
+            href={caseStudyHref}
+            className={`${navLinkBtnClass} ${active ? linkActive : linkIdle}`}
+          >
+            Case Study
+          </Link>
+        )}
+        {startHref.startsWith("http") ? (
+          <a
+            href={startHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`${navLinkBtnClass} ${active ? linkActive : linkIdle}`}
+          >
+            开始使用
+          </a>
+        ) : (
+          <Link
+            href={startHref}
+            className={`${navLinkBtnClass} ${active ? linkActive : linkIdle}`}
+          >
+            开始使用
+          </Link>
+        )}
       </div>
     </div>
   );
@@ -531,6 +595,8 @@ function renderViewerForTime(time: TimeId): ReactNode {
       return <SuperDetailBentoCard data={SECTION_BY_TIME["10:30"]} />;
     case "14:00":
       return <SuperDetailBentoCard data={SECTION_BY_TIME["14:00"]} />;
+    case "15:00":
+      return <SuperDetailBentoCard data={SECTION_BY_TIME["15:00"]} />;
     case "16:00":
       return <SuperDetailBentoCard data={SECTION_BY_TIME["16:00"]} />;
     case "18:30":

@@ -66,7 +66,7 @@ export function NewsRadarModalBody() {
       <section className="min-w-0">
         <h4 className="text-sm font-semibold text-bento-text">🚀 项目概述</h4>
         <p className={`mt-2 ${proseMuted}`}>
-          每天被海量 AI 噪音淹没？这是一个运行在云端的全自动情报雷达。系统采用创新的「异构双引擎」架构：利用
+         全自动情报雷达系统，采用创新的「异构双引擎」架构：利用
           FastAPI 引擎深度挖掘社区高分共识，结合 Coze 节点精准狙击行业领袖一手动态。每天自动清洗、打分并结构化存入私人
           Notion 数据库，将信息焦虑转化为高密度的洞察资产。
         </p>
@@ -127,6 +127,110 @@ export function NewsRadarModalBody() {
         <div className="flex flex-wrap gap-1.5">
           {techItems.map((t) => (
             <span key={`anr-modal-${t}`} className="tech-tag">
+              {t}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** 弹窗内详情：InterviewOS */
+export function InterviewOSModalBody() {
+  const techItems = [
+    "DeepSeek",
+    "Gemini",
+    "Next.js",
+    "Notion API",
+    "Vercel",
+  ] as const;
+
+  return (
+    <div className="min-w-0 max-w-full space-y-5 text-left lg:space-y-6">
+      <div className="flex flex-wrap gap-2">
+        <a
+          href="https://interview.mengxing-ai.it.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="glow-btn glow-btn--primary glow-btn--resume inline-flex text-sm"
+        >
+          在线体验 →
+        </a>
+        <Link href="/projects/interview-os" className="glow-btn glow-btn--secondary inline-flex text-sm">
+          Case Study (架构设计)
+        </Link>
+      </div>
+
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <h3
+          id="workflow-modal-title"
+          className={`min-w-0 max-w-full flex-1 ${titleClass} break-words [overflow-wrap:anywhere]`}
+          style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}
+        >
+          InterviewOS - 全链路 AI 面试教练
+        </h3>
+        <span className="shrink-0 rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-mono uppercase tracking-wide text-bento-muted">
+          FEATURED
+        </span>
+      </div>
+
+      <section className="min-w-0">
+        <h4 className="text-sm font-semibold text-bento-text">🚀 项目概述</h4>
+        <p className={`mt-2 ${proseMuted}`}>
+          全链路 AI 面试教练：左侧 JD 解码与简历对齐，右侧高压追问与五维评分。
+          用 AI 深度拆解岗位需求，再由 AI 面试官进行极限压力测试；核心故事库、评分雷达与复盘报告全部沉淀至 Notion。
+        </p>
+        <p className={`mt-3 ${proseMuted}`}>
+          🌟 全链路闭环：JD 深度解码 ➔ 简历自动化匹配 ➔ 多模态 AI 模拟面试 ➔ 逻辑漏洞高压追问 ➔ 五维雷达评分与 Notion 复盘
+        </p>
+      </section>
+
+      <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-2.5 lg:gap-3">
+        <div className={`min-w-0 ${featureCardClass}`}>
+          <div className="text-xs font-semibold leading-snug text-bento-text break-words">
+            高压追问与五维评分
+          </div>
+          <div className={`mt-2 ${proseMutedTight}`}>
+            摒弃无效的八股文问答。AI 基于 Substance/Structure 等五个维度打分，并针对回答漏洞进行真实的高压追问 (Pushback)。
+          </div>
+        </div>
+        <div className={`min-w-0 ${featureCardClass}`}>
+          <div className="text-xs font-semibold leading-snug text-bento-text break-words">
+            故事库与 JD 精准匹配
+          </div>
+          <div className={`mt-2 ${proseMutedTight}`}>
+            简历不盲投。系统自动拆解 JD 核心要求，从你的 Notion 故事库中提取高光素材，提供定制化对齐建议。
+          </div>
+        </div>
+        <div className={`min-w-0 ${featureCardClass}`}>
+          <div className="text-xs font-semibold leading-snug text-bento-text break-words">
+            Notion 原生闭环
+          </div>
+          <div className={`mt-2 ${proseMutedTight}`}>
+            告别「阅后即焚」的聊天框。JD 记录、面试转录稿、AI 深度复盘报告自动写回 Notion，构建长期成长的进度仪表盘。
+          </div>
+        </div>
+      </div>
+
+      <div className="min-w-0 space-y-3 border-t border-white/10 pt-5">
+        <figure className={figureClass}>
+          <Image
+            src="/images/interview-prep.png"
+            alt="InterviewOS 全链路 AI 面试教练界面"
+            width={1200}
+            height={600}
+            className="h-auto w-full max-w-full object-contain"
+            sizes="(max-width: 1280px) 100vw, min(720px, 70vw)"
+          />
+        </figure>
+        <p className={proseCaption}>InterviewOS 全链路 AI 面试教练界面</p>
+        <p className={proseCaptionTiny}>
+          DeepSeek · Gemini · Next.js · Notion API · Vercel
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {techItems.map((t) => (
+            <span key={`ios-modal-${t}`} className="tech-tag">
               {t}
             </span>
           ))}
