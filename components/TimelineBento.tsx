@@ -6,15 +6,13 @@ import { useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { FEYNMAN_LEARNING_DEMO_HREF } from "@/lib/feynman-demo-link";
 
-const TIMES = ["09:00", "10:30", "14:00", "15:00", "16:00", "18:30", "20:00"] as const;
+const TIMES = ["09:00", "14:00", "15:00", "18:30", "20:00"] as const;
 type TimeId = (typeof TIMES)[number];
 
 const TIME_THEME: Record<TimeId, string> = {
   "09:00": "资讯",
-  "10:30": "日程",
   "14:00": "学习",
   "15:00": "面试",
-  "16:00": "面试",
   "18:30": "调研",
   "20:00": "策划",
 };
@@ -76,36 +74,6 @@ const TIMELINE_SECTIONS: readonly TimelineSectionData[] = [
       {
         title: "特性 3：Notion 原生 CMS 闭环",
         body: "告别传统数据库的繁重维护。通过 Make.com 自动化桥接，将 Notion 打造为灵活的 Headless CMS。数据抓取即入库，前端页面秒级同步更新，完美适配 Rapid Validation 理念。",
-      },
-    ],
-  },
-  {
-    time: "10:30",
-    primaryTitle: "日程规划 & Deadline 督促",
-    tech: ["Next.js", "Notion API", "Agent", "规划中"],
-    overview:
-      "把模糊需求压成可验证任务清单，并与日历、Deadline 对齐（规划中的日程 Agent）。会议与交付依赖可视化，减少「以为对齐了其实漏了」的沟通税。",
-    flow:
-      "🌟 目标形态：自然语言/剪贴板输入 ➔ 结构化任务与依赖 ➔ 日历与 Notion 双向同步 ➔ 按优先级推送可执行拆解",
-    flowDiagram: "linear",
-    flowSteps: [
-      { label: "捕获", sub: "语音 / 剪贴板 / 会议笔记" },
-      { label: "结构化", sub: "依赖与优先级" },
-      { label: "同步", sub: "日历 · Notion" },
-      { label: "督促", sub: "Deadline Agent" },
-    ],
-    features: [
-      {
-        title: "特性 1：会议与交付可视化",
-        body: "会议与交付依赖可视化，减少「以为对齐了其实漏了」的沟通税。",
-      },
-      {
-        title: "特性 2：Agent 优先级拆解",
-        body: "Agent 按优先级拆解子任务，输出顺序与粗估工时。",
-      },
-      {
-        title: "特性 3：个人 OKR 每日锚点",
-        body: "与 Notion / 日历联动后，可作为个人 OKR 的每日锚点。",
       },
     ],
   },
@@ -180,37 +148,6 @@ const TIMELINE_SECTIONS: readonly TimelineSectionData[] = [
       {
         title: "特性 3：Notion 原生闭环",
         body: "告别「阅后即焚」的聊天框。JD 记录、面试转录稿、AI 深度复盘报告自动写回 Notion，构建长期成长的进度仪表盘。",
-      },
-    ],
-  },
-  {
-    time: "16:00",
-    primaryTitle: "TechSpar 面试教练",
-    tech: ["LangGraph", "DeepSeek", "Next.js", "Notion API"],
-    overview:
-      "TechSpar 模拟真实技术面试：情景出题、多轮追问与工具调用均在 LangGraph 状态机内编排，可观测、可回放。每场结束输出结构化评分与薄弱项标注，写入 Notion；下一场自动携带长期记忆与个性化题单，形成「面—评—练」闭环。",
-    flow:
-      "🌟 教练过程：岗位画像 / 题库抽样 ➔ 多轮对话 + 工具 ➔ 实时评分维度 ➔ 报告与盲点标签 ➔ Notion 复盘库 ➔ 下次会话预热",
-    flowDiagram: "linear",
-    flowSteps: [
-      { label: "定景", sub: "岗位 · 栈 · 难度" },
-      { label: "对练", sub: "LangGraph 多轮" },
-      { label: "工具", sub: "检索 · 代码沙箱" },
-      { label: "评分", sub: "结构化维度" },
-      { label: "复盘", sub: "Notion + 题单" },
-    ],
-    features: [
-      {
-        title: "特性 1：结构化评分与盲点标注",
-        body: "结构化评分与薄弱项标注，避免「面完就忘」。",
-      },
-      {
-        title: "特性 2：LangGraph 状态机编排",
-        body: "多轮对话与工具调用在状态机内编排，保证流程可控、可观测、可回放。",
-      },
-      {
-        title: "特性 3：长期记忆复盘",
-        body: "跨场次沉淀问答要点与薄弱项，为下一轮模拟提供上下文与个性化题单。",
       },
     ],
   },
@@ -291,10 +228,6 @@ const TIMELINE_NAV_LINKS: Record<
     caseStudyHref: "/projects/ai-news-radar",
     startHref: "/ai-news",
   },
-  "10:30": {
-    caseStudyHref: "/projects/featured",
-    startHref: "/#featured",
-  },
   "14:00": {
     caseStudyHref: "/projects/feynman-hub",
     startHref: FEYNMAN_LEARNING_DEMO_HREF,
@@ -302,10 +235,6 @@ const TIMELINE_NAV_LINKS: Record<
   "15:00": {
     caseStudyHref: "#",
     startHref: "https://interview.mengxing-ai.it.com/",
-  },
-  "16:00": {
-    caseStudyHref: "/projects/featured",
-    startHref: "/#featured",
   },
   "18:30": {
     caseStudyHref: "/projects/featured",
@@ -591,14 +520,10 @@ function renderViewerForTime(time: TimeId): ReactNode {
   switch (time) {
     case "09:00":
       return <SuperDetailBentoCard data={SECTION_BY_TIME["09:00"]} />;
-    case "10:30":
-      return <SuperDetailBentoCard data={SECTION_BY_TIME["10:30"]} />;
     case "14:00":
       return <SuperDetailBentoCard data={SECTION_BY_TIME["14:00"]} />;
     case "15:00":
       return <SuperDetailBentoCard data={SECTION_BY_TIME["15:00"]} />;
-    case "16:00":
-      return <SuperDetailBentoCard data={SECTION_BY_TIME["16:00"]} />;
     case "18:30":
       return <SuperDetailBentoCard data={SECTION_BY_TIME["18:30"]} />;
     case "20:00":
