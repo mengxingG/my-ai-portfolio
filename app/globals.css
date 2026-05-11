@@ -1,13 +1,6 @@
-@import "tailwindcss";
-
-@theme {
-  --color-bento-bg: #09090B;
-  --color-bento-card: #18181B;
-  --color-bento-glow: #8B5CF6;
-  --color-bento-text: #FAFAFA;
-  --color-bento-muted: #A1A1AA;
-  --radius-bento: 1.5rem;
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 @keyframes chat-think-dot {
   0%,
