@@ -45,15 +45,17 @@ const TIMELINE_SECTIONS: readonly TimelineSectionData[] = [
     primaryTitle: "全自动求职与背调引擎",
     tech: [
       "Python",
-      "Headless CMS (Notion API)",
+      "Playwright",
+      "DeepSeek API",
+      "Notion API (Headless CMS)",
       "OpenClaw",
       "飞书 Open API",
       "Next.js",
     ],
     overview:
-      "采用 Notion 作为 Headless CMS（无头内容管理系统）构建的私人求职大脑。底层数据源由 Python 分布式爬虫在每日清晨 5:00 定时从各大招聘平台静默抓取并结构化入库。前端结合飞书 ChatOps 与 OpenClaw 智能体，实现『一句话触发深度背调』。",
+      "采用 Notion 作为 Headless CMS 构建的私人求职大脑。底层由 Python 多源爬虫矩阵在每日清晨 5:00 定时从招聘平台与公司官网静默抓取并结构化入库。前端结合飞书 ChatOps 与 OpenClaw 智能体，通过意图路由精准调度早报推送或深度背调，强制实时检索消灭 AI 调研幻觉。",
     flow:
-      "🌟 离线异步抓取 ➔ Notion 数据湖沉淀 ➔ 飞书 ChatOps 调度 ➔ OpenClaw 实时防幻觉背调 ➔ Next.js 极客风渲染",
+      "🌟 离线异步抓取 ➔ Notion 数据中台沉淀 ➔ 飞书意图路由调度 ➔ OpenClaw 强制溯源背调 ➔ Next.js 极客风渲染",
     heroImage: {
       src: "/image/positons.png",
       alt: "全自动求职引擎 - 终端爬虫日志与飞书早报",
@@ -63,15 +65,15 @@ const TIMELINE_SECTIONS: readonly TimelineSectionData[] = [
     features: [
       {
         title: "特性 1：清晨 5 点的数据管道 (Data Pipeline)",
-        body: "摒弃实时抓取的高昂成本，采用 Cron 定时任务在每日清晨 5 点唤醒 Python 爬虫矩阵，获取全网最新增量岗位并清洗至 Notion 数据湖，随后通过 AI 提取核心匹配点，生成早报推至飞书。",
+        body: "摒弃实时抓取的高昂成本，采用 Cron 定时任务在每日清晨 5 点唤醒 Python 多源爬虫矩阵，覆盖 BOSS 直聘、猎聘等招聘平台及 22 家公司官网，增量抓取并清洗入库至 Notion。内置爬虫异常巡检与飞书告警，任一数据源连续 2 天断流即触发通知。随后由 DeepSeek 自动评分并生成极客早报推至飞书。",
       },
       {
-        title: "特性 2：零幻觉的 ChatOps 背调",
-        body: "深度集成飞书。输入公司名即刻唤醒 OpenClaw Agent。强制大模型挂载 web_search 与 web_fetch 工具，深入新闻、财报与技术博客，所有研报结论强制附带真实 URL 溯源。",
+        title: "特性 2：意图路由与零幻觉背调",
+        body: "飞书作为统一 ChatOps 入口，内置意图路由层：查询岗位 → 直接检索 Notion 数据库返回筛选摘要；输入公司名 → 唤醒 OpenClaw Agent 执行深度背调。Agent 被强制挂载 web_search 与 web_fetch 工具链，逐项抓取官网、技术博客、近期新闻与财报，所有结论强制标注真实 URL 来源，无出处则不输出。",
       },
       {
-        title: "特性 3：锚点隔离与无头渲染",
-        body: "将 Notion 打造为纯粹的数据中台（Headless CMS）。后端 AI 写入新研报时利用『锚点隔离算法』精准擦除旧数据保全原始 JD；前端网页通过 API 递归解析 Notion Blocks，原生渲染为赛博朋克风的深度长文。",
+        title: "特性 3：字段级隔离写入与无头渲染",
+        body: "将 Notion 打造为纯粹的数据中台（Headless CMS）。后端 AI 写入新研报时采用字段级隔离策略，通过 Block Children API 精准定位并替换分析区域，完整保全原始 JD 数据不被覆盖；前端通过 Notion API 递归解析 Block 树，原生渲染为赛博朋克风格的可交互深度长文。",
       },
     ],
   },
