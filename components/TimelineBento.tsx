@@ -6,15 +6,15 @@ import { useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { FEYNMAN_LEARNING_DEMO_HREF } from "@/lib/feynman-demo-link";
 
-const TIMES = ["09:00", "14:00", "15:00", "18:30", "20:00"] as const;
+const TIMES = ["05:00", "09:00", "14:00", "15:00", "18:30"] as const;
 type TimeId = (typeof TIMES)[number];
 
 const TIME_THEME: Record<TimeId, string> = {
+  "05:00": "求职",
   "09:00": "资讯",
   "14:00": "学习",
   "15:00": "面试",
   "18:30": "调研",
-  "20:00": "策划",
 };
 
 type FeatureBlock = { title: string; body: string };
@@ -40,6 +40,41 @@ const PROSE_TIGHT =
   "text-[13px] leading-relaxed text-bento-text/90 break-words [overflow-wrap:anywhere]";
 
 const TIMELINE_SECTIONS: readonly TimelineSectionData[] = [
+  {
+    time: "05:00",
+    primaryTitle: "全自动求职与背调引擎",
+    tech: [
+      "Python",
+      "Headless CMS (Notion API)",
+      "OpenClaw",
+      "飞书 Open API",
+      "Next.js",
+    ],
+    overview:
+      "采用 Notion 作为 Headless CMS（无头内容管理系统）构建的私人求职大脑。底层数据源由 Python 分布式爬虫在每日清晨 5:00 定时从各大招聘平台静默抓取并结构化入库。前端结合飞书 ChatOps 与 OpenClaw 智能体，实现『一句话触发深度背调』。",
+    flow:
+      "🌟 离线异步抓取 ➔ Notion 数据湖沉淀 ➔ 飞书 ChatOps 调度 ➔ OpenClaw 实时防幻觉背调 ➔ Next.js 极客风渲染",
+    heroImage: {
+      src: "/image/positons.png",
+      alt: "全自动求职引擎 - 终端爬虫日志与飞书早报",
+      width: 1200,
+      height: 600,
+    },
+    features: [
+      {
+        title: "特性 1：清晨 5 点的数据管道 (Data Pipeline)",
+        body: "摒弃实时抓取的高昂成本，采用 Cron 定时任务在每日清晨 5 点唤醒 Python 爬虫矩阵，获取全网最新增量岗位并清洗至 Notion 数据湖，随后通过 AI 提取核心匹配点，生成早报推至飞书。",
+      },
+      {
+        title: "特性 2：零幻觉的 ChatOps 背调",
+        body: "深度集成飞书。输入公司名即刻唤醒 OpenClaw Agent。强制大模型挂载 web_search 与 web_fetch 工具，深入新闻、财报与技术博客，所有研报结论强制附带真实 URL 溯源。",
+      },
+      {
+        title: "特性 3：锚点隔离与无头渲染",
+        body: "将 Notion 打造为纯粹的数据中台（Headless CMS）。后端 AI 写入新研报时利用『锚点隔离算法』精准擦除旧数据保全原始 JD；前端网页通过 API 递归解析 Notion Blocks，原生渲染为赛博朋克风的深度长文。",
+      },
+    ],
+  },
   {
     time: "09:00",
     primaryTitle: "每日 AI 资讯模块 (AI News Radar)",
@@ -182,37 +217,6 @@ const TIMELINE_SECTIONS: readonly TimelineSectionData[] = [
       },
     ],
   },
-  {
-    time: "20:00",
-    primaryTitle: "Superpowers · Agentic Skills",
-    tech: ["Claude", "Cursor", "Next.js", "Notion API"],
-    overview:
-      "晚间用 Superpowers 把脑暴落成用户故事与里程碑，再把可复用套路沉淀为 Agentic Skills：与 Claude / Cursor 工作流对齐，从 Skill 定义、工具描述到仓库内 `.cursor/rules` 一体贯通，缩短「想法 → 可运行 PR」的路径。",
-    flow:
-      "🌟 Agentic 工作流：头脑风暴落盘 ➔ 里程碑与实验假设 ➔ Skill 规格与工具链 ➔ Cursor / Claude 侧加载 ➔ 复用到下一个功能切片",
-    flowDiagram: "linear",
-    flowSteps: [
-      { label: "脑暴", sub: "Superpowers" },
-      { label: "拆解", sub: "里程碑 · 实验" },
-      { label: "沉淀", sub: "Skill 规格" },
-      { label: "挂载", sub: "Cursor · Claude" },
-      { label: "交付", sub: "PR · 回归" },
-    ],
-    features: [
-      {
-        title: "特性 1：Superpowers 大纲与验证",
-        body: "Superpowers 侧重大纲与假设验证，适合头脑风暴后落盘。",
-      },
-      {
-        title: "特性 2：Agentic Skills 工作流对齐",
-        body: "Agentic Skills 与 Claude / Cursor 工作流对齐，减少重复造轮子。",
-      },
-      {
-        title: "特性 3：可执行收敛",
-        body: "把一天的输入收敛成「明天能开干」的条目。",
-      },
-    ],
-  },
 ];
 
 const SECTION_BY_TIME = Object.fromEntries(
@@ -224,6 +228,10 @@ const TIMELINE_NAV_LINKS: Record<
   TimeId,
   { caseStudyHref: string; startHref: string }
 > = {
+  "05:00": {
+    caseStudyHref: "#",
+    startHref: "https://interview.mengxing-ai.it.com/job-analysis?tab=monitor",
+  },
   "09:00": {
     caseStudyHref: "/projects/ai-news-radar",
     startHref: "/ai-news",
@@ -237,10 +245,6 @@ const TIMELINE_NAV_LINKS: Record<
     startHref: "https://interview.mengxing-ai.it.com/",
   },
   "18:30": {
-    caseStudyHref: "/projects/featured",
-    startHref: "/#featured",
-  },
-  "20:00": {
     caseStudyHref: "/projects/featured",
     startHref: "/#featured",
   },
@@ -518,6 +522,8 @@ function NavigatorBriefCard({
  */
 function renderViewerForTime(time: TimeId): ReactNode {
   switch (time) {
+    case "05:00":
+      return <SuperDetailBentoCard data={SECTION_BY_TIME["05:00"]} />;
     case "09:00":
       return <SuperDetailBentoCard data={SECTION_BY_TIME["09:00"]} />;
     case "14:00":
@@ -526,8 +532,6 @@ function renderViewerForTime(time: TimeId): ReactNode {
       return <SuperDetailBentoCard data={SECTION_BY_TIME["15:00"]} />;
     case "18:30":
       return <SuperDetailBentoCard data={SECTION_BY_TIME["18:30"]} />;
-    case "20:00":
-      return <SuperDetailBentoCard data={SECTION_BY_TIME["20:00"]} />;
   }
 }
 
