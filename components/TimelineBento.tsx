@@ -14,7 +14,7 @@ const TIME_THEME: Record<TimeId, string> = {
   "09:00": "资讯",
   "14:00": "学习",
   "15:00": "面试",
-  "18:30": "调研",
+  "18:30": "研究",
 };
 
 type FeatureBlock = { title: string; body: string };
@@ -45,35 +45,36 @@ const TIMELINE_SECTIONS: readonly TimelineSectionData[] = [
     primaryTitle: "全自动求职与背调引擎",
     tech: [
       "Python",
+      "DrissionPage",
       "Playwright",
       "DeepSeek API",
       "Notion API (Headless CMS)",
       "OpenClaw",
-      "飞书 Open API",
+      "飞书 WebSocket 网关",
       "Next.js",
     ],
     overview:
-      "采用 Notion 作为 Headless CMS 构建的私人求职大脑。底层由 Python 多源爬虫矩阵在每日清晨 5:00 定时从招聘平台与公司官网静默抓取并结构化入库。前端结合飞书 ChatOps 与 OpenClaw 智能体，通过意图路由精准调度早报推送或深度背调，强制实时检索消灭 AI 调研幻觉。",
+      "Job Engine 以 Notion 为 Headless CMS 构建私人求职数据中台。9 大渠道（BOSS直聘、猎聘 + 字节 / DeepSeek / 小红书 / 月之暗面 / 智谱 / MiniMax / 阿里巴巴）不再依赖 Cron 定时并发，改由飞书 ChatOps 中枢按需调度：`feishu_gateway.py` WebSocket 长连接接收底部菜单与文本指令，后台严格串行拉起爬虫脚本，单平台失败自动跳过，保护本地内存。意图路由区分「今日简报」「全面抓取」与带公司名的深度背调；OpenClaw 强制 web 溯源，消灭调研幻觉。",
     flow:
-      "🌟 离线异步抓取 ➔ Notion 数据中台沉淀 ➔ 飞书意图路由调度 ➔ OpenClaw 强制溯源背调 ➔ Next.js 极客风渲染",
+      "🌟 飞书 ChatOps 指令 ➔ 9 平台串行抓取 ➔ Notion 数据中台 ➔ 今日简报(24h 入库) / OpenClaw 溯源背调 ➔ Next.js 极客风渲染",
     heroImage: {
       src: "/image/positons.png",
-      alt: "全自动求职引擎 - 终端爬虫日志与飞书早报",
+      alt: "Job Engine - 飞书 ChatOps 与岗位简报",
       width: 1200,
       height: 600,
     },
     features: [
       {
-        title: "特性 1：清晨 5 点的数据管道 (Data Pipeline)",
-        body: "摒弃实时抓取的高昂成本，采用 Cron 定时任务在每日清晨 5 点唤醒 Python 多源爬虫矩阵，覆盖 BOSS 直聘、猎聘等招聘平台及 22 家公司官网，增量抓取并清洗入库至 Notion。内置爬虫异常巡检与飞书告警，任一数据源连续 2 天断流即触发通知。随后由 DeepSeek 自动评分并生成极客早报推至飞书。",
+        title: "特性 1：飞书 ChatOps 与串行抓取（防 OOM）",
+        body: "取消 Cron 全量并发后，调度权移交飞书网关。底部快捷菜单提供「抓取官网指南」「全面抓取」等入口；文本指令如「抓取BOSS直聘」「抓取字节跳动」精准映射独立爬虫脚本。「全面抓取」在后台线程中严格串行执行 9 个平台，每完成一项推送结果卡片，结束后桥接 Notion。subprocess 异步执行，不阻塞 WebSocket 长连接；全局互斥锁保证同一时刻仅一个抓取批次。",
       },
       {
-        title: "特性 2：意图路由与零幻觉背调",
-        body: "飞书作为统一 ChatOps 入口，内置意图路由层：查询岗位 → 直接检索 Notion 数据库返回筛选摘要；输入公司名 → 唤醒 OpenClaw Agent 执行深度背调。Agent 被强制挂载 web_search 与 web_fetch 工具链，逐项抓取官网、技术博客、近期新闻与财报，所有结论强制标注真实 URL 来源，无出处则不输出。",
+        title: "特性 2：意图路由、今日简报与零幻觉背调",
+        body: "菜单项「背调指南」「深度背调」仅返回固定引导，不误启 OpenClaw；「今日简报」按 Notion 页面入库时间筛选过去 24 小时岗位，不限匹配分数，并二次过滤发现日避免历史帖误入。自然语言如「帮我背调一下 字节跳动」才唤醒 OpenClaw Agent，强制挂载 web_search / web_fetch，结论须附真实 URL。实体提取屏蔽「深度背调」等功能词，避免将菜单文案识别为公司名。",
       },
       {
         title: "特性 3：字段级隔离写入与无头渲染",
-        body: "将 Notion 打造为纯粹的数据中台（Headless CMS）。后端 AI 写入新研报时采用字段级隔离策略，通过 Block Children API 精准定位并替换分析区域，完整保全原始 JD 数据不被覆盖；前端通过 Notion API 递归解析 Block 树，原生渲染为赛博朋克风格的可交互深度长文。",
+        body: "将 Notion 打造为纯粹的数据中台（Headless CMS）。爬虫经 openclaw_bridge 完成 DeepSeek 评分后增量同步；AI 写入背调研报时采用字段级隔离，通过 Block Children API 精准替换分析区域，完整保全原始 JD。前端通过 Notion API 递归解析 Block 树，渲染为可交互深度长文岗位看板。",
       },
     ],
   },
@@ -190,32 +191,46 @@ const TIMELINE_SECTIONS: readonly TimelineSectionData[] = [
   },
   {
     time: "18:30",
-    primaryTitle: "AI 产品调研学习",
-    tech: ["Perplexity", "Hacker News", "X", "Notion API", "Deep Research"],
+    primaryTitle: "横纵分析法 (HV-Analysis)",
+    tech: [
+      "DeepSeek",
+      "Tavily",
+      "Claude Sonnet",
+      "Next.js",
+      "Notion API",
+      "TransformStream",
+      "WeasyPrint",
+    ],
     overview:
-      "围绕目标赛道进行系统化调研：追踪产品迭代、竞品能力边界、用户吐槽与行业机会点。把碎片信息转成可执行洞察，服务后续产品策略与需求优先级判断。",
+      "数字生命卡兹克提出的横纵分析法深度研究引擎：纵轴沿时间追溯产品/公司/概念的完整生命史，横轴在当下截面与竞品系统性对比，在交汇处产出独到判断。配置研究对象与视角后，AI 自动联网检索、分章流式生成万字级 Markdown 报告，并经由 14 条军规 QA 审计与 Actor-Critic 定向修复闭环，最终一键归档至 Notion。",
     flow:
-      "🌟 调研闭环：主题定义与检索策略 ➔ 多源信号采集（社区/媒体/产品更新）➔ 观点聚类与证据交叉验证 ➔ 洞察沉淀到 Notion ➔ 输出下一步实验假设",
+      "🌟 研究闭环：检索规划 + Tavily 预采集 ➔ 分章流水线（定义 → 纵向 → 横向 → 交汇）➔ 14 条军规 QA 审计 ➔ Auto-Refine 定向修复 ➔ 手动存入 Notion 研报库",
     flowDiagram: "linear",
     flowSteps: [
-      { label: "定题", sub: "目标市场 · 关键问题" },
-      { label: "采集", sub: "社区 · 媒体 · 动态" },
-      { label: "聚类", sub: "机会点 · 风险点" },
-      { label: "验证", sub: "证据交叉检查" },
-      { label: "沉淀", sub: "Notion 调研库" },
+      { label: "定题", sub: "对象 · 类型 · 竞品" },
+      { label: "检索", sub: "Tavily 多源" },
+      { label: "纵轴", sub: "时间叙事" },
+      { label: "横轴", sub: "竞品对比" },
+      { label: "沉淀", sub: "QA · Notion" },
     ],
+    heroImage: {
+      src: "/images/hv-analysis/hv-page.png",
+      alt: "横纵分析法 HV-Analysis 深度研究配置界面",
+      width: 1920,
+      height: 1080,
+    },
     features: [
       {
-        title: "特性 1：多源调研信号融合",
-        body: "把论坛讨论、产品更新日志、用户反馈和行业文章统一纳入调研视角，避免单一信息源导致偏差。",
+        title: "特性 1：分章流式流水线（突破 Token 上限）",
+        body: "采用 TransformStream 分章顺序生成：一句话定义 → 纵向 6k–15k 字 → 横向 3k–10k 字 → 横纵交汇洞察，单章独立 streamText，总篇幅可达 1–3 万字而不截断。前端实时打字机渲染，DONE 后即刻可导出 PDF。",
       },
       {
-        title: "特性 2：证据链式洞察沉淀",
-        body: "每条结论都保留来源链接和置信度标注，方便后续复盘与团队沟通，降低“拍脑袋决策”风险。",
+        title: "特性 2：Actor-Critic 质检与定向修复",
+        body: "报告生成后自动执行 14 条军规 QA（叙事体、竞品深度、套话禁区、万字体量等）。未通过项一键触发 Auto-Refine：将审计意见与初稿提交 Claude，流式重写完整 Markdown 并 re-QA，形成执行者-评估者闭环。",
       },
       {
-        title: "特性 3：直连产品实验假设",
-        body: "调研不止于阅读，输出可执行假设与优先级建议，直接进入下一轮需求验证与原型实验。",
+        title: "特性 3：Notion 研报库与历史舱",
+        body: "用户确认后手动「存入 Notion」，元数据（type / Motivation / Competitors / Model / Score / QA_Data）与正文分块写入 hvSearch 数据库。左侧「历史研报舱」按时间倒序拉取，点击即可恢复正文与质检结果。",
       },
     ],
   },
@@ -247,8 +262,8 @@ const TIMELINE_NAV_LINKS: Record<
     startHref: "https://interview.mengxing-ai.it.com/",
   },
   "18:30": {
-    caseStudyHref: "/projects/featured",
-    startHref: "/#featured",
+    caseStudyHref: "/tools/hv-analysis",
+    startHref: "/tools/hv-analysis",
   },
 };
 
