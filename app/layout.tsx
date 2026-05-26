@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { ChunkLoadRecovery } from "@/components/ChunkLoadRecovery";
 import { FloatingChat } from "@/components/FloatingChat";
 import "./globals.css";
 
@@ -22,6 +23,7 @@ export default function RootLayout({
   return (
     <html lang="zh-CN" className={inter.variable}>
       <body className={`${inter.className} antialiased`}>
+        <ChunkLoadRecovery />
         {children}
         <FloatingChat />
       </body>

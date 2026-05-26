@@ -1,6 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import {
+  OBJECT_TYPE_LABELS,
+  OBJECT_TYPES,
+  type HvObjectType,
+} from "@/lib/hv-analysis/object-type-adaptation";
 
 export type AnalysisMode = "lite" | "full";
 
@@ -15,6 +20,10 @@ export interface ConfigFormData {
   timeRange: "full" | "3years" | "1year";
   /** 分析模式 */
   mode: AnalysisMode;
+  /** 大模型选择 */
+  modelId: string;
+  /** 研究对象类型：影响纵/横轴侧重点 */
+  objectType: HvObjectType;
 }
 
 interface ConfigFormProps {
@@ -32,16 +41,34 @@ const TIME_RANGE_OPTIONS = [
   { value: "1year", label: "仅看近一年" },
 ] as const;
 
+const MODEL_OPTIONS = [
+  { value: "deepseek-v4-flash", label: "DeepSeek-V4 推理", badge: "首选" },
+  { value: "gpt-5.4", label: "ChatGPT-4o / 综合最强", badge: "综合" },
+  { value: "claude-sonnet-4-6", label: "Claude 3.5 Sonnet / 代码与长文本", badge: "代码" },
+  { value: "gemini-3.1-pro-preview", label: "Gemini 1.5 Pro / 超长上下文", badge: "长文" },
+  { value: "grok-4.3", label: "Grok 最新版", badge: "前沿" },
+] as const;
+
 export default function ConfigForm({ onStart, disabled }: ConfigFormProps) {
   const [productName, setProductName] = useState("");
   const [researchMotivation, setResearchMotivation] = useState("");
   const [competitor, setCompetitor] = useState("");
   const [timeRange, setTimeRange] = useState<ConfigFormData["timeRange"]>("full");
   const [mode, setMode] = useState<AnalysisMode>("lite");
+  const [modelId, setModelId] = useState("deepseek-v4-flash");
+  const [objectType, setObjectType] = useState<HvObjectType>("auto");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onStart({ productName, researchMotivation, competitor, timeRange, mode });
+    onStart({
+      productName,
+      researchMotivation,
+      competitor,
+      timeRange,
+      mode,
+      modelId,
+      objectType,
+    });
   };
 
   return (
@@ -92,6 +119,29 @@ export default function ConfigForm({ onStart, disabled }: ConfigFormProps) {
         />
         <p className="mt-1 text-[10px] text-cyan-400">
           这是研究的锚点，AI 将围绕它展开横纵交叉分析
+        </p>
+      </div>
+
+      {/* 研究对象类型 */}
+      <div>
+        <label className={labelBase}>
+          研究对象类型
+          <span className="ml-1.5 text-[10px] text-slate-400">选填</span>
+        </label>
+        <select
+          className={inputBase}
+          value={objectType}
+          onChange={(e) => setObjectType(e.target.value as HvObjectType)}
+          disabled={disabled}
+        >
+          {OBJECT_TYPES.map((t) => (
+            <option key={t} value={t} className="bg-[#1a1a2e] text-slate-200">
+              {OBJECT_TYPE_LABELS[t]}
+            </option>
+          ))}
+        </select>
+        <p className="mt-1 text-[10px] text-cyan-400">
+          选定后纵轴/横轴将锁定对应侧重点；选「自动识别」则由 AI 根据名称判断
         </p>
       </div>
 
@@ -152,6 +202,40 @@ export default function ConfigForm({ onStart, disabled }: ConfigFormProps) {
         <p className="mt-1 text-[10px] text-cyan-400">
           这对应了核心概念里的纵轴（时间演进）
         </p>
+      </div>
+
+      {/* 大模型选择 */}
+      <div>
+        <label className={labelBase}>
+          大模型选择
+          <span className="ml-1.5 text-[10px] text-slate-400">选填</span>
+        </label>
+        <select
+          className={inputBase}
+          value={modelId}
+          onChange={(e) => setModelId(e.target.value)}
+          disabled={disabled}
+        >
+          {MODEL_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value} className="bg-[#1a1a2e] text-slate-200">
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        <div className="mt-1 flex items-center gap-2">
+          {MODEL_OPTIONS.map((opt) => (
+            <span
+              key={opt.value}
+              className={`rounded-full px-1.5 py-0.5 text-[9px] font-mono transition ${
+                modelId === opt.value
+                  ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                  : "bg-white/5 text-slate-500 border border-white/5"
+              }`}
+            >
+              {opt.badge}
+            </span>
+          ))}
+        </div>
       </div>
 
       {/* 执行按钮 */}

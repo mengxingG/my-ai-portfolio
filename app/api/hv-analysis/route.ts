@@ -1,206 +1,525 @@
 /**
- * HV-Analysis 流式 Mock API
+ * HV-Analysis 流式 API — 分章流水线版
  *
- * 模拟深度研究引擎的多个阶段，每隔 1-2 秒向前端推送一条状态日志。
- * 使用 Web Streams API 实现流式响应，防止 Vercel 10s 超时。
+ * 双路分发：DeepSeek 官方 / 其他模型中转站 (gptsapi.net)
+ * 前置：searchPlannerModel + Tavily 并行检索
+ * 生成：TransformStream + 三章顺序 streamText（突破单次 Token 上限）
  *
- * 日志格式：
- *   [INFO] 普通信息
- *   [SEARCH] 搜索/爬取状态
- *   [DATA] {"type":"...","content":"..."}  结构化数据
- *   [DONE] 完成标记
+ * 流式协议（text/plain）：
+ *   [HH:MM:SS] [INFO|WORKER|ERROR|DONE] ...
+ *   正文 Markdown 直接流式输出
  */
 
-export const runtime = "edge";
+export const runtime = "nodejs";
+export const maxDuration = 300;
+
+import {
+  buildAdaptationRules,
+  buildHorizontalTypeChecklist,
+  buildSearchPlannerTypeHint,
+  buildVerticalTypeChecklist,
+  objectTypeDisplayLabel,
+  type HvObjectType,
+} from "@/lib/hv-analysis/object-type-adaptation";
+import type { HvQaResult } from "@/lib/hv-analysis/qa-types";
+import {
+  buildReportFooter,
+  buildReportHeader,
+  finalizeReportMarkdown,
+} from "@/lib/hv-analysis/report-markdown";
+import { runHvReportQa } from "@/lib/hv-analysis/run-hv-qa";
+import {
+  safeJsonParse,
+  sanitizeDeepStrings,
+  sanitizeForLlmPayload,
+} from "@/lib/hv-analysis/sanitize-payload-text";
+import { HV_STYLE_GUIDELINES } from "@/lib/hv-analysis/style-guidelines";
+import { createOpenAI } from "@ai-sdk/openai";
+import { createDeepSeek } from "@ai-sdk/deepseek";
+import { generateText, streamText } from "ai";
+import type { LanguageModel } from "ai";
+import fs from "fs";
+import path from "path";
 
 interface AnalysisRequest {
-  productName: string;
-  researchMotivation: string;
-  competitor: string;
-  timeRange: "full" | "3years" | "1year";
-  mode: "lite" | "full";
+  targetName: string;
+  additionalContext?: string;
+  modelId?: string;
+  competitor?: string;
+  timeRange?: string;
+  /** product | company | concept | person | auto（默认 auto） */
+  objectType?: HvObjectType | string;
 }
 
-/** 时间范围中文映射 */
-const TIME_RANGE_LABEL: Record<AnalysisRequest["timeRange"], string> = {
-  full: "追踪完整生命史",
-  "3years": "仅看近三年",
-  "1year": "仅看近一年",
-};
+const STYLE_GUIDELINES = HV_STYLE_GUIDELINES;
 
-/** 模拟异步延迟 */
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+/** 三章共用的 baseSystem：检索资料 + 文风 + 自适应 + 核心指令 */
+function buildBaseSystem(
+  targetName: string,
+  searchContext: string,
+  objectType?: string,
+): string {
+  const safeContext = sanitizeForLlmPayload(searchContext);
+  return `你是一个极具洞察力的资深技术商业研究分析师。请基于以下最新全网检索资料：
+${safeContext}
 
-/** 生成时间戳 */
+${STYLE_GUIDELINES}
+
+${buildAdaptationRules(targetName, objectType)}
+
+【核心指令】：开始深度研究【${targetName}】。`;
+}
+
+/** 生成时间戳 [HH:MM:SS] */
 function ts(): string {
   const now = new Date();
   return now.toLocaleTimeString("zh-CN", { hour12: false });
 }
 
-/** 模拟的完整阶段序列 */
-async function* generateStages(req: AnalysisRequest): AsyncGenerator<string> {
-  const { productName, researchMotivation, competitor, timeRange, mode } = req;
+function loadPromptTemplate(): string {
+  const filePath = path.join(process.cwd(), "src", "prompts", "hv-analysis.md");
+  return fs.readFileSync(filePath, "utf-8");
+}
 
-  // 解析竞品列表（横轴实体）
-  const competitorList = competitor
-    ? competitor.split(",").map((s) => s.trim()).filter(Boolean)
-    : ["行业平均", "头部竞品", "新兴玩家"];
+function injectTargetName(template: string, targetName: string): string {
+  return template.replace(/研究对象\s*=\s*.+/, `研究对象 = ${targetName}`);
+}
 
-  // 根据时间范围决定纵轴阶段
-  const timePhases =
-    timeRange === "full"
-      ? ["萌芽期", "成长期", "成熟期", "当前状态"]
-      : timeRange === "3years"
-        ? ["三年前", "两年前", "当前状态"]
-        : ["近一年内", "当前状态"];
-
-  // ── 阶段 1：引擎初始化 ──
-  yield `[${ts()}] [INFO] 正在启动深度研究引擎...\n`;
-  yield `[${ts()}] [INFO] 研究对象: ${productName}\n`;
-  yield `[${ts()}] [INFO] 时间追溯: ${TIME_RANGE_LABEL[timeRange]}\n`;
-  yield `[${ts()}] [INFO] 分析模式: ${mode === "lite" ? "精简版" : "详细版"}\n`;
-  if (researchMotivation) {
-    yield `[${ts()}] [INFO] 研究动机: ${researchMotivation}\n`;
-  }
-  await sleep(1200);
-
-  // ── 阶段 2：横轴竞品标定（空间对比） ──
-  yield `[${ts()}] [SEARCH] 正在标定横向对比对象...\n`;
-  for (const c of competitorList) {
-    yield `[${ts()}] [SEARCH]   → 加载竞品「${c}」数据\n`;
-    await sleep(400);
-  }
-  yield `[${ts()}] [INFO] 横向对比对象标定完成: ${competitorList.length} 个\n`;
-  await sleep(800);
-
-  // ── 阶段 3：纵轴时间线数据拉取（时间演进） ──
-  yield `[${ts()}] [SEARCH] 正在沿时间线追溯「${productName}」的发展脉络...\n`;
-  for (const phase of timePhases) {
-    yield `[${ts()}] [SEARCH]   → 回溯阶段「${phase}」\n`;
-    await sleep(500);
-  }
-  yield `[${ts()}] [INFO] 时间线数据拉取完成: ${timePhases.length} 个阶段\n`;
-  await sleep(800);
-
-  // ── 阶段 4：时间轴数据 ──
-  yield `[${ts()}] [DATA] ${JSON.stringify({
-    type: "timeline",
-    content: [
-      { date: "2024-Q1", event: "项目立项与需求调研", status: "completed" },
-      { date: "2024-Q2", event: "核心架构设计与 MVP 开发", status: "completed" },
-      { date: "2024-Q3", event: "内测与迭代优化", status: "completed" },
-      { date: "2024-Q4", event: "正式发布与数据采集", status: "completed" },
-      { date: "2025-Q1", event: "横纵分析矩阵生成", status: "current" },
-      { date: "2025-Q2", event: "自动化复盘与洞察推送", status: "pending" },
-    ],
-  })}\n`;
-  await sleep(1000);
-
-  // ── 阶段 5：竞品发现 ──
-  yield `[${ts()}] [SEARCH] 正在扫描竞品数据...\n`;
-  const discoveredCompetitors = [
-    { name: "竞品A", coverage: "功能完整性领先", gap: "用户体验不足" },
-    { name: "竞品B", coverage: "性能表现优异", gap: "可扩展性受限" },
-    { name: "竞品C", coverage: "生态丰富", gap: "学习曲线陡峭" },
+function buildSearchPlannerPrompt(
+  targetName: string,
+  additionalContext?: string,
+  objectType?: string,
+): string {
+  const lines = [
+    "你是横纵分析任务的搜索关键词规划器。请为研究对象生成 4-8 条用于 Tavily 联网检索的搜索词。",
+    `研究对象：${targetName}`,
+    buildSearchPlannerTypeHint(targetName, objectType),
   ];
-  for (const c of discoveredCompetitors) {
-    yield `[${ts()}] [SEARCH]   → 发现${c.name}: ${c.coverage}\n`;
-    await sleep(600);
+  if (additionalContext?.trim()) {
+    lines.push(`用户附加说明：${sanitizeForLlmPayload(additionalContext.trim())}`);
   }
-  yield `[${ts()}] [DATA] ${JSON.stringify({
-    type: "competitor",
-    content: discoveredCompetitors,
-  })}\n`;
-  await sleep(800);
+  lines.push(
+    "输出要求：仅输出一行，多条查询词用英文逗号(,)分隔，不要编号、不要解释、不要 Markdown。",
+    "内容要求：兼顾纵向（起源、里程碑、最新进展）与横向（2-3 个竞品或同类、口碑/评测）。",
+    `【学术类自适应】若对象为概念/技术范式，或名称明显属于学术主题（${targetName}），至少 1-2 条查询必须含 site:arxiv.org 或 paper pdf 后缀。`,
+  );
+  return lines.join("\n");
+}
 
-  // ── 阶段 6：交叉分析矩阵 ──
-  yield `[${ts()}] [INFO] 正在构建交叉分析矩阵...\n`;
-  const matrix = timePhases.map((phase) => ({
-    entity: phase,
-    scores: competitorList.map((c) => ({
-      dimension: c,
-      score: Number((Math.random() * 3 + 2).toFixed(1)),
-    })),
-  }));
-  yield `[${ts()}] [DATA] ${JSON.stringify({
-    type: "matrix",
-    content: { hDims: competitorList, vDims: timePhases, cells: matrix },
-  })}\n`;
-  await sleep(1000);
+function parsePlannedQueries(text: string): string[] {
+  const line = text
+    .trim()
+    .split("\n")
+    .map((l) => l.replace(/^[\d.)\-\s]+/, "").trim())
+    .find((l) => l.length > 0);
+  if (!line) return [];
+  return line
+    .split(",")
+    .map((q) => sanitizeForLlmPayload(q.trim().replace(/^["']|["']$/g, "")))
+    .filter(Boolean);
+}
 
-  // ── 阶段 7：洞察提取（详细版额外数据） ──
-  yield `[${ts()}] [INFO] 洞察引擎提取关键发现...\n`;
-  const insights = [
-    "本产品在「用户体验」维度领先竞品 18%",
-    "「可扩展性」为共同薄弱项，建议优先投入",
-    "竞品B 在「性能表现」维度有显著优势",
-  ];
-  for (const ins of insights) {
-    yield `[${ts()}] [INFO]   • ${ins}\n`;
-    await sleep(500);
+type TavilySearchHit = { query: string; results: unknown[] };
+
+async function runTavilySearches(queries: string[]): Promise<TavilySearchHit[]> {
+  if (queries.length === 0) return [];
+  const searchPromises = queries.map(async (query) => {
+    const res = await fetch("https://api.tavily.com/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: process.env.TAVILY_API_KEY,
+        query,
+        search_depth: "advanced",
+        include_answer: true,
+        max_results: 3,
+      }),
+    });
+    if (!res.ok) {
+      throw new Error(`Tavily API 返回 ${res.status}: ${await res.text()}`);
+    }
+    const rawBody = await res.text();
+    const data = sanitizeDeepStrings(
+      safeJsonParse<{ results?: unknown[] }>(rawBody),
+    );
+    return { query: sanitizeForLlmPayload(query), results: data.results ?? [] };
+  });
+  return Promise.all(searchPromises);
+}
+
+function formatPrefetchedSearchContext(hits: TavilySearchHit[]): string {
+  if (hits.length === 0) return "（暂无联网检索结果，请基于已有知识撰写，缺失处标注「暂缺」）";
+  const blocks = hits.map((hit) => {
+    const items = (hit.results as Array<{ title?: string; url?: string; content?: string }>)
+      .slice(0, 3)
+      .map((r, i) => {
+        const snippet = sanitizeForLlmPayload(String(r.content ?? "")).slice(0, 400);
+        const title = sanitizeForLlmPayload(String(r.title ?? "无标题"));
+        const url = sanitizeForLlmPayload(String(r.url ?? ""));
+        return `  ${i + 1}. ${title} (${url})\n     ${snippet}`;
+      })
+      .join("\n");
+    return `### 查询：${sanitizeForLlmPayload(hit.query)}\n${items || "  （无结果）"}`;
+  });
+  return sanitizeForLlmPayload(blocks.join("\n\n"));
+}
+
+function createSearchPlannerModel(): LanguageModel | null {
+  if (!process.env.DEEPSEEK_API_KEY) return null;
+  const deepseek = createDeepSeek({
+    apiKey: process.env.DEEPSEEK_API_KEY,
+  });
+  return deepseek("deepseek-chat");
+}
+
+function resolveGenerationModel(modelId: string): LanguageModel | { error: string } {
+  if (modelId.startsWith("deepseek")) {
+    if (!process.env.DEEPSEEK_API_KEY) {
+      return { error: "模型调用失败: 未配置 DEEPSEEK_API_KEY" };
+    }
+    const deepseek = createDeepSeek({ apiKey: process.env.DEEPSEEK_API_KEY });
+    return deepseek("deepseek-chat");
   }
-  yield `[${ts()}] [DATA] ${JSON.stringify({
-    type: "insights",
-    content: insights,
-  })}\n`;
-
-  if (mode === "full") {
-    await sleep(600);
-    yield `[${ts()}] [DATA] ${JSON.stringify({
-      type: "quality",
-      content: { completeness: 92, confidence: 78 },
-    })}\n`;
+  if (!process.env.OPENAI_API_KEY) {
+    return { error: "模型调用失败: 环境变量 OPENAI_API_KEY 未配置" };
   }
+  const relay = createOpenAI({
+    baseURL: "https://api.gptsapi.net/v1",
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+  return relay.chat(modelId);
+}
 
-  // ── 完成 ──
-  await sleep(800);
-  yield `[${ts()}] [DONE] 全部分析流程完成\n`;
+type ChapterPrompts = {
+  system: string;
+  promptCh0: string;
+  promptCh1: string;
+  promptCh2: string;
+  promptCh3: string;
+};
+
+function buildChapterPrompts(params: {
+  targetName: string;
+  searchContext: string;
+  frameworkExcerpt: string;
+  additionalContext?: string;
+  objectType?: string;
+}): ChapterPrompts {
+  const { targetName, searchContext, frameworkExcerpt, additionalContext, objectType } =
+    params;
+
+  const userAddon = additionalContext?.trim()
+    ? `\n【用户特别附加指令（最高优先级）】\n${sanitizeForLlmPayload(additionalContext.trim())}`
+    : "";
+
+  const baseSystem = buildBaseSystem(targetName, searchContext, objectType);
+  const verticalHint = buildVerticalTypeChecklist(objectType);
+  const horizontalHint = buildHorizontalTypeChecklist(objectType);
+
+  const system = `${baseSystem}
+
+【方法论摘录】
+${frameworkExcerpt.slice(0, 6000)}
+${userAddon}
+
+【章节输出约束】严格遵循《横纵分析法》方法论；只输出本章正文（Markdown），不要输出目录、元说明或「本章完」等废话。`;
+
+  const promptCh0 = `请撰写【一、一句话定义】。
+
+研究对象：${targetName}
+
+篇幅：100–300 字。用一句话说清楚它是什么，再用 2–3 句补充边界与语境。
+
+只输出本章 Markdown，必须以「## 一、一句话定义」为唯一 H2 标题，不要写封面 H1。`;
+
+  const promptCh1 = `请撰写【二、纵向分析：从诞生到当下】全文。
+
+研究对象：${targetName}
+
+篇幅：6,000–15,000 字（本章尽量写满，历史节点须逐一展开，禁止跳过）。
+
+必须覆盖：
+1. 起源追溯：诞生背景、技术/理念/需求、创始团队、当时行业环境
+2. 诞生节点：首次发布/成立时间与最初形态定位
+3. 演进历程：按时间梳理版本、融资、团队、战略、架构、用户里程碑、合作/收购、危机等
+4. 决策逻辑：关键节点为何选 A 而非 B，当时约束是什么
+5. 阶段划分：用叙事故事体串起起承转合，禁止流水账年表
+
+${verticalHint}
+
+只输出本章 Markdown，必须以「## 二、纵向分析：从诞生到当下」为章节 H2 标题。`;
+
+  const promptCh2 = `请撰写【三、横向分析：竞争图谱】全文。
+
+研究对象：${targetName}
+
+篇幅：3,000–10,000 字。
+
+必须先判断竞品场景（在正文中明确写出属于 A/B/C 哪一种）：
+- 场景 A：无直接竞品 → 分析为何无竞品、潜在竞争者方向、间接替代
+- 场景 B：1–2 个竞品 → 逐一深度对比
+- 场景 C：3 个及以上 → 选 3–5 个代表竞品，每个主要竞品至少 1,500 字独立剖析
+
+必须覆盖：核心差异、用户真实口碑（引用社区/评价中的「声音」）、生态位、趋势与机会风险。
+可用对比表辅助，但主体必须是文字论述。
+
+${horizontalHint}
+
+只输出本章 Markdown，必须以「## 三、横向分析：竞争图谱」为章节 H2 标题。`;
+
+  const promptCh3 = `${baseSystem}
+
+请撰写【第四步：横纵交汇洞察】。
+
+研究对象：${targetName}
+
+要求字数 1,500–3,000 字。这是报告精华，禁止复述前两章摘要，必须给出新的综合判断。
+
+必须回答以下核心问题（逐条可见，可用小标题）：
+1. 历史如何塑造了当下的竞争位置？
+2. 主要竞品的纵向路径差异，如何导致今日各自特点？
+3. 今日核心优势的历史根源（追溯到具体节点/决策）？
+4. 今日核心劣势的历史根源（「昔日好决策」是否变成包袱）？
+5. 未来推演：给出 3 个逻辑支撑的剧本——最可能 / 最危险 / 最乐观。
+
+【特殊修辞要求】：在交汇洞察时，请进行适度的「文化升维」（自然地联系到更大的商业/哲学/历史参照物），并与第一部分（纵向分析）埋下的细节进行「回环呼应」，形成前后因果的闭合感！
+
+只输出本章 Markdown，必须以「## 四、横纵交汇洞察」为章节 H2 标题。`;
+
+  return { system, promptCh0, promptCh1, promptCh2, promptCh3 };
+}
+
+/** 将单章 streamText 输出写入管道 */
+async function pipeChapterStream(
+  model: LanguageModel,
+  system: string,
+  prompt: string,
+  pushStream: (text: string) => Promise<void>,
+): Promise<void> {
+  const result = streamText({
+    model,
+    system,
+    prompt,
+    temperature: 0.7,
+    maxOutputTokens: 16_384,
+  });
+  for await (const chunk of result.textStream) {
+    await pushStream(chunk);
+  }
 }
 
 export async function POST(req: Request) {
   try {
     const body: AnalysisRequest = await req.json();
 
-    // 参数校验
-    if (!body.productName) {
+    if (!body.targetName?.trim()) {
       return new Response(
-        JSON.stringify({ error: "缺少必要参数: productName" }),
+        JSON.stringify({ error: "缺少必要参数: targetName" }),
         { status: 400, headers: { "Content-Type": "application/json" } },
       );
     }
 
-    // 创建 ReadableStream
-    const stream = new ReadableStream({
-      async start(controller) {
-        try {
-          for await (const chunk of generateStages(body)) {
-            controller.enqueue(new TextEncoder().encode(chunk));
-          }
-        } catch (err) {
-          console.error("[hv-analysis] stream error:", err);
-          controller.enqueue(
-            new TextEncoder().encode(
-              `[${ts()}] [ERROR] 分析过程发生异常: ${err instanceof Error ? err.message : String(err)}\n`,
-            ),
-          );
-        } finally {
-          controller.close();
-        }
-      },
-    });
+    const targetName = body.targetName.trim();
 
-    return new Response(stream, {
+    if (!process.env.TAVILY_API_KEY) {
+      return new Response(
+        `[${ts()}] [ERROR] 环境变量 TAVILY_API_KEY 未配置，无法使用联网搜索能力\n`,
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Cache-Control": "no-cache",
+          },
+        },
+      );
+    }
+
+    const modelId = body.modelId || "deepseek-v4-flash";
+    const resolved = resolveGenerationModel(modelId);
+    if ("error" in resolved) {
+      return new Response(`[${ts()}] [ERROR] ${resolved.error}\n`, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Cache-Control": "no-cache",
+        },
+      });
+    }
+    const modelToUse = resolved;
+
+    // —— 前置：搜索规划 + Tavily 并行（保留原逻辑）——
+    let searchContext = "（暂无联网检索结果，请基于已有知识撰写，缺失处标注「暂缺」）";
+    const searchPlannerModel = createSearchPlannerModel();
+    if (searchPlannerModel) {
+      try {
+        const { text: plannedRaw } = await generateText({
+          model: searchPlannerModel,
+          prompt: buildSearchPlannerPrompt(
+            targetName,
+            body.additionalContext,
+            body.objectType,
+          ),
+          temperature: 0.3,
+        });
+        const plannedQueries = parsePlannedQueries(plannedRaw);
+        if (plannedQueries.length > 0) {
+          const prefetched = await runTavilySearches(plannedQueries);
+          searchContext = formatPrefetchedSearchContext(prefetched);
+        }
+      } catch (planErr) {
+        console.warn(
+          "[hv-analysis] searchPlannerModel failed:",
+          planErr instanceof Error ? planErr.message : planErr,
+        );
+      }
+    }
+
+    const frameworkTemplate = injectTargetName(loadPromptTemplate(), targetName);
+    const { system, promptCh0, promptCh1, promptCh2, promptCh3 } =
+      buildChapterPrompts({
+        targetName,
+        searchContext,
+        frameworkExcerpt: frameworkTemplate,
+        additionalContext: body.additionalContext,
+        objectType: body.objectType,
+      });
+
+    const reportHeader = buildReportHeader({
+      targetName,
+      body: "",
+      competitor: body.competitor,
+      timeRange: body.timeRange,
+      objectType: body.objectType,
+    });
+    const reportFooter = buildReportFooter(searchContext);
+
+    // —— 原生 TransformStream 分章流水线（主线程立即返回）——
+    const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
+    const writer = writable.getWriter();
+    const encoder = new TextEncoder();
+
+    let fullMarkdown = "";
+    const pushStream = async (text: string) => {
+      fullMarkdown += text;
+      await writer.write(encoder.encode(text));
+    };
+
+    const pushProtocol = async (
+      level: "INFO" | "WORKER" | "ERROR",
+      message: string,
+    ) => {
+      await pushStream(`[${ts()}] [${level}] ${message}\n`);
+    };
+
+    (async () => {
+      let pipelineSucceeded = false;
+      let qaResult: HvQaResult | null = null;
+      try {
+        await pushProtocol(
+          "INFO",
+          "深度研究引擎已启动，采用分章流水线（定义 → 纵向 → 横向 → 交汇 → 附录）",
+        );
+        await pushProtocol(
+          "INFO",
+          `研究对象: ${targetName} · 类型: ${objectTypeDisplayLabel(body.objectType)} · 模型: ${modelId}`,
+        );
+        await pushProtocol("INFO", "联网检索摘要已注入写作上下文");
+
+        await pushStream(reportHeader);
+
+        await pushProtocol("WORKER", "正在生成一句话定义...");
+        await pipeChapterStream(modelToUse, system, promptCh0, pushStream);
+
+        await pushStream("\n\n---\n\n");
+        await pushProtocol("WORKER", "正在生成纵向分析（预计 6,000–15,000 字）...");
+        await pipeChapterStream(modelToUse, system, promptCh1, pushStream);
+
+        await pushStream("\n\n---\n\n");
+        await pushProtocol("WORKER", "正在生成横向分析（预计 3,000–10,000 字）...");
+        await pipeChapterStream(modelToUse, system, promptCh2, pushStream);
+
+        await pushStream("\n\n---\n\n");
+        await pushProtocol("WORKER", "正在生成横纵交汇洞察（预计 1,500–3,000 字）...");
+        await pipeChapterStream(modelToUse, system, promptCh3, pushStream);
+
+        await pushProtocol(
+          "WORKER",
+          "正在组装信息来源与方法论附录（PDF 排版友好）...",
+        );
+        await pushStream(reportFooter);
+        await pushProtocol(
+          "INFO",
+          "完整 Markdown 稿件已就绪，可下载 .md 或使用「导出 PDF」调用 md_to_pdf 排版",
+        );
+
+        // 先 [DONE]：前端立刻进入 success，展示导出按钮；质检在流未关闭时继续
+        await pushStream(`\n[${ts()}] [DONE] 全部分析流程完成\n`);
+        pipelineSucceeded = true;
+
+        await pushProtocol(
+          "WORKER",
+          "正在后台执行 14 条军规质检（报告正文已全部推送，请继续阅读）…",
+        );
+
+        const reportForQa = finalizeReportMarkdown({
+          targetName,
+          body: fullMarkdown,
+          competitor: body.competitor,
+          timeRange: body.timeRange,
+          objectType: body.objectType,
+        });
+
+        const qaModelId =
+          process.env.HV_QA_MODEL_ID?.trim() || "claude-sonnet-4-6";
+
+        try {
+          qaResult = await runHvReportQa({
+            reportText: reportForQa,
+            modelId: qaModelId,
+          });
+          await pushStream(
+            `[${ts()}] [DATA] ${JSON.stringify({ type: "qa", content: qaResult })}\n`,
+          );
+          await pushProtocol(
+            "INFO",
+            `质检完成：综合得分 ${qaResult.overallScore}/100（${qaResult.meta?.passCount ?? qaResult.items.filter((i) => i.pass).length}/14 项通过）`,
+          );
+        } catch (qaErr) {
+          qaResult = null;
+          console.warn(
+            "[hv-analysis] inline QA failed:",
+            qaErr instanceof Error ? qaErr.message : qaErr,
+          );
+          await pushProtocol(
+            "WARN",
+            `后台质检解析失败（${qaErr instanceof Error ? qaErr.message : String(qaErr)}），可稍后点击「存入 Notion」手动归档`,
+          );
+        }
+      } catch (err) {
+        console.error("[hv-analysis] pipeline error:", err);
+        const errMsg = err instanceof Error ? err.message : String(err);
+        await pushProtocol("ERROR", `分析过程发生异常: ${errMsg}`);
+      } finally {
+        try {
+          await writer.close();
+        } catch {
+          /* already closed */
+        }
+      }
+    })();
+
+    return new Response(readable, {
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
         "Cache-Control": "no-cache",
-        "Connection": "keep-alive",
+        Connection: "keep-alive",
       },
     });
   } catch (err) {
-    console.error("[hv-analysis] parse error:", err);
+    console.error("[hv-analysis] error:", err);
     return new Response(
-      JSON.stringify({ error: "请求解析失败" }),
-      { status: 400, headers: { "Content-Type": "application/json" } },
+      JSON.stringify({ error: "请求处理失败" }),
+      { status: 500, headers: { "Content-Type": "application/json" } },
     );
   }
 }

@@ -1,19 +1,26 @@
 /**
- * HV-Analysis 流式 Mock API (Vercel AI SDK 版)
+ * HV-Analysis 流式 API
  *
- * 使用 Vercel AI SDK 的 streamText 构建流式响应。
- * 不调用任何大模型，纯 Mock 模拟深度研究引擎的多个阶段。
+ * 1. 用 fetch 获取远程 Markdown（横纵分析法 Skill）作为 System Prompt
+ * 2. 对接 Gemini 大模型（@ai-sdk/google + streamText）
+ * 3. 按 [INFO] -> [WORKER] -> [DATA] -> [DONE] 协议流式推送
  *
- * 日志格式：
- *   [INFO] 普通信息
- *   [SEARCH] 搜索/爬取状态
- *   [DATA] {"type":"...","content":"..."}  结构化数据
- *   [DONE] 完成标记
+ * 流式协议格式：
+ *   [HH:MM:SS] [INFO] 普通信息
+ *   [HH:MM:SS] [WORKER] 工作节点状态
+ *   [HH:MM:SS] [DATA] {"type":"...","content":...}  结构化数据
+ *   [HH:MM:SS] [DONE] 完成标记
  */
 
-export const runtime = "edge";
+export const runtime = "nodejs";
+export const maxDuration = 60;
 
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { streamText } from "ai";
+
+/** 远程 Skill Markdown 地址 */
+const SKILL_URL =
+  "https://raw.githubusercontent.com/KKKKhazix/khazix-skills/main/prompts/%E6%A8%AA%E7%BA%B5%E5%88%86%E6%9E%90%E6%B3%95.md";
 
 interface AnalysisRequest {
   productName: string;
@@ -23,20 +30,61 @@ interface AnalysisRequest {
   mode: "lite" | "full";
 }
 
-/** 时间范围中文映射 */
-const TIME_RANGE_LABEL: Record<AnalysisRequest["timeRange"], string> = {
-  full: "追踪完整生命史",
-  "3years": "仅看近三年",
-  "1year": "仅看近一年",
-};
-
-/** 模拟异步延迟 */
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-/** 生成时间戳 */
+/** 生成时间戳 [HH:MM:SS] */
 function ts(): string {
   const now = new Date();
   return now.toLocaleTimeString("zh-CN", { hour12: false });
+}
+
+/** 获取远程 Skill Markdown 内容 */
+async function fetchSkillPrompt(): Promise<string> {
+  const res = await fetch(SKILL_URL, {
+    headers: { "User-Agent": "my-ai-portfolio/1.0" },
+  });
+  if (!res.ok) {
+    throw new Error(`获取 Skill 文件失败: ${res.status} ${res.statusText}`);
+  }
+  return res.text();
+}
+
+/** 构建用户 Prompt */
+function buildUserPrompt(req: AnalysisRequest): string {
+  const { productName, researchMotivation, competitor, timeRange, mode } = req;
+
+  const timeRangeLabel: Record<string, string> = {
+    full: "追踪完整生命史",
+    "3years": "仅看近三年",
+    "1year": "仅看近一年",
+  };
+
+  const competitorList = competitor
+    ? competitor.split(",").map((s) => s.trim()).filter(Boolean)
+    : [];
+
+  return `请对「${productName}」进行横纵交叉分析。
+
+## 研究配置
+- 分析对象：${productName}
+- 时间追溯范围：${timeRangeLabel[timeRange] || timeRange}
+- 分析模式：${mode === "lite" ? "精简版（仅输出核心洞察）" : "详细版（完整分析报告）"}
+${researchMotivation ? `- 研究动机：${researchMotivation}` : ""}
+${competitorList.length > 0 ? `- 指定对标竞品：${competitorList.join("、")}` : "- 对标竞品：由 AI 自动检索"}
+
+## 输出要求
+
+请严格按照以下流式协议格式输出，每行一条消息：
+
+1. **[INFO]** 用于输出分析过程中的普通信息、状态说明、进度提示等
+2. **[WORKER]** 用于输出各工作节点的执行状态（如竞品标定、时间线追溯、矩阵构建等）
+3. **[DATA]** 用于输出结构化数据，格式为 JSON 对象，包含 type 和 content 字段：
+   - \`[DATA] {"type":"timeline","content":[...]}\` — 时间线数据
+   - \`[DATA] {"type":"competitor","content":[...]}\` — 竞品数据
+   - \`[DATA] {"type":"matrix","content":{...}}\` — 交叉分析矩阵
+   - \`[DATA] {"type":"insights","content":[...]}\` — 关键洞察
+   - ${mode === "full" ? '- `[DATA] {"type":"quality","content":{...}}` — 数据质量评估' : ""}
+4. **[DONE]** 最后输出一行标记分析完成
+
+请确保分析过程覆盖横轴（空间对比/竞品对标）和纵轴（时间演进/发展脉络）两个维度，并在交叉点输出有价值的洞察。`;
 }
 
 export async function POST(req: Request) {
@@ -51,142 +99,100 @@ export async function POST(req: Request) {
       );
     }
 
-    const { productName, researchMotivation, competitor, timeRange, mode } = body;
+    // 1. 获取远程 Skill 作为 System Prompt
+    const systemPrompt = await fetchSkillPrompt();
 
-    // 解析竞品列表（横轴实体）
-    const competitorList = competitor
-      ? competitor.split(",").map((s) => s.trim()).filter(Boolean)
-      : ["行业平均", "头部竞品", "新兴玩家"];
+    // 2. 构建用户 Prompt
+    const userPrompt = buildUserPrompt(body);
 
-    // 根据时间范围决定纵轴阶段
-    const timePhases =
-      timeRange === "full"
-        ? ["萌芽期", "成长期", "成熟期", "当前状态"]
-        : timeRange === "3years"
-          ? ["三年前", "两年前", "当前状态"]
-          : ["近一年内", "当前状态"];
+    // 3. 初始化 Gemini Provider
+    const apiKey = process.env.GEMINI_API_KEY?.trim();
+    if (!apiKey) {
+      return new Response(
+        JSON.stringify({ error: "服务端未配置 GEMINI_API_KEY" }),
+        { status: 500, headers: { "Content-Type": "application/json" } },
+      );
+    }
 
+    const googleProvider = createGoogleGenerativeAI({
+      apiKey,
+      baseURL: process.env.GOOGLE_GEMINI_BASE_URL?.trim() || undefined,
+    });
+
+    // 4. 调用 streamText
+    const result = streamText({
+      model: googleProvider("gemini-3-flash-preview"),
+      system: systemPrompt,
+      prompt: userPrompt,
+      temperature: 0.7,
+    });
+
+    // 5. 将 AI 流转换为 [INFO]/[WORKER]/[DATA]/[DONE] 协议格式
     const encoder = new TextEncoder();
 
-    // 创建一个 Mock 数据流，模拟分步信息搜集和分析
-    const mockStream = new ReadableStream({
+    const transformedStream = new ReadableStream({
       async start(controller) {
         try {
-          // ── 阶段 1：引擎初始化 ──
-          controller.enqueue(encoder.encode(`[${ts()}] [INFO] 分析引擎初始化完成...\n`));
-          controller.enqueue(encoder.encode(`[${ts()}] [INFO] 研究对象: ${productName}\n`));
-          controller.enqueue(encoder.encode(`[${ts()}] [INFO] 关注焦点: ${researchMotivation || "全面分析"}\n`));
-          controller.enqueue(encoder.encode(`[${ts()}] [INFO] 时间追溯: ${TIME_RANGE_LABEL[timeRange]}\n`));
-          controller.enqueue(encoder.encode(`[${ts()}] [INFO] 分析模式: ${mode === "lite" ? "精简版" : "详细版"}\n`));
-          await sleep(1500);
-
-          // ── 阶段 2：创始团队背景 ──
-          controller.enqueue(encoder.encode(`[${ts()}] [SEARCH] 正在抓取 [${productName}] 核心创始团队背景...\n`));
-          await sleep(1200);
-          controller.enqueue(encoder.encode(`[${ts()}] [SEARCH] 正在 arXiv 获取 R1 论文详情...\n`));
-          await sleep(1000);
-
-          // ── 阶段 3：竞品数据并行抓取 ──
-          controller.enqueue(encoder.encode(`[${ts()}] [SEARCH] 并行抓取竞品 [${competitorList.join("] [")}] 数据...\n`));
-          for (const c of competitorList) {
-            controller.enqueue(encoder.encode(`[${ts()}] [SEARCH]   → 抓取 ${c} 技术架构与市场数据\n`));
-            await sleep(600);
-          }
-          await sleep(800);
-
-          // ── 阶段 4：历时性发展阶段划分 ──
-          controller.enqueue(encoder.encode(`[${ts()}] [WORKER] 历时性发展阶段划分完成 (${productName})...\n`));
-          for (const phase of timePhases) {
-            controller.enqueue(encoder.encode(`[${ts()}] [WORKER]   → ${phase} 阶段特征提取完成\n`));
-            await sleep(500);
-          }
-          await sleep(800);
-
-          // ── 阶段 5：共时性生态位对比 ──
-          controller.enqueue(encoder.encode(`[${ts()}] [WORKER] 共时性生态位对比完成...\n`));
-          for (const c of competitorList) {
-            controller.enqueue(encoder.encode(`[${ts()}] [WORKER]   → ${c} 生态位分析: 技术栈/市场定位/用户画像\n`));
-            await sleep(600);
-          }
-          await sleep(800);
-
-          // ── 阶段 6：时间轴数据 ──
-          controller.enqueue(encoder.encode(`[${ts()}] [DATA] ${JSON.stringify({
-            type: "timeline",
-            content: [
-              { date: "2024-Q1", event: `${productName} 项目立项与需求调研`, status: "completed" },
-              { date: "2024-Q2", event: "核心架构设计与 MVP 开发", status: "completed" },
-              { date: "2024-Q3", event: "内测与迭代优化", status: "completed" },
-              { date: "2024-Q4", event: "正式发布与数据采集", status: "completed" },
-              { date: "2025-Q1", event: "横纵分析矩阵生成", status: "current" },
-              { date: "2025-Q2", event: "自动化复盘与洞察推送", status: "pending" },
-            ],
-          })}\n`));
-          await sleep(1000);
-
-          // ── 阶段 7：竞品发现 ──
-          controller.enqueue(encoder.encode(`[${ts()}] [SEARCH] 正在扫描竞品数据...\n`));
-          const discoveredCompetitors = [
-            { name: competitorList[0] || "竞品A", coverage: "功能完整性领先", gap: "用户体验不足" },
-            { name: competitorList[1] || "竞品B", coverage: "性能表现优异", gap: "可扩展性受限" },
-            { name: competitorList[2] || "竞品C", coverage: "生态丰富", gap: "学习曲线陡峭" },
-          ];
-          for (const c of discoveredCompetitors) {
-            controller.enqueue(encoder.encode(`[${ts()}] [SEARCH]   → 发现${c.name}: ${c.coverage}\n`));
-            await sleep(600);
-          }
-          controller.enqueue(encoder.encode(`[${ts()}] [DATA] ${JSON.stringify({
-            type: "competitor",
-            content: discoveredCompetitors,
-          })}\n`));
-          await sleep(800);
-
-          // ── 阶段 8：交叉分析矩阵 ──
-          controller.enqueue(encoder.encode(`[${ts()}] [INFO] 正在构建交叉分析矩阵...\n`));
-          const matrix = timePhases.map((phase) => ({
-            entity: phase,
-            scores: competitorList.map((c) => ({
-              dimension: c,
-              score: Number((Math.random() * 3 + 2).toFixed(1)),
-            })),
-          }));
-          controller.enqueue(encoder.encode(`[${ts()}] [DATA] ${JSON.stringify({
-            type: "matrix",
-            content: { hDims: competitorList, vDims: timePhases, cells: matrix },
-          })}\n`));
-          await sleep(1000);
-
-          // ── 阶段 9：洞察提取 ──
-          controller.enqueue(encoder.encode(`[${ts()}] [INFO] 洞察引擎提取关键发现...\n`));
-          const insights = [
-            `${productName} 在「用户体验」维度领先竞品 18%`,
-            "「可扩展性」为共同薄弱项，建议优先投入",
-            `${competitorList[1] || "竞品B"} 在「性能表现」维度有显著优势`,
-          ];
-          for (const ins of insights) {
-            controller.enqueue(encoder.encode(`[${ts()}] [INFO]   • ${ins}\n`));
-            await sleep(500);
-          }
-          controller.enqueue(encoder.encode(`[${ts()}] [DATA] ${JSON.stringify({
-            type: "insights",
-            content: insights,
-          })}\n`));
-
-          if (mode === "full") {
-            await sleep(600);
-            controller.enqueue(encoder.encode(`[${ts()}] [DATA] ${JSON.stringify({
-              type: "quality",
-              content: { completeness: 92, confidence: 78 },
-            })}\n`));
-          }
-
-          // ── 完成 ──
-          await sleep(800);
-          controller.enqueue(encoder.encode(`[${ts()}] [DONE] 全部分析流程完成\n`));
-        } catch (err) {
-          console.error("[hv-analysis-stream] mock error:", err);
+          // 发送启动信息
           controller.enqueue(
-            encoder.encode(`[${ts()}] [ERROR] 分析过程发生异常: ${err instanceof Error ? err.message : String(err)}\n`),
+            encoder.encode(`[${ts()}] [INFO] 深度研究引擎已启动，正在加载横纵分析法框架...\n`)
+          );
+          controller.enqueue(
+            encoder.encode(`[${ts()}] [INFO] 研究对象: ${body.productName}\n`)
+          );
+          if (body.researchMotivation) {
+            controller.enqueue(
+              encoder.encode(`[${ts()}] [INFO] 研究动机: ${body.researchMotivation}\n`)
+            );
+          }
+          controller.enqueue(
+            encoder.encode(`[${ts()}] [INFO] 分析框架加载完成，AI 分析引擎开始工作...\n`)
+          );
+
+          // 消费 AI 流
+          let fullText = "";
+          for await (const chunk of result.textStream) {
+            fullText += chunk;
+
+            // 按行处理，提取协议行
+            const lines = fullText.split("\n");
+            // 保留最后可能不完整的行
+            fullText = lines.pop() ?? "";
+
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed) continue;
+
+              // 检查是否已经是协议格式（[INFO], [WORKER], [DATA], [DONE]）
+              if (/^\[(INFO|WORKER|DATA|DONE|SEARCH|ERROR|WARN)\]/.test(trimmed)) {
+                controller.enqueue(encoder.encode(`[${ts()}] ${trimmed}\n`));
+              } else {
+                // 普通文本行，包装为 [INFO]
+                controller.enqueue(encoder.encode(`[${ts()}] [INFO] ${trimmed}\n`));
+              }
+            }
+          }
+
+          // 处理剩余的文本
+          if (fullText.trim()) {
+            const trimmed = fullText.trim();
+            if (/^\[(INFO|WORKER|DATA|DONE|SEARCH|ERROR|WARN)\]/.test(trimmed)) {
+              controller.enqueue(encoder.encode(`[${ts()}] ${trimmed}\n`));
+            } else {
+              controller.enqueue(encoder.encode(`[${ts()}] [INFO] ${trimmed}\n`));
+            }
+          }
+
+          // 发送完成标记
+          controller.enqueue(
+            encoder.encode(`[${ts()}] [DONE] 全部分析流程完成\n`)
+          );
+        } catch (err) {
+          console.error("[hv-analysis-stream] stream error:", err);
+          controller.enqueue(
+            encoder.encode(
+              `[${ts()}] [ERROR] 分析过程发生异常: ${err instanceof Error ? err.message : String(err)}\n`
+            )
           );
         } finally {
           controller.close();
@@ -194,9 +200,7 @@ export async function POST(req: Request) {
       },
     });
 
-    // 直接返回流式 Response（使用 Web Streams API）
-    // 同时从 ai 包导入 streamText 以表明使用了 Vercel AI SDK
-    return new Response(mockStream, {
+    return new Response(transformedStream, {
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
         "Cache-Control": "no-cache",
@@ -206,8 +210,8 @@ export async function POST(req: Request) {
   } catch (err) {
     console.error("[hv-analysis-stream] error:", err);
     return new Response(
-      JSON.stringify({ error: "请求解析失败" }),
-      { status: 400, headers: { "Content-Type": "application/json" } },
+      JSON.stringify({ error: "请求处理失败" }),
+      { status: 500, headers: { "Content-Type": "application/json" } },
     );
   }
 }

@@ -40,6 +40,8 @@ export function FloatingChat() {
   if (pathname === "/learning" || pathname.startsWith("/learning/")) return null;
   // Article pages use the in-column ArticleChatWidget; avoid overlapping fixed panel + duplicate chats.
   if (pathname.startsWith("/articles/")) return null;
+  // Tool pages (e.g. 横纵分析) run long streams; skip chat to reduce chunk/HMR pressure.
+  if (pathname.startsWith("/tools/")) return null;
 
   return <FloatingChatInner />;
 }
