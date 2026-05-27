@@ -1,4 +1,5 @@
 import type { AINews } from "@/utils/notion";
+import { getNewsSortMs } from "@/utils/ai-news-category";
 
 /** Tab keys：今日 / 本周 / 本月（仅依赖 `Date` YYYY-MM-DD；时区固定 Asia/Shanghai） */
 export type AiNewsTimeRangeTab = "today" | "week" | "month";
@@ -151,11 +152,7 @@ export function filterAINewsByDateTab(
     }
   });
 
-  return filtered.sort((a, b) => {
-    const ta = itemDayStartMs(a.date ?? "") ?? 0;
-    const tb = itemDayStartMs(b.date ?? "") ?? 0;
-    return tb - ta;
-  });
+  return filtered.sort((a, b) => getNewsSortMs(b) - getNewsSortMs(a));
 }
 
 /** @deprecated 请使用 `filterAINewsByDateTab` */

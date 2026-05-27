@@ -274,9 +274,15 @@ export type AINews = {
   source: string;
   author: string;
   title: string;
+  /** 摘要：Notion OriginalText；展示时优先于空 originalText */
   originalText: string;
+  summary?: string;
   date: string;
+  /** ISO 发布时间（Date 含时刻或页面 created_time） */
+  publishedAt?: string;
   url: string;
+  /** Notion `Category`（select / rich_text）→ ai-models 等 */
+  category?: string;
   /** Notion `Starred` checkbox */
   starred: boolean;
   /** Notion `TimeRange`（select / rich_text）；用于首页与雷达页分档展示 */
@@ -313,6 +319,14 @@ function newsStarredCheckbox(prop: unknown): boolean {
   return false;
 }
 
+function newsCategoryPlain(prop: unknown): string {
+  if (prop && typeof prop === "object" && "select" in prop) {
+    const name = (prop as { select?: { name?: string } }).select?.name;
+    if (typeof name === "string" && name.trim()) return name.trim();
+  }
+  return newsRichTextPlain(prop) || newsTitlePlain(prop);
+}
+
 function mapNotionPageToAINews(page: NotionJson): AINews | null {
   const props = (page.properties as NotionJson | undefined) ?? {};
   const urlField = props.URL as { url?: string } | undefined;
@@ -347,6 +361,17 @@ function mapNotionPageToAINews(page: NotionJson): AINews | null {
         ? String(dateStart).slice(0, 10)
         : "";
 
+  const createdTime =
+    typeof page.created_time === "string" ? page.created_time : undefined;
+  const publishedAt =
+    typeof dateStart === "string" && dateStart.includes("T")
+      ? dateStart
+      : createdTime;
+
+  const category = newsCategoryPlain(props.Category) || undefined;
+  const summary =
+    originalText && originalText !== "无摘要" ? originalText : undefined;
+
   const timeRangeRaw = newsTimeRangePlain(props.TimeRange);
   const timeRange = timeRangeRaw || undefined;
 
@@ -358,8 +383,11 @@ function mapNotionPageToAINews(page: NotionJson): AINews | null {
     author,
     title,
     originalText,
+    summary,
     date,
+    publishedAt,
     url,
+    category,
     starred,
     timeRange,
   };

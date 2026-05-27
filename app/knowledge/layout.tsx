@@ -11,7 +11,7 @@ export default function KnowledgeLayout({
       <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <header className="flex items-center justify-between border-b border-white/10 pb-6">
           <Link
-            href="/#knowledge"
+            href="/"
             className="text-sm font-medium text-slate-400 transition hover:text-cyan-300"
             style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}
           >

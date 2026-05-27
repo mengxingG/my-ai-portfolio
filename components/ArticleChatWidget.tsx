@@ -16,18 +16,16 @@ import {
   mapPortfolioChatError,
   PortfolioThinkingIndicator,
 } from "@/lib/portfolio-chat-ui";
+import {
+  DIGITAL_TWIN_MISSION,
+  DIGITAL_TWIN_QUICK_REPLIES,
+} from "@/lib/portfolio-digital-twin";
 
 type ArticleChatWidgetProps = {
   articleContext: string;
 };
 
-/** 与首页 FloatingChat 一致的占位快捷文案；文章页额外提供「总结当前界面」引导 */
-const QUICK_REPLIES = [
-  "💼 我有一份 AI PM 的 JD，帮你做个匹配？",
-  "🚀 讲讲你的『金融合规智能助手』项目",
-  "🛠️ 你搭建 AI 工作流用到哪些技术栈？",
-  "📈 落地 AI 项目时，你解决过最大的难点是？",
-] as const;
+/** 与首页 FloatingChat 一致；文章页额外提供「总结当前界面」 */
 
 const SUMMARY_PROMPT = "✨ 帮我总结当前界面的内容";
 
@@ -38,7 +36,7 @@ const ARTICLE_CHAT_INITIAL_MESSAGES: UIMessage[] = [
     parts: [
       {
         type: "text",
-        text: "您好！我是梦星的数字分身。您可以随时通过对话框，让我帮您总结当前界面的核心内容，或者解答关于这篇文章的任何细节。当然，您也可以直接粘贴 JD 看看我与贵司岗位的匹配度！",
+        text: `您好！我是梦星的数字分身，${DIGITAL_TWIN_MISSION}。本文页可总结要点、答疑；若您在招人，也可粘贴 JD 做岗位匹配。需要概览全文可点下方「总结当前界面」。`,
       },
     ],
   },
@@ -159,9 +157,9 @@ export default function ArticleChatWidget({ articleContext }: ArticleChatWidgetP
         <div className="min-w-0">
           <p className="text-sm font-semibold text-slate-100">梦星的数字分身</p>
           <p className="text-[11px] text-slate-500">
-            {preferDeepSeek
-              ? "当前模型：DeepSeek · 基于当前界面内容回答"
-              : "基于当前界面内容回答"}
+            {DIGITAL_TWIN_MISSION}
+            {preferDeepSeek ? " · DeepSeek" : " · Gemini"}
+            {" · 基于当前文章"}
           </p>
         </div>
         {busy ? (
@@ -244,7 +242,7 @@ export default function ArticleChatWidget({ articleContext }: ArticleChatWidgetP
           role="toolbar"
           aria-label="快捷提问"
         >
-          {QUICK_REPLIES.map((label) => (
+          {DIGITAL_TWIN_QUICK_REPLIES.map((label) => (
             <button
               key={label}
               type="button"

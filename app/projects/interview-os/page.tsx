@@ -203,7 +203,7 @@ export default function InterviewOSCaseStudyPage() {
               >
                 在线体验 →
               </a>
-              <Link href="/#projects" className="glow-btn glow-btn--secondary inline-flex">
+              <Link href="/#featured" className="glow-btn glow-btn--secondary inline-flex">
                 返回首页项目区
               </Link>
             </div>

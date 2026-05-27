@@ -7,6 +7,10 @@ import {
   getGoogleGenerativeAiSdkBaseUrl,
   logChatGeminiKeyFingerprintOnce,
 } from "@/lib/gemini-server-config";
+import {
+  SYSTEM_PROMPT_PORTFOLIO,
+  buildArticleAssistantSystemPrompt,
+} from "@/lib/portfolio-digital-twin";
 
 /** 仅本地 dev（next dev）或显式 GOOGLE_AI_USE_PROXY=1 时对 Gemini 走代理；线上默认直连 */
 const useGoogleAiProxy =
@@ -76,12 +80,6 @@ function fallbackHeaders(error: unknown): Record<string, string> {
     // message 仅截断后透传，方便前端展示；避免过长 header
     "x-ai-fallback-message": String(b.message ?? "").slice(0, 180),
   };
-}
-
-const SYSTEM_PROMPT_PORTFOLIO = `你是拥有 4 年经验的 AI 产品经理（AI PM）梦星的数字分身。你部署在我的作品集网站上 (mengxing-ai-pm.vercel.app)，负责 24 小时接待 HR、猎头和同行。你需要主动热情地打招呼，并邀请对方提供 JD 进行能力匹配。当被问及实战项目时，请极其专业地讲解“金融合规智能助手”项目——向对方说明该系统的目标用户是交易员 (Traders)、销售 (Sales) 和合规经理 (Compliance Managers)，并清晰拆解核心模块、技术架构以及它带来的核心业务价值。你的语气要自信、专业、Result-driven。`;
-
-function buildArticleAssistantSystemPrompt(articleContext: string) {
-  return `你是一个部署在/articles页面的 AI PM（梦星）个人网站上的数字分身。你的任务是帮助面试官或访客更好地理解当前页面的内容。以下是当前文章的全部内容：\n\n${articleContext}\n\n请基于上述内容回答问题。态度要专业、友好。如果用户问关于当前文章的问题，请详细解答；如果问及超纲内容，请礼貌引导回开发者的专业技能上。`;
 }
 
 function buildLearningSystemPrompt(documentContext: string, learningRole: "feynman" | "interview") {

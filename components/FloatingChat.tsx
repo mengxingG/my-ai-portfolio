@@ -8,6 +8,11 @@ import {
   mapPortfolioChatError,
   PortfolioThinkingIndicator,
 } from "@/lib/portfolio-chat-ui";
+import {
+  DIGITAL_TWIN_GREETING,
+  DIGITAL_TWIN_MISSION,
+  DIGITAL_TWIN_QUICK_REPLIES,
+} from "@/lib/portfolio-digital-twin";
 
 const INITIAL_GREETING: UIMessage = {
   id: "welcome-local",
@@ -15,7 +20,7 @@ const INITIAL_GREETING: UIMessage = {
   parts: [
     {
       type: "text",
-      text: "您好！我是梦星（AI PM）的数字分身，在线托管于 mengxing-ai-pm.vercel.app，为 HR、猎头和同行提供 7×24 接待。欢迎直接粘贴 JD 或岗位描述，我会帮您做能力匹配。若想了解实战落地，也可以问我「金融合规智能助手」案例。",
+      text: DIGITAL_TWIN_GREETING,
     },
   ],
 };
@@ -26,13 +31,6 @@ function textFromMessage(message: UIMessage): string {
     .map((p) => p.text)
     .join("");
 }
-
-const QUICK_REPLIES = [
-  "💼 我有一份 AI PM 的 JD，帮你做个匹配？",
-  "🚀 讲讲你的『金融合规智能助手』项目",
-  "🛠️ 你搭建 AI 工作流用到哪些技术栈？",
-  "📈 落地 AI 项目时，你解决过最大的难点是？",
-] as const;
 
 export function FloatingChat() {
   const pathname = usePathname();
@@ -119,7 +117,8 @@ function FloatingChatInner() {
             <div>
               <p className="text-sm font-semibold text-slate-100">梦星 · 数字分身</p>
               <p className="text-[11px] text-slate-500">
-                {preferDeepSeek ? "当前模型：DeepSeek · AI PM" : "默认：Gemini · 可按报错切换 DeepSeek"}
+                {DIGITAL_TWIN_MISSION}
+                {preferDeepSeek ? " · DeepSeek" : " · Gemini"}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -207,7 +206,7 @@ function FloatingChatInner() {
               role="toolbar"
               aria-label="快捷提问"
             >
-              {QUICK_REPLIES.map((label) => (
+              {DIGITAL_TWIN_QUICK_REPLIES.map((label) => (
                 <button
                   key={label}
                   type="button"

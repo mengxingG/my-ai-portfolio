@@ -51,7 +51,7 @@ export function AINewsRadarCaseStudyArticle() {
             >
               查看 GitHub →
             </a>
-            <Link href="/#projects" className="glow-btn glow-btn--secondary inline-flex">
+            <Link href="/#featured" className="glow-btn glow-btn--secondary inline-flex">
               返回首页项目区
             </Link>
             <img src="/image/news-dashboard.png" alt="AI News Radar" width={1000} height={500} />

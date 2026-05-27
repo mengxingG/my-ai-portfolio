@@ -27,7 +27,7 @@ import {
   buildReportHeader,
   finalizeReportMarkdown,
 } from "@/lib/hv-analysis/report-markdown";
-import { runHvReportQa } from "@/lib/hv-analysis/run-hv-qa";
+import { DEFAULT_QA_MODEL, runHvReportQa } from "@/lib/hv-analysis/run-hv-qa";
 import {
   safeJsonParse,
   sanitizeDeepStrings,
@@ -470,7 +470,7 @@ export async function POST(req: Request) {
         });
 
         const qaModelId =
-          process.env.HV_QA_MODEL_ID?.trim() || "claude-sonnet-4-6";
+          process.env.HV_QA_MODEL_ID?.trim() || DEFAULT_QA_MODEL;
 
         try {
           qaResult = await runHvReportQa({

@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import {
   motion,
   useMotionTemplate,
@@ -14,7 +13,6 @@ import {
 import { AINewsWidget } from "@/app/components/AINewsWidget";
 import { FontSizeSwitcher } from "@/app/components/FontSizeSwitcher";
 import { MagneticWrap } from "@/app/components/MagneticWrap";
-import { TiltCard } from "@/app/components/TiltCard";
 import { CosmicPortalHero } from "@/app/components/CosmicPortalHero";
 import BreathingParticles from "@/components/BreathingParticles";
 import MeteorShower from "@/components/MeteorShower";
@@ -22,13 +20,6 @@ import ReflectBackground from "@/components/ReflectBackground";
 import { TimelineBento } from "@/components/TimelineBento";
 import WallOfLoveBackground from "@/components/WallOfLoveBackground";
 import type { AINews } from "@/utils/notion";
-
-type Article = {
-  id: string;
-  title: string;
-  summary: string;
-  created_at?: string | null;
-};
 
 const HERO_SUBLINE = "4年经验 AI 项目经理 | Vibe Coding 重度实践者";
 /** 与 Hero 展示文案一致（仅去掉单独大标题「Mengxing」，其余保留） */
@@ -42,13 +33,6 @@ function splitForStagger(text: string): string[] {
 
 export default function HomePageClient({ news }: { news: AINews[] }) {
   const prefersReducedMotion = useReducedMotion();
-  const router = useRouter();
-  const [projectOpen, setProjectOpen] = useState(false);
-  const [knowledgeOpen, setKnowledgeOpen] = useState(false);
-  const navRef = useRef<HTMLDivElement>(null);
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [articlesLoading, setArticlesLoading] = useState(true);
-
   /** Framer `useReducedMotion()` 在 SSR 为 null；若客户端为 true 会与服务端 initial 不一致，触发 Hydration 报错 */
   const [motionPreferenceReady, setMotionPreferenceReady] = useState(false);
   useEffect(() => {
@@ -63,45 +47,6 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
   const SPRING_GENTLE = { type: "spring" as const, stiffness: 102, damping: 20, mass: 0.72 };
   const SPRING_SNAPPY = { type: "spring" as const, stiffness: 148, damping: 20, mass: 0.7 };
   const DUR_REVEAL = hydrateSafeReducedMotion ? 0 : 0.56;
-
-  useEffect(() => {
-    const closeMenus = (e: MouseEvent) => {
-      if (navRef.current && !navRef.current.contains(e.target as Node)) {
-        setProjectOpen(false);
-        setKnowledgeOpen(false);
-      }
-    };
-    document.addEventListener("click", closeMenus);
-    return () => document.removeEventListener("click", closeMenus);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function fetchArticles() {
-      setArticlesLoading(true);
-      try {
-        const res = await fetch("/api/articles");
-        if (!res.ok) throw new Error("Failed to load articles");
-        const list: Article[] = await res.json();
-        if (!cancelled) setArticles(list ?? []);
-      } catch {
-        if (!cancelled) setArticles([]);
-      } finally {
-        if (!cancelled) setArticlesLoading(false);
-      }
-    }
-    fetchArticles();
-    return () => { cancelled = true; };
-  }, []);
-
-  /** 列表加载后预取详情路由，首点更快；配合服务端缓存与并行拉块 */
-  useEffect(() => {
-    if (!articles.length) return;
-    const limit = 12;
-    articles.slice(0, limit).forEach((a) => {
-      router.prefetch(`/articles/${a.id}`);
-    });
-  }, [articles, router]);
 
   // 轻量级视差滚动：为标记 data-parallax 的区块增加微位移
   useEffect(() => {
@@ -249,48 +194,14 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           </a>
           <div className="flex items-center gap-4">
             <motion.nav
-              ref={navRef}
               initial="hidden"
               animate="show"
               variants={sectionVariants}
               className="flex items-center gap-4 text-sm font-medium text-bento-muted"
             >
               <a href="#hero" className="nav-link text-bento-muted hover:text-bento-text">首页</a>
-              <div className="nav-dropdown group relative">
-                <button
-                  type="button"
-                  onClick={() => { setProjectOpen((o) => !o); setKnowledgeOpen(false); }}
-                  className="nav-link cursor-pointer border-none bg-transparent text-bento-muted hover:text-bento-text"
-                  aria-expanded={projectOpen}
-                  aria-haspopup="true"
-                >
-                  项目库
-                </button>
-                <div
-                  className={`nav-dropdown-panel liquid-glass-card absolute left-0 top-full z-50 mt-1 min-w-[10rem] rounded-lg border border-purple-400/25 py-1 shadow-xl transition-all duration-200 group-hover:opacity-100 group-hover:pointer-events-auto ${projectOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
-                >
-                  <a href="/projects/core" className="block px-4 py-2.5 text-left text-bento-muted hover:bg-purple-500/10 hover:text-bento-text">核心项目</a>
-                  <a href="/projects/featured" className="block px-4 py-2.5 text-left text-bento-muted hover:bg-purple-500/10 hover:text-bento-text">特色项目</a>
-                </div>
-              </div>
-              <div className="nav-dropdown group relative">
-                <button
-                  type="button"
-                  onClick={() => { setKnowledgeOpen((o) => !o); setProjectOpen(false); }}
-                  className="nav-link cursor-pointer border-none bg-transparent text-bento-muted hover:text-bento-text"
-                  aria-expanded={knowledgeOpen}
-                  aria-haspopup="true"
-                >
-                  知识库
-                </button>
-                <div
-                  className={`nav-dropdown-panel liquid-glass-card absolute left-0 top-full z-50 mt-1 min-w-[10rem] rounded-lg border border-purple-400/25 py-1 shadow-xl transition-all duration-200 group-hover:opacity-100 group-hover:pointer-events-auto ${knowledgeOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
-                >
-                  <a href="/knowledge" className="block px-4 py-2.5 text-left text-bento-muted hover:bg-purple-500/10 hover:text-bento-text">Learning Dashboard</a>
-                  <a href="/knowledge/ai" className="block px-4 py-2.5 text-left text-bento-muted hover:bg-purple-500/10 hover:text-bento-text">AI 知识</a>
-                  <a href="/knowledge/insights" className="block px-4 py-2.5 text-left text-bento-muted hover:bg-purple-500/10 hover:text-bento-text">资讯收集</a>
-                </div>
-              </div>
+              <a href="/projects/featured" className="nav-link text-bento-muted hover:text-bento-text">特色项目</a>
+              <a href="#insights" className="nav-link text-bento-muted hover:text-bento-text">资讯收集</a>
               <a href="#about" className="nav-link text-bento-muted hover:text-bento-text">关于我</a>
             </motion.nav>
             <FontSizeSwitcher />
@@ -390,20 +301,11 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                 联系我
               </motion.a>
             </MagneticWrap>
-            <Link href="/#projects" className="glow-btn glow-btn--secondary">
-              核心项目
-            </Link>
             <Link href="/#featured" className="glow-btn glow-btn--secondary">
               特色项目
             </Link>
             <Link href="/#insights" className="glow-btn glow-btn--secondary">
               资讯收集
-            </Link>
-            <Link href="/#knowledge" className="glow-btn glow-btn--secondary">
-              AI知识沉淀
-            </Link>
-            <Link href="/knowledge" className="glow-btn glow-btn--secondary">
-              Learning Dashboard
             </Link>
           </motion.div>
 
@@ -529,89 +431,6 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
         </motion.section>
 
         <motion.section
-          id="projects"
-          className="reflect-stage reflect-stage--radar scroll-mt-20 py-10"
-          data-parallax="0.018"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.2 }}
-          transition={{ duration: 0.62, type: "spring", stiffness: 78, damping: 24, mass: 0.85 }}
-        >
-          <span className="reflect-section-kicker">Projects</span>
-          <h2 className="mt-3 text-2xl font-bold tracking-tight text-bento-text sm:text-3xl" style={{ fontFamily: '"Geist", "Inter", "SF Pro Display", system-ui, sans-serif' }}>
-            AI Projects · 核心项目
-          </h2>
-          <p className="mt-2 text-sm font-light text-bento-muted">Flagship · Agentic delivery</p>
-          <div className="pointer-events-none absolute left-1/2 top-[22%] z-[-1] h-[700px] w-[980px] -translate-x-1/2 rounded-full bg-purple-700/16 blur-[180px]" />
-          <motion.div
-            className="mt-5 space-y-4"
-            variants={staggerListContainer}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, amount: 0.18, margin: "0px 0px -8% 0px" }}
-          >
-            <motion.div variants={staggerListItem}>
-              <TiltCard className="block overflow-visible">
-                <article className="bento-card flex flex-col overflow-hidden p-6">
-              <div className="flex flex-col">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <h3 className="text-lg font-semibold text-bento-text sm:text-xl" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
-                      金融合规智能助手
-                    </h3>
-                    <p className="mt-1 text-sm font-mono text-bento-muted">Financial Compliance Intelligent Assistant</p>
-                  </div>
-                  <span className="status-badge status-badge--ready">READY</span>
-                </div>
-                <p className="mt-3 text-sm leading-relaxed text-bento-muted">
-                  A RAG-based AI agent for intelligent Q&A and audit assistance in financial institutions. 将复杂规则审计时间显著缩短，关键合规问答可溯源到具体条款与解释。
-                </p>
-              </div>
-              <div className="grid gap-3 border-t border-white/5 p-5 sm:grid-cols-3 sm:p-6">
-                <div className="liquid-glass-card rounded-xl p-4">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-bento-text">目标用户与痛点</h4>
-                  <ul className="mt-2 space-y-1.5 text-sm text-bento-muted">
-                    <li>· 合规/内控：法规口径不一致、解释成本高</li>
-                    <li>· 业务/产品：需求变更频繁、边界难对齐</li>
-                    <li>· 审计：缺少可追溯证据链与可复核记录</li>
-                  </ul>
-                </div>
-                <div className="liquid-glass-card rounded-xl p-4">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-bento-text">核心业务模块</h4>
-                  <ul className="mt-2 space-y-1.5 text-sm text-bento-muted">
-                    <li>· 法规知识库：条款拆解、版本管理、标签体系</li>
-                    <li>· 合规问答：引用到条款/解释口径/案例</li>
-                    <li>· 审计工作台：可追溯对话、结论复核与导出</li>
-                  </ul>
-                </div>
-                <div className="liquid-glass-card rounded-xl p-4">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-bento-text">底层架构设计</h4>
-                  <ul className="mt-2 space-y-1.5 text-sm text-bento-muted">
-                    <li>· RAG：法规切片 + 向量检索 + 结构化引用</li>
-                    <li>· Agent：工具调用编排、权限与操作审计</li>
-                    <li>· 证据链：来源/版本/置信度/决策日志全记录</li>
-                  </ul>
-                </div>
-              </div>
-              <p className="border-t border-white/10 px-5 py-3 text-sm text-bento-muted sm:px-6">
-                ▶ 业务成效：构建 RAG 自动化评测集，合规审查耗时缩减 40%，实现 100% 溯源审计。
-              </p>
-              <div className="border-t border-white/10 px-5 py-3 sm:px-6">
-                <div className="flex flex-wrap gap-2">
-                  <span className="tech-tag">Built with AI Agent</span>
-                  <span className="tech-tag">NotebookLM-inspired</span>
-                  <span className="tech-tag">RAG</span>
-                  <span className="tech-tag">LLMOps</span>
-                  <span className="tech-tag">Vector DB</span>
-                </div>
-              </div>
-                </article>
-              </TiltCard>
-            </motion.div>
-          </motion.div>
-        </motion.section>
-
-        <motion.section
           id="insights"
           className="reflect-stage reflect-stage--nebula scroll-mt-20 py-10"
           data-parallax="0.008"
@@ -628,74 +447,6 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
             viewport={{ once: true, amount: 0.15, margin: "-0px 0px -10% 0px" }}
           >
             <AINewsWidget news={news} />
-          </motion.div>
-        </motion.section>
-
-        <motion.section
-          id="knowledge"
-          className="reflect-stage reflect-stage--dome scroll-mt-20 py-10"
-          data-parallax="0.01"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.2 }}
-          transition={{ duration: 0.62, type: "spring", stiffness: 78, damping: 24, mass: 0.85 }}
-        >
-          <span className="reflect-section-kicker">Knowledge</span>
-          <h2 className="mt-3 text-2xl font-bold tracking-tight text-bento-text sm:text-3xl" style={{ fontFamily: '"Geist", "Inter", "SF Pro Display", system-ui, sans-serif' }}>
-            AI 知识博客园
-          </h2>
-          <p className="mt-2 text-sm font-light text-bento-muted">Best Practices &amp; Curation</p>
-          <motion.div className="mt-5 grid gap-6 sm:grid-cols-2">
-            {articlesLoading ? (
-              <>
-                {[1, 2].map((i) => (
-                  <motion.div
-                    key={i}
-                    variants={cardRevealVariants}
-                    initial="hidden"
-                    whileInView="show"
-                    viewport={{ once: true, amount: 0.15, margin: "0px 0px -8% 0px" }}
-                    className="bento-card rounded-2xl p-5"
-                  >
-                    <div className="knowledge-loading-skeleton h-6 w-3/4 rounded bg-purple-400/20" />
-                    <div className="knowledge-loading-skeleton mt-3 h-4 w-full rounded bg-purple-300/15" />
-                    <div className="knowledge-loading-skeleton mt-2 h-4 w-5/6 rounded bg-purple-300/15" />
-                    <div className="knowledge-loading-skeleton mt-4 h-3 w-24 rounded bg-purple-400/25" />
-                  </motion.div>
-                ))}
-              </>
-            ) : articles.length === 0 ? (
-              <div className="bento-card col-span-full rounded-2xl p-5 text-sm text-bento-muted">
-                暂无文章数据，请检查 Notion 数据库连接与字段映射。
-              </div>
-            ) : (
-              articles.map((article, idx) => (
-                <motion.div
-                  key={article.id}
-                  variants={cardRevealVariants}
-                  initial="hidden"
-                  whileInView="show"
-                  viewport={{ once: true, amount: 0.15, margin: "0px 0px -8% 0px" }}
-                  transition={{ delay: hydrateSafeReducedMotion ? 0 : idx * 0.06 }}
-                >
-                <TiltCard tiltMax={8} className="block h-full">
-                <Link
-                  href={`/articles/${article.id}`}
-                  prefetch
-                  className="bento-card group block h-full rounded-2xl p-5 transition hover:border-purple-500/30"
-                >
-                  <h3 className="text-lg font-semibold text-bento-text group-hover:text-purple-200" style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}>
-                    {article.title}
-                  </h3>
-                  <p className="mt-2 text-sm text-bento-muted">
-                    {article.summary}
-                  </p>
-                  <span className="mt-4 inline-block text-xs font-medium text-purple-200/90">进入详情 →</span>
-                </Link>
-                </TiltCard>
-                </motion.div>
-              ))
-            )}
           </motion.div>
         </motion.section>
 
@@ -827,14 +578,6 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           0%, 100% { box-shadow: 0 0 12px rgba(52,211,153,0.3); }
           50% { box-shadow: 0 0 20px rgba(52,211,153,0.5); }
         }
-        .knowledge-loading-skeleton {
-          animation: knowledge-skeleton 1.5s ease-in-out infinite;
-        }
-        @keyframes knowledge-skeleton {
-          0%, 100% { opacity: 0.5; }
-          50% { opacity: 1; }
-        }
-
         @keyframes featured-btn-pin-breathe {
           0%, 100% {
             box-shadow:

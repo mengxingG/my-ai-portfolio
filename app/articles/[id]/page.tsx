@@ -305,7 +305,7 @@ export default async function ArticlePage({
   if (!data) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-200 p-20">
-        <Link href="/#knowledge" className="text-cyan-400">
+        <Link href="/" className="text-cyan-400">
           ← 返回首页
         </Link>
         <div className="mt-10">文章加载失败或不存在。</div>
@@ -336,7 +336,7 @@ export default async function ArticlePage({
       <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <header className="flex items-center justify-between border-b border-white/10 pb-6">
           <Link
-            href="/#knowledge"
+            href="/"
             className="text-sm font-medium text-slate-400 transition hover:text-cyan-300"
           >
             ← 返回首页

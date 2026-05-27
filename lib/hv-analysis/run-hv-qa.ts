@@ -3,10 +3,16 @@ import { generateObject, generateText, type LanguageModel } from "ai";
 import { z } from "zod";
 import type { HvQaItem, HvQaResult } from "@/lib/hv-analysis/qa-types";
 
-/** 允许的质检模型（中转站） */
-export const HV_QA_MODEL_IDS = ["claude-sonnet-4-6", "gpt-5.4"] as const;
+/** gptsapi.net 中转站（OPENAI_API_KEY）允许的质检模型 */
+export const HV_QA_MODEL_IDS = [
+  "gemini-3.5-flash",
+  "claude-sonnet-4-6",
+  "gpt-5.4",
+] as const;
 export type HvQaModelId = (typeof HV_QA_MODEL_IDS)[number];
-const DEFAULT_QA_MODEL: HvQaModelId = "claude-sonnet-4-6";
+export const DEFAULT_QA_MODEL: HvQaModelId = "gemini-3.5-flash";
+
+const GPTSAPI_RELAY_BASE_URL = "https://api.gptsapi.net/v1";
 
 /** 14 条军规：固定 id / 标题 / 检查要点 */
 const QA_CRITERIA = [
@@ -109,7 +115,7 @@ function normalizeQaResult(raw: z.infer<typeof qaResultSchema>): HvQaResult {
   return { overallScore, items };
 }
 
-function resolveRelayModel(modelId?: string) {
+function resolveQaModel(modelId?: string) {
   const chosen = (modelId?.trim() || DEFAULT_QA_MODEL) as string;
   if (!HV_QA_MODEL_IDS.includes(chosen as HvQaModelId)) {
     return {
@@ -117,13 +123,16 @@ function resolveRelayModel(modelId?: string) {
     } as const;
   }
   if (!process.env.OPENAI_API_KEY) {
-    return { error: "服务端未配置 OPENAI_API_KEY（中转站）" } as const;
+    return { error: "服务端未配置 OPENAI_API_KEY（gptsapi 中转站）" } as const;
   }
   const relay = createOpenAI({
-    baseURL: "https://api.gptsapi.net/v1",
+    baseURL: GPTSAPI_RELAY_BASE_URL,
     apiKey: process.env.OPENAI_API_KEY,
   });
-  return { model: relay.chat(chosen), modelId: chosen as HvQaModelId } as const;
+  return {
+    model: relay.chat(chosen),
+    modelId: chosen as HvQaModelId,
+  } as const;
 }
 
 export type RunHvQaOptions = {
@@ -133,7 +142,7 @@ export type RunHvQaOptions = {
 
 async function runQaWithTextFallback(args: {
   model: LanguageModel;
-  modelId: HvQaModelId;
+  modelId: string;
   reportChars: number;
   reportForModel: string;
 }): Promise<HvQaResult> {
@@ -205,7 +214,7 @@ export async function runHvReportQa(options: RunHvQaOptions): Promise<HvQaResult
     throw new Error("reportText 不能为空");
   }
 
-  const resolved = resolveRelayModel(options.modelId);
+  const resolved = resolveQaModel(options.modelId);
   if ("error" in resolved) {
     throw new Error(resolved.error);
   }

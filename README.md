@@ -67,9 +67,9 @@ TAVILY_API_KEY=            # 联网搜索
 NOTION_API_KEY=            # 或 NOTION_TOKEN
 NOTION_DATABASE_ID_HV_ANALYSIS=  # hvSearch 研报数据库 ID
 
-# 可选 — QA / Auto-Refine 模型（默认 claude-sonnet-4-6，需 OPENAI_API_KEY 中继）
+# 可选 — 质检 / Auto-Refine 经 gptsapi.net 中转（需 OPENAI_API_KEY）
 OPENAI_API_KEY=
-HV_QA_MODEL_ID=claude-sonnet-4-6
+HV_QA_MODEL_ID=gemini-3.5-flash
 HV_REFINE_MODEL_ID=claude-sonnet-4-6
 
 # 可选 — Notion 列名映射（默认见下表）
