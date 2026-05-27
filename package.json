@@ -10,8 +10,7 @@
     "build:turbo": "next build",
     "start": "next start",
     "lint": "eslint",
-    "fetch-news": "npx tsx scripts/run-fetch-news.ts",
-    "fetch-news:http": "node scripts/fetch_news.js"
+    "fetch-news": "npx tsx scripts/run-fetch-news.ts"
   },
   "dependencies": {
     "@ai-sdk/deepseek": "^2.0.35",
