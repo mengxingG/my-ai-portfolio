@@ -15,7 +15,7 @@ export default function KnowledgeLayout({
             className="text-sm font-medium text-slate-400 transition hover:text-cyan-300"
             style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}
           >
-            ← 返回首页
+            ← 返回主界面
           </Link>
           <div className="flex items-center gap-4">
             <Link

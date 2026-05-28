@@ -365,6 +365,26 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
 
 
         <motion.section
+          id="insights"
+          className="reflect-stage reflect-stage--nebula scroll-mt-20 py-10"
+          data-parallax="0.008"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.62, type: "spring", stiffness: 78, damping: 24, mass: 0.85 }}
+        >
+          <span className="reflect-section-kicker">Radar</span>
+          <motion.div
+            variants={cardRevealVariants}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, amount: 0.15, margin: "-0px 0px -10% 0px" }}
+          >
+            <AINewsWidget news={news} />
+          </motion.div>
+        </motion.section>
+
+        <motion.section
           id="about"
           className="reflect-stage scroll-mt-20 py-10"
           initial={{ opacity: 0, y: 20 }}
@@ -427,26 +447,6 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                 ))}
               </div>
             </div>
-          </motion.div>
-        </motion.section>
-
-        <motion.section
-          id="insights"
-          className="reflect-stage reflect-stage--nebula scroll-mt-20 py-10"
-          data-parallax="0.008"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.2 }}
-          transition={{ duration: 0.62, type: "spring", stiffness: 78, damping: 24, mass: 0.85 }}
-        >
-          <span className="reflect-section-kicker">Radar</span>
-          <motion.div
-            variants={cardRevealVariants}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, amount: 0.15, margin: "-0px 0px -10% 0px" }}
-          >
-            <AINewsWidget news={news} />
           </motion.div>
         </motion.section>
 

@@ -29,11 +29,11 @@ const proseCaptionTiny =
 export function NewsRadarModalBody() {
   const techItems = [
     "Next.js",
-    "FastAPI",
-    "Coze",
-    "Make.com",
+    "AI HOT API",
     "Notion API",
+    "Express",
     "Python",
+    "飞书 SDK",
   ] as const;
 
   return (
@@ -56,7 +56,7 @@ export function NewsRadarModalBody() {
           className={`min-w-0 max-w-full flex-1 ${titleClass} break-words [overflow-wrap:anywhere]`}
           style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}
         >
-          AI News Radar —— 双引擎驱动的自动化情报聚合平台
+          AI News Radar —— AI HOT 三视图 + 飞书菜单卡片引擎
         </h3>
         <span className="shrink-0 rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-mono uppercase tracking-wide text-bento-muted">
           FEATURED
@@ -66,43 +66,43 @@ export function NewsRadarModalBody() {
       <section className="min-w-0">
         <h4 className="text-sm font-semibold text-bento-text">🚀 项目概述</h4>
         <p className={`mt-2 ${proseMuted}`}>
-         全自动情报雷达系统，采用创新的「异构双引擎」架构：利用
-          FastAPI 引擎深度挖掘社区高分共识，结合 Coze 节点精准狙击行业领袖一手动态。每天自动清洗、打分并结构化存入私人
-          Notion 数据库，将信息焦虑转化为高密度的洞察资产。
+          对接 AI HOT 官方 API 的情报雷达：Web 端「精选 / 全部 / AI 日报」三视图，精选与全量走 Notion
+          CMS，日报固定拉取最近 30 期官方杂志排版。飞书底部 6 条菜单暗号由 Job Engine 长连接门卫转发本地 Node
+          卡片引擎，推送 interactive 消息，支持 nohup 24 小时值守。
         </p>
         <p className={`mt-3 ${proseMuted}`}>
-          🌟 核心业务流：社区深度解析 (FastAPI 9:30 AM) + 领袖动态狙击 (Coze 10:42 AM) ➔
-          大模型多维去噪与打分 ➔ 统一写入 Notion 数据库 ➔ Next.js 前端实时渲染
+          🌟 核心流：AI HOT 精选入库 (fetch-news) ➔ Notion ➔ /ai-news | 日报直连 API | 飞书暗号 ➔ Python
+          门卫 ➔ Node :3001 ➔ 飞书卡片
         </p>
       </section>
 
       <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-2.5 lg:gap-3">
         <div className={`min-w-0 ${featureCardClass}`}>
           <div className="text-xs font-semibold leading-snug text-bento-text break-words">
-            特性 1：异构双引擎（重装运算 + 敏捷狙击）
+            特性 1：AI HOT 三视图与官方日报
           </div>
           <div className={`mt-2 ${proseMutedTight}`}>
-            拒绝单一工具的妥协。Coze 绕过 X API 限制，定点狙击大佬快讯；但面对 YouTube 动辄十万字的字幕与
-            Hacker News 的深水区辩论，其算力与时长极易触顶。因此引入 Python 自建微服务作为「重装引擎」，负责高并发抓取与重度大模型打分运算。Python
-            挖深共识，Coze 抢占先机，互为表里。
+            精选 / 全部从 Notion 渲染；AI 日报 Tab 调用官方 /dailies 与 /daily/日期 接口，五大版块杂志排版，与
+            AI HOT 产品体验一致，不再用 Notion 条目拼日报。
           </div>
         </div>
         <div className={`min-w-0 ${featureCardClass}`}>
           <div className="text-xs font-semibold leading-snug text-bento-text break-words">
-            特性 2：优雅降级与抗脆弱设计
+            特性 2：精选入库与标星
           </div>
           <div className={`mt-2 ${proseMutedTight}`}>
-            深度定制健壮的开源基座，直面真实世界的网络泥潭。当面临 YouTube 字幕解析受阻或严格反爬限制时，系统自动触发
-            yt-dlp 底层回退或安全跳过策略。用微服务容错机制吞吐异常，确保每日 AI 简报「局部可降级，全局不宕机」。
+            npm run fetch-news 拉取 AI HOT 精选（今/昨、URL 去重）写入 Notion；前端支持标星写回，便于筛选高价值资讯。无
+            Vercel Cron，适合本地或自建调度。
           </div>
         </div>
         <div className={`min-w-0 ${featureCardClass}`}>
           <div className="text-xs font-semibold leading-snug text-bento-text break-words">
-            特性 3：Notion 原生 CMS 闭环
+            特性 3：飞书 Python 门卫 × Node 渲染
           </div>
           <div className={`mt-2 ${proseMutedTight}`}>
-            告别传统数据库的繁重维护。通过 Make.com 自动化桥接，将 Notion 打造为灵活的 Headless
-            CMS。数据抓取即入库，前端页面秒级同步更新，完美适配 Rapid Validation 理念。
+            6 条菜单暗号（看今日日报、看精选条目、模型发布等）由 feishu_gateway 最高优先级转发
+            feishu-local-api；tools/aihot-router 映射英文 category（ai-models / ai-products / industry）。start_feishu.sh
+            一键 nohup 双引擎。
           </div>
         </div>
       </div>
@@ -119,7 +119,7 @@ export function NewsRadarModalBody() {
           />
         </figure>
         <p className={proseCaption}>
-          自动化流转全貌：Make.com 调度台 · FastAPI 云端引擎 · Notion 数据库实时推流
+          AI HOT API · Notion 精选库 · /ai-news 三视图 · 飞书菜单卡片双引擎
         </p>
         <p className={proseCaptionTiny}>
           Next.js · FastAPI · Coze · Make.com · Notion API · Python

@@ -1,0 +1,5 @@
+
+> my-ai-portfolio@0.1.0 feishu-local-api
+> npx tsx feishu-local-api.ts
+
+📦 Node.js 内部卡片引擎已启动，监听 127.0.0.1:3001 ...

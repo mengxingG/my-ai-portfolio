@@ -306,7 +306,7 @@ export default async function ArticlePage({
     return (
       <div className="min-h-screen bg-slate-950 text-slate-200 p-20">
         <Link href="/" className="text-cyan-400">
-          ← 返回首页
+          ← 返回主界面
         </Link>
         <div className="mt-10">文章加载失败或不存在。</div>
       </div>
@@ -339,7 +339,7 @@ export default async function ArticlePage({
             href="/"
             className="text-sm font-medium text-slate-400 transition hover:text-cyan-300"
           >
-            ← 返回首页
+            ← 返回主界面
           </Link>
           <div className="flex items-center gap-4">
             {created ? (

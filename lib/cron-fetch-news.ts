@@ -84,8 +84,8 @@ async function notionPageExistsByUrl(
   url: string,
 ): Promise<boolean> {
   try {
-    const res = await notion.databases.query({
-      database_id: databaseId,
+    const res = await notion.dataSources.query({
+      data_source_id: databaseId,
       filter: {
         property: "URL",
         url: { equals: url },

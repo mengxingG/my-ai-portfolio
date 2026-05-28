@@ -19,7 +19,7 @@ const TIME_THEME: Record<TimeId, string> = {
 
 type FeatureBlock = { title: string; body: string };
 
-type FlowDiagramKind = "dual-engine" | "linear";
+type FlowDiagramKind = "ai-news" | "linear";
 
 type TimelineSectionData = {
   time: TimeId;
@@ -30,7 +30,7 @@ type TimelineSectionData = {
   heroImage?: { src: string; alt: string; width: number; height: number };
   features: readonly [FeatureBlock, FeatureBlock, FeatureBlock];
   flowDiagram?: FlowDiagramKind;
-  /** linear: 横向流程；dual-engine 时忽略 */
+  /** linear: 横向流程；ai-news 时忽略 */
   flowSteps?: readonly { label: string; sub?: string }[];
 };
 
@@ -42,7 +42,7 @@ const PROSE_TIGHT =
 const TIMELINE_SECTIONS: readonly TimelineSectionData[] = [
   {
     time: "05:00",
-    primaryTitle: "全自动求职与背调引擎",
+    primaryTitle: "Job Engine - 全自动求职与背调引擎",
     tech: [
       "Python",
       "DrissionPage",
@@ -80,20 +80,20 @@ const TIMELINE_SECTIONS: readonly TimelineSectionData[] = [
   },
   {
     time: "09:00",
-    primaryTitle: "每日 AI 资讯模块 (AI News Radar)",
+    primaryTitle: "AI Hot News - 每日 AI 资讯模块",
     tech: [
       "Next.js",
-      "FastAPI",
-      "Coze",
-      "Make.com",
+      "AI HOT API",
       "Notion API",
+      "Express",
       "Python",
+      "飞书 SDK",
     ],
     overview:
-      "全自动情报雷达，系统采用创新的「异构双引擎」架构：利用 FastAPI 引擎深度挖掘社区高分共识，结合 Coze 节点精准狙击行业领袖一手动态。每天自动清洗、打分并结构化存入私人 Notion 数据库，将信息焦虑转化为高密度的洞察资产。",
+      "对接 AI HOT 官方公开 API 的情报雷达：Web 端提供「精选 / 全部 / AI 日报」三视图——精选与全量走 Notion Headless CMS，日报固定拉取最近 30 期官方杂志排版。飞书侧由 Job Engine 长连接门卫识别 6 条菜单暗号，转发本地 Node 卡片引擎渲染 interactive 消息，实现 24 小时指令触达。",
     flow:
-      "🌟 核心业务流：社区深度解析 (FastAPI) + 领袖动态狙击 (Coze) ➔ 大模型多维去噪与打分 ➔ 统一写入 Notion 数据库 ➔ Next.js 前端实时渲染",
-    flowDiagram: "dual-engine",
+      "🌟 AI HOT 精选入库 (npm run fetch-news) ➔ Notion CMS ➔ /ai-news 精选·全部 | 日报直连 API | 飞书菜单暗号 ➔ Python 门卫 ➔ Node :3001 卡片 ➔ 飞书推送",
+    flowDiagram: "ai-news",
     heroImage: {
       src: "/image/news-dashboard.png",
       alt: "AI News Radar 控制台界面",
@@ -102,22 +102,22 @@ const TIMELINE_SECTIONS: readonly TimelineSectionData[] = [
     },
     features: [
       {
-        title: "特性 1：异构双引擎（重装运算 + 敏捷狙击）",
-        body: "拒绝单一工具的妥协。Coze 绕过 X API 限制，定点狙击大佬快讯；但面对 YouTube 动辄十万字的字幕与 Hacker News 的深水区辩论，其算力与时长极易触顶。因此引入 Python 自建微服务作为「重装引擎」，负责高并发抓取与重度大模型打分运算。Python 挖深共识，Coze 抢占先机，互为表里。",
+        title: "特性 1：AI HOT 三视图与官方日报",
+        body: "精选 / 全部 AI 动态从 Notion 读取，支持分类筛选与时间轴展示；AI 日报 Tab 调用 /dailies 归档与 /daily/{date} 正文，五大版块杂志排版，与官网产品体验对齐，不依赖 Notion 拼日报。",
       },
       {
-        title: "特性 2：优雅降级与抗脆弱设计",
-        body: "深度定制健壮的开源基座，直面真实世界的网络泥潭。当面临 YouTube 字幕解析受阻或严格反爬限制时，系统自动触发 yt-dlp 底层回退或安全跳过策略。用微服务容错机制吞吐异常，确保每日 AI 简报「局部可降级，全局不宕机」。",
+        title: "特性 2：精选入库与标星闭环",
+        body: "lib/cron-fetch-news 按北京时区今/昨过滤 AI HOT 精选条目，URL 去重写入 Notion；npm run fetch-news 本地执行，无 Vercel Cron 依赖。前端标星写回 Notion，便于 HR/同行快速筛高价值资讯。",
       },
       {
-        title: "特性 3：Notion 原生 CMS 闭环",
-        body: "告别传统数据库的繁重维护。通过 Make.com 自动化桥接，将 Notion 打造为灵活的 Headless CMS。数据抓取即入库，前端页面秒级同步更新，完美适配 Rapid Validation 理念。",
+        title: "特性 3：飞书微服务（Python 门卫 × Node 渲染）",
+        body: "feishu_gateway.py 保持唯一 WebSocket 长连接；命中「看今日日报 / 看精选条目 / 模型发布」等 6 条暗号后，POST 本地 feishu-local-api 生成卡片，再推回飞书。start_feishu.sh / stop_feishu.sh 一键 nohup 双引擎，日志分写 node_api.log 与 gateway.log。",
       },
     ],
   },
   {
     time: "14:00",
-    primaryTitle: "费曼学习工具",
+    primaryTitle: "费曼学习工具 - 深度学习引擎",
     tech: ["Gemini 2.5", "DeepSeek", "Next.js", "Notion API", "Mermaid.js"],
     overview:
       "NotebookLM 风格的双模态学习：左侧材料解析与概念地图，右侧费曼对话与递增追问。学了就忘？先用大白话讲清楚，再用 AI 面试官在压力下验收；掌握度、盲点与复习队列全部写回 Notion。",
@@ -154,7 +154,7 @@ const TIMELINE_SECTIONS: readonly TimelineSectionData[] = [
   },
   {
     time: "15:00",
-    primaryTitle: "InterviewOS - 全链路 AI 面试教练",
+    primaryTitle: "InterviewOS - AI 面试教练",
     tech: ["DeepSeek", "Gemini", "Next.js", "Notion API", "Vercel"],
     overview:
       "全链路 AI 面试教练：左侧 JD 解码与简历对齐，右侧高压追问与五维评分。怕背八股文没用？先用 AI 深度拆解岗位需求，再由硅谷级 AI 面试官进行极限压力测试；核心故事库、评分雷达与复盘报告全部沉淀至 Notion。",
@@ -191,7 +191,7 @@ const TIMELINE_SECTIONS: readonly TimelineSectionData[] = [
   },
   {
     time: "18:30",
-    primaryTitle: "横纵分析法 (HV-Analysis)",
+    primaryTitle: "横纵分析法 (HV-Analysis) - 深度研究引擎",
     tech: [
       "DeepSeek",
       "Tavily",
@@ -282,20 +282,20 @@ function TechPill({ label }: { label: string }) {
   );
 }
 
-/** 09:00 异构双引擎 + 合流示意 */
-function DualEngineFlowDiagram() {
+/** 09:00 AI News Radar：Web 阅读 + 飞书双引擎 */
+function AiNewsRadarFlowDiagram() {
   return (
     <div className="mt-6 space-y-4">
       <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-bento-muted/70">
-        异构双引擎 · 数据合流
+        AI HOT · 三端数据流
       </p>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch sm:justify-between sm:gap-2">
         <div className="flex min-w-0 flex-1 flex-col rounded-2xl border border-white/15 bg-white/[0.06] p-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-[#8B5CF6]">
-            FastAPI 重装引擎
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-cyan-400/90">
+            AI HOT 公开 API
           </p>
           <p className="mt-2 text-[11px] leading-snug text-bento-text/90">
-            HN / YouTube 字幕 · 重计算 · 多维打分
+            精选 · 分类 · 官方日报 /daily
           </p>
         </div>
         <div
@@ -305,11 +305,11 @@ function DualEngineFlowDiagram() {
           +
         </div>
         <div className="flex min-w-0 flex-1 flex-col rounded-2xl border border-white/15 bg-white/[0.06] p-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-[#8B5CF6]">
-            Coze 敏捷通道
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-cyan-400/90">
+            Notion 精选库
           </p>
           <p className="mt-2 text-[11px] leading-snug text-bento-text/90">
-            X / 领袖动态 · 搜索节点 · 低延迟触达
+            fetch-news 入库 · 标星 · Headless CMS
           </p>
         </div>
       </div>
@@ -317,7 +317,7 @@ function DualEngineFlowDiagram() {
         <span className="text-lg leading-none">↓</span>
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {["DeepSeek 清洗", "Make 调度", "Notion 入库", "Next 渲染"].map(
+        {["fetch-news", "/ai-news 三视图", "日报 30 期", "飞书菜单卡片"].map(
           (label) => (
             <div
               key={label}
@@ -327,6 +327,33 @@ function DualEngineFlowDiagram() {
             </div>
           )
         )}
+      </div>
+      <div className="flex flex-wrap items-center justify-center gap-2 text-bento-muted/50 sm:gap-3">
+        <span className="text-lg leading-none">↓</span>
+      </div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch sm:justify-between sm:gap-2">
+        <div className="flex min-w-0 flex-1 flex-col rounded-2xl border border-emerald-500/25 bg-emerald-950/20 p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400/90">
+            Python 飞书门卫
+          </p>
+          <p className="mt-2 text-[11px] leading-snug text-bento-text/90">
+            WebSocket · 6 条菜单暗号 · 最高优先级
+          </p>
+        </div>
+        <div
+          className="hidden shrink-0 items-center justify-center px-1 text-bento-muted/40 sm:flex"
+          aria-hidden
+        >
+          →
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col rounded-2xl border border-emerald-500/25 bg-emerald-950/20 p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400/90">
+            Node 卡片引擎
+          </p>
+          <p className="mt-2 text-[11px] leading-snug text-bento-text/90">
+            :3001 · aihot-router · interactive 卡片
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -408,7 +435,7 @@ function SuperDetailBentoCard({ data }: { data: TimelineSectionData }) {
             <TechPill key={`${data.time}-detail-${t}`} label={t} />
           ))}
         </div>
-        {data.flowDiagram === "dual-engine" ? <DualEngineFlowDiagram /> : null}
+        {data.flowDiagram === "ai-news" ? <AiNewsRadarFlowDiagram /> : null}
         {data.flowDiagram === "linear" && data.flowSteps?.length ? (
           <LinearFlowSteps steps={data.flowSteps} />
         ) : null}

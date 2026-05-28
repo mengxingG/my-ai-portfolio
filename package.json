@@ -10,7 +10,8 @@
     "build:turbo": "next build",
     "start": "next start",
     "lint": "eslint",
-    "fetch-news": "npx tsx scripts/run-fetch-news.ts"
+    "fetch-news": "npx tsx scripts/run-fetch-news.ts",
+    "feishu-local-api": "npx tsx feishu-local-api.ts"
   },
   "dependencies": {
     "@ai-sdk/deepseek": "^2.0.35",
@@ -19,12 +20,14 @@
     "@ai-sdk/openai-compatible": "^2.0.40",
     "@ai-sdk/react": "^3.0.139",
     "@google/generative-ai": "^0.24.1",
+    "@larksuiteoapi/node-sdk": "^1.66.0",
     "@notionhq/client": "^5.22.0",
     "@supabase/supabase-js": "^2.99.1",
     "@tsparticles/react": "^3.0.0",
     "@tsparticles/slim": "^3.9.1",
     "ai": "^6.0.191",
     "autoprefixer": "^10.5.0",
+    "express": "^5.2.1",
     "formidable": "^3.5.4",
     "framer-motion": "^12.38.0",
     "https-proxy-agent": "^9.0.0",
@@ -51,6 +54,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.0",
     "@tailwindcss/typography": "^0.5.19",
+    "@types/express": "^5.0.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

@@ -283,6 +283,8 @@ export type AINews = {
   url: string;
   /** Notion `Category`（select / rich_text）→ ai-models 等 */
   category?: string;
+  /** 精选视图「推荐理由」（可选独立字段；缺省由摘要推导） */
+  recommendReason?: string;
   /** Notion `Starred` checkbox */
   starred: boolean;
   /** Notion `TimeRange`（select / rich_text）；用于首页与雷达页分档展示 */

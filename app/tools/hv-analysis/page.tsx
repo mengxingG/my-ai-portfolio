@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { BackToHomeLink } from "@/app/components/BackToHomeLink";
 import ConfigForm from "@/components/hv-analysis/ConfigForm";
 import type { ConfigFormData } from "@/components/hv-analysis/ConfigForm";
 import HistoryReportSidebar from "@/components/hv-analysis/HistoryReportSidebar";
@@ -722,20 +723,25 @@ export default function HVAnalysisPage() {
         <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
         {/* ===== 页面头部 ===== */}
         <header className="mb-8">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-purple-600 to-cyan-600 text-[12px] font-bold text-white">
-              HV
-            </span>
-            <h1 className="text-lg font-semibold text-slate-100 sm:text-xl">
-              横纵分析法
-            </h1>
-            <span className="rounded-full border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 text-[10px] font-mono text-purple-300">
-              HV-Analysis
-            </span>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-purple-600 to-cyan-600 text-[12px] font-bold text-white">
+                  HV
+                </span>
+                <h1 className="text-lg font-semibold text-slate-100 sm:text-xl">
+                  横纵分析法
+                </h1>
+                <span className="rounded-full border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 text-[10px] font-mono text-purple-300">
+                  HV-Analysis
+                </span>
+              </div>
+              <p className="mt-1.5 text-sm text-slate-300">
+                设定研究对象与视角，AI 将自动执行横纵交叉分析——横轴（空间对比）对标竞品，纵轴（时间演进）追溯发展脉络。
+              </p>
+            </div>
+            <BackToHomeLink />
           </div>
-          <p className="mt-1.5 text-sm text-slate-300">
-            设定研究对象与视角，AI 将自动执行横纵交叉分析——横轴（空间对比）对标竞品，纵轴（时间演进）追溯发展脉络。
-          </p>
         </header>
 
         {/* ===== 阶段一：配置表单 ===== */}

@@ -17,6 +17,7 @@ import {
   type ReactNode,
 } from "react";
 import Link from "next/link";
+import { BackToHomeLink } from "@/app/components/BackToHomeLink";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
@@ -6023,13 +6024,14 @@ ${report.improvements || "（无）"}
         <div className="flex flex-col gap-2 border-b border-white/5 bg-neutral-950/60 px-3 py-3 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-5">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
+              <BackToHomeLink />
               <Link
                 href="/knowledge"
                 onClick={() => pauseFocus()}
                 className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] px-3 py-1.5 text-slate-200 transition hover:bg-white/[0.06]"
               >
-                <span className="sm:hidden">← 返回</span>
-                <span className="hidden sm:inline">← 返回 Learning Dashboard</span>
+                <span className="sm:hidden">← 知识库</span>
+                <span className="hidden sm:inline">← 返回知识库</span>
               </Link>
               {linkedItemId ? (
                 <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-[11px] font-mono text-cyan-200">

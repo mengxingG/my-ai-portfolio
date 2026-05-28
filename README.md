@@ -11,6 +11,10 @@ npm run dev
 
 浏览器打开 [http://localhost:3000](http://localhost:3000)。
 
+### 首页结构
+
+自上而下：**Hero** → **数字工作流**（`TimelineBento`）→ **AI 资讯雷达**（`#insights`）→ **关于我**（`#about`）。导航锚点「资讯收集」指向 `#insights`；「联系我」指向 `#about`。
+
 生产构建：
 
 ```bash
@@ -23,10 +27,136 @@ npm start
 | 时段 | 项目 | 路径 | 说明 |
 |------|------|------|------|
 | 05:00 | 全自动求职与背调引擎 | 外部站点 | 9 平台爬虫 + Notion CMS + 飞书 ChatOps 串行调度（Job Engine） |
-| 09:00 | AI News Radar | `/ai-news` | 异构双引擎资讯雷达，Notion 结构化入库 |
+| 09:00 | AI News Radar | `/ai-news` | AI HOT 三视图 + Notion 精选入库 + 飞书菜单卡片（Python 门卫 × Node 渲染） |
 | 14:00 | 费曼学习工具 | `/learning` | 双模态学习 + AI 面试官，掌握度写回 Notion |
 | 15:00 | InterviewOS | 外部站点 | 全链路 AI 面试教练，JD 解码与五维评分 |
 | 18:30 | **横纵分析法 (HV-Analysis)** | `/tools/hv-analysis` | 深度研究引擎，分章流式报告 + QA 审计 + Notion 归档 |
+
+---
+
+## AI News Radar · 每日 AI 资讯
+
+> Web 端阅读与飞书 ChatOps 推送共用同一套 **AI HOT 公开 API** 路由；精选流写入 Notion，日报走官方 `/daily` 接口实时拉取。
+
+![AI News Radar 控制台](/image/news-dashboard.png)
+
+### 功能概览
+
+- **三视图前端**（`/ai-news`）：**精选** / **全部 AI 动态**（Notion CMS）+ **AI 日报**（AI HOT 最近 30 期归档 + 按日正文，杂志排版）
+- **首页预览**（`/#insights` · `AINewsWidget`）：展示 Notion 全量资讯，按时间倒序，最多 **20** 条；右侧仅保留「完整雷达」链至 `/ai-news` 与条数统计（**无**「今日热门 / 本周精选 / 月度回顾」筛选）
+- **精选入库**：`npm run fetch-news` 拉取 `mode=selected`，按北京时区今/昨过滤，URL 去重写入 Notion
+- **飞书菜单卡片**：6 条底部子菜单暗号 → `interview/job_engine/feishu_gateway.py`（WebSocket 门卫）转发本地 Node → 飞书 interactive 卡片
+- **标星**：Notion 字段同步，Web 端可收藏（`/api/ai-news/star`）
+
+### 飞书菜单暗号（须与飞书后台一字不差）
+
+| 菜单文案 | AI HOT 路由 |
+|----------|-------------|
+| 看今日日报 | `GET /api/public/daily` |
+| 看精选条目 | `GET /api/public/items?mode=selected` |
+| 看本周动态 | `GET /api/public/items?mode=selected&since=7d` |
+| 模型发布 | `category=ai-models` |
+| 产品发布 | `category=ai-products` |
+| 行业动态 | `category=industry` |
+
+### 数据流
+
+```
+AI HOT 公开 API
+  ├─ fetch-news（本地/CI）→ Notion 精选库 → /ai-news 精选·全部
+  │                              └─ 首页 AINewsWidget（全量倒序，最多 20 条）
+  └─ feishu-local-api :3001 ← feishu_gateway.py（命中菜单暗号）
+        └─ tools/aihot-router + feishu-card-builder → 飞书会话
+
+/ai-news · AI 日报 Tab：/api/public/dailies?take=30 + /daily/{date}（不经 Notion）
+```
+
+### 环境变量
+
+在 `.env.local` 中配置：
+
+```bash
+NOTION_API_KEY=
+NOTION_AI_NEWS_DB_ID=    # AI 资讯雷达数据库
+
+# 飞书（Webhook 路由 / 本地联调；生产推送由 job_engine 门卫承担）
+FEISHU_APP_ID=
+FEISHU_APP_SECRET=
+```
+
+### 本地开发
+
+```bash
+# 前端
+npm run dev
+# 浏览器打开 http://localhost:3000/ai-news
+
+# 拉取 AI HOT 精选写入 Notion（无 Vercel Cron，手动或自建调度）
+npm run fetch-news
+
+# Node 卡片引擎（供 Python 门卫调用，默认 127.0.0.1:3001，可用 FEISHU_LOCAL_API_PORT 覆盖）
+npm run feishu-local-api
+```
+
+首页资讯数据在 `app/page.tsx` 服务端拉取 `fetchAINewsRadarFromNotion()`，传入 `HomePageClient` → `AINewsWidget`。
+
+### 24 小时飞书双引擎（与 Job Engine 联动）
+
+门卫与渲染引擎脚本在 **`../interview/job_engine/`**；作品集目录提供转发入口：
+
+```bash
+cd ~/interview/job_engine
+./stop_feishu.sh && ./start_feishu.sh
+
+# 或在 my-ai-portfolio 根目录
+./stop_feishu.sh && ./start_feishu.sh
+```
+
+| 日志 | 路径 |
+|------|------|
+| Node 卡片引擎 | `~/my-ai-portfolio/node_api.log` |
+| Python 飞书门卫 | `~/interview/job_engine/gateway.log` |
+
+Python 使用 `conda run -n job_env python -u feishu_gateway.py`（`start_feishu.sh` 内已配置）。
+
+### API 路由（本仓库）
+
+| 路由 | 方法 | 说明 |
+|------|------|------|
+| `/api/ai-news/dailies` | GET | 日报归档（默认 `take=30`） |
+| `/api/ai-news/daily/[date]` | GET | 指定日期日报正文 |
+| `/api/ai-news/star` | PATCH | 标星开关 |
+| `/api/ai-news-radar` | GET | Notion 资讯列表（JSON） |
+| `/api/feishu` | POST | 飞书 Webhook 校验 / 事件（可选；主路径为 Python 长连接） |
+
+### 关键目录
+
+```
+app/page.tsx                      # 首页 SSR：拉取 Notion 资讯列表
+app/HomePageClient.tsx            # 首页布局（资讯雷达 #insights 在关于我 #about 之前）
+app/components/AINewsWidget.tsx   # 首页资讯预览（无时间 Tab，最多 20 条）
+app/ai-news/                      # 资讯雷达完整页（三视图）
+app/components/ai-news/           # AiNewsGeekHub、DailyPanel、侧栏等
+lib/cron-fetch-news.ts            # AI HOT → Notion 入库
+lib/aihot-daily-api.ts            # 日报 API 封装
+utils/ai-news-time-range.ts       # 上海时区日期工具（飞书/分组等；首页 Widget 不再使用 Tab 过滤）
+utils/ai-news-grouping.ts         # sortNewsNewestFirst 等列表工具
+tools/aihot-router.ts             # 菜单暗号 → API + 卡片 payload
+tools/feishu-card-builder.ts      # 飞书 interactive 卡片
+feishu-local-api.ts               # 本地 HTTP 卡片引擎（POST /internal/news-card）
+scripts/run-fetch-news.ts         # npm run fetch-news 入口
+start_feishu.sh / stop_feishu.sh # 转发至 job_engine 双引擎脚本
+../interview/job_engine/feishu_gateway.py   # 飞书 WebSocket 门卫（转发 Node）
+../interview/job_engine/start_feishu.sh      # nohup 双引擎点火
+```
+
+### npm scripts（资讯相关）
+
+| 命令 | 说明 |
+|------|------|
+| `npm run dev` | 本地站点（含首页资讯预览） |
+| `npm run fetch-news` | AI HOT 精选 → Notion |
+| `npm run feishu-local-api` | 飞书卡片引擎（需与 Python 门卫联调） |
 
 ---
 
