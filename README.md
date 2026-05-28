@@ -26,17 +26,111 @@ npm start
 
 | 时段 | 项目 | 路径 | 说明 |
 |------|------|------|------|
-| 05:00 | 全自动求职与背调引擎 | 外部站点 | 9 平台爬虫 + Notion CMS + 飞书 ChatOps 串行调度（Job Engine） |
-| 09:00 | AI News Radar | `/ai-news` | AI HOT 三视图 + Notion 精选入库 + 飞书菜单卡片（Python 门卫 × Node 渲染） |
+| 05:00 | 全自动求职与背调引擎 | 外部站点 | 飞书 ChatOps 中枢 + OpenClaw 溯源背调 + 9 平台爬虫 → Notion（Job Engine） |
+| 09:00 | AI News Radar | `/ai-news` | 与 Job Engine **共用** `feishu_gateway`；AI HOT 三视图 + 飞书 6 菜单 → Node 卡片 |
 | 14:00 | 费曼学习工具 | `/learning` | 双模态学习 + AI 面试官，掌握度写回 Notion |
 | 15:00 | InterviewOS | 外部站点 | 全链路 AI 面试教练，JD 解码与五维评分 |
 | 18:30 | **横纵分析法 (HV-Analysis)** | `/tools/hv-analysis` | 深度研究引擎，分章流式报告 + QA 审计 + Notion 归档 |
 
 ---
 
+## 数字工作流 · OpenClaw × 飞书 ChatOps
+
+> **飞书是操作台，OpenClaw 是背调引擎，Notion 是数据中台。** 日常不再依赖 Cron 并发；所有指令从飞书进入，由 `interview/job_engine/feishu_gateway.py` 长连接门卫统一路由。
+
+### 为什么需要 OpenClaw + 飞书联动
+
+| 角色 | 职责 |
+|------|------|
+| **飞书** | 手机端唯一入口：菜单引导、单平台/全量抓取、今日简报、深度背调、AI 资讯卡片 |
+| **feishu_gateway.py** | WebSocket 门卫：消息去重 → AI 资讯最高优先级转发 Node → `route_intent` 分流爬虫/简报/背调 |
+| **OpenClaw** | **仅**在自然语言背调场景唤醒：`job-insight` 技能强制联网检索（web_search / web_fetch），输出须附真实 URL，避免「幻觉背调」 |
+| **openclaw_bridge.py** | 爬虫 JSON → DeepSeek 五维岗位评分 → Notion 同步（与 OpenClaw CLI 背调路径解耦，共用 `openclaw_jobs.json` 数据文件命名） |
+| **Notion** | Headless CMS：岗位库 + 背调报告 Block 锚点写入 |
+| **Next.js 看板** | 从 Notion 递归渲染岗位 JD 与背调长文 |
+
+### 全链路工作流（三条路径）
+
+```
+                    ┌─────────────────────────────────────┐
+                    │  飞书用户 · 菜单 / 自然语言指令      │
+                    └──────────────────┬──────────────────┘
+                                       ▼
+                    ┌─────────────────────────────────────┐
+                    │  feishu_gateway.py (WebSocket)       │
+                    │  ① 去重  ② AI资讯6菜单→Node (优先)   │
+                    │  ③ route_intent 其余指令              │
+                    └──────────┬────────────┬─────────────┘
+                               │            │
+         ┌─────────────────────┼────────────┼─────────────────────┐
+         ▼                     ▼            ▼                     ▼
+   【路径 A 采集】        【路径 B 背调】   【路径 C 简报】    【路径 D 资讯】
+   抓取BOSS/全面抓取      帮我背调XX      今日简报           看今日日报等
+         │                     │            │                     │
+         ▼                     ▼            ▼                     ▼
+   9平台爬虫串行          OpenClaw         Notion 24h           Node :3001
+   subprocess            job-insight      入库筛选              aihot-router
+         │                web 溯源              │                     │
+         ▼                     │            ▼                     ▼
+   openclaw_jobs.json          │         DeepSeek 提炼          飞书 interactive
+         │                     │            │                     卡片
+         ▼                     ▼            └──────────┬──────────┘
+   openclaw_bridge              │                       ▼
+   DeepSeek 评分                │                  飞书会话回执
+         │                     ▼
+         ▼               DeepSeek 合成报告
+   notion_sync                  │
+         │                     ▼
+         └──────────► Notion 岗位库 ◄── replace_report_blocks 写入背调
+                              │
+                              ▼
+                    Next.js / Electron 岗位看板
+```
+
+#### 路径 A · 岗位采集（飞书驱动，非 OpenClaw CLI）
+
+1. 用户在飞书发送「抓取字节跳动」或「全面抓取」  
+2. 网关后台 **串行** 拉起 `spider_*.py` / `crawler_*.py`（全局互斥，防 OOM）  
+3. 结果写入 `data/openclaw_jobs.json`，结束后可选执行 `openclaw_bridge.py`  
+4. DeepSeek 对 JD 五维评分 → `notion_sync` 增量写入 Notion  
+5. 每平台完成可推送结果卡片；全量结束后可再次桥接 Notion  
+
+#### 路径 B · OpenClaw 深度背调（核心差异化）
+
+1. 菜单「深度背调 / 背调指南」**只返回用法**，不启动 Agent  
+2. 用户须发送带公司名的句式，如：`帮我背调一下 字节跳动`  
+3. 后台线程：查 Notion 该公司岗位 JD → **OpenClaw** 多源 web 检索（失败则降级新闻源 + targets.json URL）  
+4. DeepSeek 将「外部情报 + JD」合成 Markdown 背调报告  
+5. 报告通过 Notion Block API **锚点替换**写入对应岗位页；飞书仅推 2 条核心情报 + Notion 链接  
+6. 若触发降级自愈，额外推送巡检告警卡片  
+
+#### 路径 C · 今日简报
+
+1. 飞书「今日简报」→ 查 Notion **过去 24 小时入库**岗位（不限匹配分，过滤发现日）  
+2. DeepSeek 提炼每条「核心匹配点」→ 组装极客风早报卡片回飞书  
+3. 早报底部引导：可对感兴趣公司继续发「帮我背调一下 XX」走路径 B  
+
+#### 路径 D · AI 资讯（本仓库 `my-ai-portfolio`）
+
+与求职链路 **共用同一飞书门卫**，但命中 6 条 AI HOT 菜单后立即 `POST http://127.0.0.1:3001/internal/news-card`，**不进入** `route_intent`，避免「看看」等词误触发背调。详见下文 [AI News Radar](#ai-news-radar--每日-ai-资讯)。
+
+### 本地启动双引擎
+
+```bash
+# 终端 1 — Node 卡片引擎（资讯菜单必需；背调路径不依赖）
+cd ~/my-ai-portfolio && npm run feishu-local-api
+
+# 终端 2 — Python 飞书门卫（求职 + 资讯统一入口）
+cd ~/interview/job_engine && ./start_feishu.sh
+```
+
+完整命令、菜单暗号表与日志路径见 [job_engine/README.md](../interview/job_engine/README.md)。
+
+---
+
 ## AI News Radar · 每日 AI 资讯
 
-> Web 端阅读与飞书 ChatOps 推送共用同一套 **AI HOT 公开 API** 路由；精选流写入 Notion，日报走官方 `/daily` 接口实时拉取。
+> Web 端阅读与飞书推送共用 **AI HOT API**；与 Job Engine **共用** `feishu_gateway.py` 长连接门卫（资讯菜单最高优先级，与 OpenClaw 背调/爬虫路由隔离）。
 
 ![AI News Radar 控制台](/image/news-dashboard.png)
 

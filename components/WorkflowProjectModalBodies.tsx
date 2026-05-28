@@ -100,9 +100,9 @@ export function NewsRadarModalBody() {
             特性 3：飞书 Python 门卫 × Node 渲染
           </div>
           <div className={`mt-2 ${proseMutedTight}`}>
-            6 条菜单暗号（看今日日报、看精选条目、模型发布等）由 feishu_gateway 最高优先级转发
-            feishu-local-api；tools/aihot-router 映射英文 category（ai-models / ai-products / industry）。start_feishu.sh
-            一键 nohup 双引擎。
+            与 Job Engine 共用 feishu_gateway.py：6 条菜单在消息入口最高优先级转发 feishu-local-api，不进入 OpenClaw
+            背调/爬虫 route_intent。tools/aihot-router 映射英文 category（ai-models / ai-products / industry）。start_feishu.sh
+            一键 nohup Python 门卫 + Node 卡片引擎。
           </div>
         </div>
       </div>
@@ -122,7 +122,7 @@ export function NewsRadarModalBody() {
           AI HOT API · Notion 精选库 · /ai-news 三视图 · 飞书菜单卡片双引擎
         </p>
         <p className={proseCaptionTiny}>
-          Next.js · FastAPI · Coze · Make.com · Notion API · Python
+          Next.js · AI HOT API · feishu_gateway · Node :3001 · Notion API
         </p>
         <div className="flex flex-wrap gap-1.5">
           {techItems.map((t) => (

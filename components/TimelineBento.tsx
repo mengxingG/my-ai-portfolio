@@ -19,7 +19,7 @@ const TIME_THEME: Record<TimeId, string> = {
 
 type FeatureBlock = { title: string; body: string };
 
-type FlowDiagramKind = "ai-news" | "linear";
+type FlowDiagramKind = "ai-news" | "job-engine" | "linear";
 
 type TimelineSectionData = {
   time: TimeId;
@@ -54,9 +54,10 @@ const TIMELINE_SECTIONS: readonly TimelineSectionData[] = [
       "Next.js",
     ],
     overview:
-      "Job Engine 以 Notion 为 Headless CMS 构建私人求职数据中台。9 大渠道（BOSS直聘、猎聘 + 字节 / DeepSeek / 小红书 / 月之暗面 / 智谱 / MiniMax / 阿里巴巴）不再依赖 Cron 定时并发，改由飞书 ChatOps 中枢按需调度：`feishu_gateway.py` WebSocket 长连接接收底部菜单与文本指令，后台严格串行拉起爬虫脚本，单平台失败自动跳过，保护本地内存。意图路由区分「今日简报」「全面抓取」与带公司名的深度背调；OpenClaw 强制 web 溯源，消灭调研幻觉。",
+      "飞书是整套求职 OS 的**唯一操作台**：`feishu_gateway.py` 维持 WebSocket 长连接，统一接收底部菜单与自然语言。网关按优先级分流——AI 资讯菜单转发 Node、爬虫指令后台串行 subprocess、今日简报读 Notion 回推卡片；只有带公司名的背调句式才唤醒 **OpenClaw**（`job-insight` 技能强制 web_search / web_fetch，结论须附 URL）。岗位数据经 9 大渠道爬虫写入 `openclaw_jobs.json`，由 `openclaw_bridge` 完成 DeepSeek 评分后同步 Notion；背调报告则字段级写入 Notion Block，飞书只推极简摘要。",
     flow:
-      "🌟 飞书 ChatOps 指令 ➔ 9 平台串行抓取 ➔ Notion 数据中台 ➔ 今日简报(24h 入库) / OpenClaw 溯源背调 ➔ Next.js 极客风渲染",
+      "🌟 飞书指令入口 ➔ 意图路由（资讯 / 抓取 / 简报 / 背调）➔ 爬虫+桥接+Notion 或 OpenClaw 溯源+AI 报告 ➔ 飞书卡片回执 ➔ Next.js 看板",
+    flowDiagram: "job-engine",
     heroImage: {
       src: "/image/positons.png",
       alt: "Job Engine - 飞书 ChatOps 与岗位简报",
@@ -65,16 +66,16 @@ const TIMELINE_SECTIONS: readonly TimelineSectionData[] = [
     },
     features: [
       {
-        title: "特性 1：飞书 ChatOps 与串行抓取（防 OOM）",
-        body: "取消 Cron 全量并发后，调度权移交飞书网关。底部快捷菜单提供「抓取官网指南」「全面抓取」等入口；文本指令如「抓取BOSS直聘」「抓取字节跳动」精准映射独立爬虫脚本。「全面抓取」在后台线程中严格串行执行 9 个平台，每完成一项推送结果卡片，结束后桥接 Notion。subprocess 异步执行，不阻塞 WebSocket 长连接；全局互斥锁保证同一时刻仅一个抓取批次。",
+        title: "特性 1：飞书 ChatOps — 唯一指令入口",
+        body: "手机飞书即可驱动全流程：底部菜单（背调指南 / 抓取官网指南 / 今日简报）+ 文本暗号（「抓取字节跳动」「全面抓取」）。网关 `do_p2_im_message_receive_v1` 先去重 message_id，再最高优先级转发 AI 资讯菜单至 Node，其余进入 `route_intent`。爬虫在 daemon 线程 + subprocess 中串行执行，**不阻塞**长连接；全局互斥锁保证同一时刻仅一个抓取批次，避免 Cron 并发 OOM。",
       },
       {
-        title: "特性 2：意图路由、今日简报与零幻觉背调",
-        body: "菜单项「背调指南」「深度背调」仅返回固定引导，不误启 OpenClaw；「今日简报」按 Notion 页面入库时间筛选过去 24 小时岗位，不限匹配分数，并二次过滤发现日避免历史帖误入。自然语言如「帮我背调一下 字节跳动」才唤醒 OpenClaw Agent，强制挂载 web_search / web_fetch，结论须附真实 URL。实体提取屏蔽「深度背调」等功能词，避免将菜单文案识别为公司名。",
+        title: "特性 2：OpenClaw — 可溯源的深度背调引擎",
+        body: "菜单「深度背调」仅展示用法；须自然语言带公司名（如「帮我背调一下 字节跳动」）才后台唤醒 OpenClaw `job-insight` 技能，多轮 web_fetch 抓取新闻/博客/访谈，失败则降级备用新闻源。DeepSeek 将外部情报与 Notion 岗位 JD 合成 Markdown 报告，经 `replace_report_blocks` 锚点写入岗位页；飞书只推送两条核心情报 + Notion 链接，长篇不进聊天窗。",
       },
       {
-        title: "特性 3：字段级隔离写入与无头渲染",
-        body: "将 Notion 打造为纯粹的数据中台（Headless CMS）。爬虫经 openclaw_bridge 完成 DeepSeek 评分后增量同步；AI 写入背调研报时采用字段级隔离，通过 Block Children API 精准替换分析区域，完整保全原始 JD。前端通过 Notion API 递归解析 Block 树，渲染为可交互深度长文岗位看板。",
+        title: "特性 3：采集 → 评分 → Notion → 简报闭环",
+        body: "9 平台爬虫（DrissionPage / Playwright）产出统一 JSON → `openclaw_bridge` 调用 DeepSeek 五维匹配评分 → `notion_sync` 增量入库。「今日简报」按 Notion **入库时间**筛 24h 新岗位（不限分数），AI 提炼匹配点后推飞书卡片，并提示可用 OpenClaw 背调。Next.js / Electron 看板从 Notion 递归渲染 Block 树，展示岗位与背调长文。",
       },
     ],
   },
@@ -90,9 +91,9 @@ const TIMELINE_SECTIONS: readonly TimelineSectionData[] = [
       "飞书 SDK",
     ],
     overview:
-      "对接 AI HOT 官方公开 API 的情报雷达：Web 端提供「精选 / 全部 / AI 日报」三视图——精选与全量走 Notion Headless CMS，日报固定拉取最近 30 期官方杂志排版。飞书侧由 Job Engine 长连接门卫识别 6 条菜单暗号，转发本地 Node 卡片引擎渲染 interactive 消息，实现 24 小时指令触达。",
+      "与 Job Engine **共用同一飞书门卫** `feishu_gateway.py`：6 条 AI 资讯底部菜单在消息入口最高优先级命中，POST 本地 Node `:3001` 拉 AI HOT 数据并渲染 interactive 卡片，**绝不误入**背调/爬虫路由。Web 端「精选 / 全部 / AI 日报」三视图：精选与全量走 Notion，`fetch-news` 定时入库；日报直连官方 `/daily` 接口。",
     flow:
-      "🌟 AI HOT 精选入库 (npm run fetch-news) ➔ Notion CMS ➔ /ai-news 精选·全部 | 日报直连 API | 飞书菜单暗号 ➔ Python 门卫 ➔ Node :3001 卡片 ➔ 飞书推送",
+      "🌟 AI HOT 入库 ➔ Notion / 日报 API ➔ /ai-news 阅读 | 飞书 6 菜单暗号 ➔ 同一 Python 门卫 ➔ Node 卡片 ➔ 飞书推送",
     flowDiagram: "ai-news",
     heroImage: {
       src: "/image/news-dashboard.png",
@@ -282,12 +283,70 @@ function TechPill({ label }: { label: string }) {
   );
 }
 
+/** 05:00 Job Engine：飞书 ChatOps × OpenClaw × Notion 全链路 */
+function JobEngineFlowDiagram() {
+  return (
+    <div className="mt-6 space-y-4">
+      <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-bento-muted/70">
+        飞书 × OpenClaw · 全链路
+      </p>
+      <div className="flex justify-center">
+        <div className="rounded-2xl border border-violet-500/30 bg-violet-950/25 px-4 py-3 text-center">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-violet-300/95">
+            飞书 · ChatOps 入口
+          </p>
+          <p className="mt-1 text-[11px] text-bento-text/90">菜单 + 自然语言 · WebSocket 长连接</p>
+        </div>
+      </div>
+      <div className="flex justify-center text-bento-muted/50">
+        <span className="text-lg leading-none">↓</span>
+      </div>
+      <div className="rounded-2xl border border-white/15 bg-white/[0.06] p-3">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-cyan-400/90">
+          feishu_gateway.py · 意图路由
+        </p>
+        <p className="mt-2 text-[11px] leading-snug text-bento-text/90">
+          去重 → AI 资讯优先转发 Node → route_intent（抓取 / 简报 / 背调 / 引导）
+        </p>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-3">
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-950/20 p-3">
+          <p className="text-[10px] font-semibold text-emerald-400/90">路径 A · 岗位采集</p>
+          <p className="mt-2 text-[10px] leading-snug text-bento-text/85">
+            9 平台爬虫串行 → openclaw_jobs.json → openclaw_bridge → DeepSeek 评分 → Notion
+          </p>
+        </div>
+        <div className="rounded-xl border border-amber-500/30 bg-amber-950/20 p-3 ring-1 ring-amber-500/20">
+          <p className="text-[10px] font-semibold text-amber-300/95">路径 B · OpenClaw 背调</p>
+          <p className="mt-2 text-[10px] leading-snug text-bento-text/85">
+            job-insight · web 溯源 → DeepSeek 报告 → Notion Block 锚点写入 → 飞书摘要卡片
+          </p>
+        </div>
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-950/20 p-3">
+          <p className="text-[10px] font-semibold text-cyan-400/90">路径 C · 今日简报</p>
+          <p className="mt-2 text-[10px] leading-snug text-bento-text/85">
+            Notion 24h 入库筛选 → AI 提炼匹配点 → 飞书早报（可引导 OpenClaw 背调）
+          </p>
+        </div>
+      </div>
+      <div className="flex justify-center text-bento-muted/50">
+        <span className="text-lg leading-none">↓</span>
+      </div>
+      <div className="flex justify-center">
+        <div className="rounded-2xl border border-white/15 bg-white/[0.06] px-4 py-2.5 text-center text-[11px] text-bento-text/90">
+          Next.js / Electron 看板 · Notion Headless CMS 渲染
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** 09:00 AI News Radar：Web 阅读 + 飞书双引擎 */
 function AiNewsRadarFlowDiagram() {
   return (
     <div className="mt-6 space-y-4">
       <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-bento-muted/70">
-        AI HOT · 三端数据流
+        共用 feishu_gateway · AI HOT 三端数据流
       </p>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch sm:justify-between sm:gap-2">
         <div className="flex min-w-0 flex-1 flex-col rounded-2xl border border-white/15 bg-white/[0.06] p-3">
@@ -435,6 +494,7 @@ function SuperDetailBentoCard({ data }: { data: TimelineSectionData }) {
             <TechPill key={`${data.time}-detail-${t}`} label={t} />
           ))}
         </div>
+        {data.flowDiagram === "job-engine" ? <JobEngineFlowDiagram /> : null}
         {data.flowDiagram === "ai-news" ? <AiNewsRadarFlowDiagram /> : null}
         {data.flowDiagram === "linear" && data.flowSteps?.length ? (
           <LinearFlowSteps steps={data.flowSteps} />
@@ -604,7 +664,7 @@ export function TimelineBento({ className = "" }: TimelineBentoProps) {
 
   return (
     <div className={`w-full ${className.trim()}`}>
-      <div className="relative mx-auto max-w-7xl">
+      <div className="relative mx-auto w-full">
         <div className="flex flex-col gap-10 lg:flex-row lg:items-start lg:gap-10 xl:gap-12">
           {/* 左侧：中轴 + 导航（1/3） */}
           <div className="flex min-w-0 w-full flex-col gap-3 sm:gap-4 lg:sticky lg:top-32 lg:z-10 lg:h-[calc(100dvh-16rem)] lg:w-1/3 lg:max-h-[calc(100dvh-16rem)] lg:flex-shrink-0">

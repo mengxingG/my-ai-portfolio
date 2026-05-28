@@ -173,7 +173,7 @@ function StepTimeline(props: {
 export default function FeynmanHubCaseStudyPage() {
   return (
     <div className="relative">
-      <div className="mx-auto grid w-full max-w-6xl gap-6 lg:grid-cols-[1fr_240px]">
+      <div className="site-content-shell mx-auto grid w-full gap-6 lg:grid-cols-[1fr_240px]">
         <main className="min-w-0">
           <div id="top" className="scroll-mt-24">
             <div className="flex flex-wrap items-start justify-between gap-3">

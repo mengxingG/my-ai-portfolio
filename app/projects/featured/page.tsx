@@ -1,54 +1,34 @@
+import Link from "next/link";
+import { FeaturedProjectsWaterfall } from "@/components/FeaturedProjectsWaterfall";
+
 export const metadata = {
-  title: "特色项目 · NotebookLM 工作流 & Agent 设计",
-  description: "特色项目详情：NotebookLM 工作流实践与 Agent 决策逻辑设计",
+  title: "特色项目 · 龚梦星",
+  description: "AI PM 独立开发项目：Job Engine、AI News Radar、费曼学习、InterviewOS、横纵分析法",
 };
 
 export default function FeaturedProjectsPage() {
   return (
-    <>
-      <h1
-        className="text-2xl font-semibold text-slate-50"
-        style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}
-      >
-        特色项目
-      </h1>
-      <p className="mt-2 text-sm text-slate-500">
-        NotebookLM 工作流实践 · Agent 决策逻辑设计
-      </p>
-
-      <div className="mt-8 space-y-8">
-        <article className="holo-card rounded-2xl p-6">
-          <h2
-            className="text-lg font-semibold text-slate-50"
-            style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}
-          >
-            NotebookLM 工作流实践
-          </h2>
-          <p className="mt-2 text-sm text-slate-500">
-            多源资料导入、结构化知识图与 RAG pipeline 的端到端产品化实践。
-          </p>
-          <p className="mt-4 text-sm leading-relaxed text-slate-400">
-            通过 NotebookLM 式的「源文档 + 笔记」范式，把分散在视频、PDF、网页中的知识整理成可维护的知识图谱，将其作为 RAG
-            的上游。重点在于划清「原始材料 / 中间笔记 / 最终产出」三层，并用模板化工作流保证复用性。
-          </p>
-        </article>
-
-        <article className="holo-card rounded-2xl p-6">
-          <h2
-            className="text-lg font-semibold text-slate-50"
-            style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}
-          >
-            Agent 决策逻辑设计
-          </h2>
-          <p className="mt-2 text-sm text-slate-500">
-            多工具、多角色、多阶段的 Agent 决策图设计，兼顾自动化与可解释、可审计。
-          </p>
-          <p className="mt-4 text-sm leading-relaxed text-slate-400">
-            将复杂业务拆解为多阶段任务：识别意图与边界、选择合适工具链、执行并记录关键决策节点。通过显式决策图与日志，将每一步「为什么这么做」暴露给产品与合规团队，既能自动跑任务，又能在关键节点人工介入。
-          </p>
-        </article>
+    <div className="min-w-0">
+      <div className="mb-12 border-b border-white/10 pb-8">
+        <p className="text-sm font-medium tracking-wide text-purple-400/95">Portfolio</p>
+        <h1
+          className="mt-2 text-3xl font-bold tracking-tight text-slate-50 sm:text-4xl"
+          style={{ fontFamily: '"Geist", "SF Pro Display", system-ui, sans-serif' }}
+        >
+          特色项目
+        </h1>
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-400">
+          个人独立开发的 Agentic Workflow 产品矩阵：飞书 ChatOps、OpenClaw 背调、Notion 数据中台与 Next.js 极客风前端。
+        </p>
+        <Link
+          href="/#featured-projects"
+          className="mt-4 inline-block text-sm font-medium text-cyan-300/90 transition hover:text-cyan-200 hover:underline"
+        >
+          ← 返回首页特色项目区块
+        </Link>
       </div>
-    </>
+
+      <FeaturedProjectsWaterfall />
+    </div>
   );
 }
-

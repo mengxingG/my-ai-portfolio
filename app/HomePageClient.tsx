@@ -11,13 +11,13 @@ import {
   useTransform,
 } from "framer-motion";
 import { AINewsWidget } from "@/app/components/AINewsWidget";
+import { FeaturedProjectsWaterfall } from "@/components/FeaturedProjectsWaterfall";
 import { FontSizeSwitcher } from "@/app/components/FontSizeSwitcher";
 import { MagneticWrap } from "@/app/components/MagneticWrap";
 import { CosmicPortalHero } from "@/app/components/CosmicPortalHero";
 import BreathingParticles from "@/components/BreathingParticles";
 import MeteorShower from "@/components/MeteorShower";
 import ReflectBackground from "@/components/ReflectBackground";
-import { TimelineBento } from "@/components/TimelineBento";
 import WallOfLoveBackground from "@/components/WallOfLoveBackground";
 import type { AINews } from "@/utils/notion";
 
@@ -178,7 +178,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
     <main className="reflect-theme-shell relative min-h-screen text-bento-text antialiased">
       <BreathingParticles />
       <ReflectBackground />
-      <div className="relative z-10 mx-auto w-full max-w-6xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
+      <div className="site-content-shell relative z-10 mx-auto w-full px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
         <motion.header
           initial={{ opacity: 0, y: hydrateSafeReducedMotion ? 0 : -18 }}
           animate={{ opacity: 1, y: 0 }}
@@ -200,7 +200,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
               className="flex items-center gap-4 text-sm font-medium text-bento-muted"
             >
               <a href="#hero" className="nav-link text-bento-muted hover:text-bento-text">首页</a>
-              <a href="/projects/featured" className="nav-link text-bento-muted hover:text-bento-text">特色项目</a>
+              <a href="#featured-projects" className="nav-link text-bento-muted hover:text-bento-text">特色项目</a>
               <a href="#insights" className="nav-link text-bento-muted hover:text-bento-text">资讯收集</a>
               <a href="#about" className="nav-link text-bento-muted hover:text-bento-text">关于我</a>
             </motion.nav>
@@ -301,7 +301,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
                 联系我
               </motion.a>
             </MagneticWrap>
-            <Link href="/#featured" className="glow-btn glow-btn--secondary">
+            <Link href="/#featured-projects" className="glow-btn glow-btn--secondary">
               特色项目
             </Link>
             <Link href="/#insights" className="glow-btn glow-btn--secondary">
@@ -343,26 +343,34 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           </motion.div>
         </motion.section>
 
-          <motion.section
-          id="featured"
-          className="reflect-stage reflect-stage--beam scroll-mt-20 py-10"
-          data-parallax="0.014"
+        <motion.section
+          id="featured-projects"
+          className="reflect-stage reflect-stage--beam scroll-mt-20 overflow-x-clip py-10"
+          data-parallax="0.012"
           initial="hidden"
           whileInView="show"
-          viewport={{ once: true, amount: 0.2 }}
+          viewport={{ once: true, amount: 0.12 }}
           variants={sectionVariants}
         >
-
-          <section className="mx-auto max-w-7xl px-4 pb-20 pt-8">
-            <span className="reflect-section-kicker">Workflow</span>
-            <h2 className="mb-8 mt-3 text-2xl font-bold tracking-tight text-bento-text">
+          <section className="w-full pb-16 pt-8">
+            <span className="reflect-section-kicker">Featured</span>
+            <h2
+              className="mt-3 text-2xl font-bold tracking-tight text-bento-text sm:text-3xl"
+              style={{ fontFamily: '"Geist", "Inter", "SF Pro Display", system-ui, sans-serif' }}
+            >
               AI PM 的数字工作流· 个人独立开发项目
             </h2>
-            <TimelineBento />
+            <p className="mt-2 max-w-2xl text-sm font-light text-bento-muted">
+              岗位收集分析 ｜ AI 资讯收集 ｜ 费曼学习工具 ｜ 深度研究引擎
+            </p>
+            <FeaturedProjectsWaterfall className="mt-10 sm:mt-14" />
+            <div className="mt-8 flex justify-center sm:mt-10">
+              <Link href="/projects/featured" className="glow-btn glow-btn--secondary text-sm">
+                查看全部特色项目 →
+              </Link>
+            </div>
           </section>
-
         </motion.section>
-
 
         <motion.section
           id="insights"
@@ -577,31 +585,6 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
         @keyframes ready-pulse {
           0%, 100% { box-shadow: 0 0 12px rgba(52,211,153,0.3); }
           50% { box-shadow: 0 0 20px rgba(52,211,153,0.5); }
-        }
-        @keyframes featured-btn-pin-breathe {
-          0%, 100% {
-            box-shadow:
-              0 0 0 1px rgba(168, 85, 247, 0.5),
-              0 0 26px rgba(168, 85, 247, 0.38),
-              0 12px 40px rgba(0, 0, 0, 0.35);
-          }
-          50% {
-            box-shadow:
-              0 0 0 2px rgba(217, 70, 239, 0.7),
-              0 0 44px rgba(168, 85, 247, 0.55),
-              0 0 72px rgba(34, 211, 238, 0.14),
-              0 12px 40px rgba(0, 0, 0, 0.35);
-          }
-        }
-        .featured-btn--pinned-active {
-          animation: featured-btn-pin-breathe 2.2s ease-in-out infinite;
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .featured-btn--pinned-active { animation: none; }
-        }
-        .featured-carousel-controls button:focus-visible {
-          outline: 2px solid rgba(168, 85, 247, 0.65);
-          outline-offset: 3px;
         }
       `}</style>
     </main>

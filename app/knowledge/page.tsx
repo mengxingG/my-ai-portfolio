@@ -506,7 +506,7 @@ export default function LearningDashboard() {
 
   return (
     <div className="min-h-screen bg-neutral-950 px-6 py-10 text-slate-100">
-      <div className="mx-auto w-full max-w-6xl">
+      <div className="site-content-shell mx-auto w-full">
         {/* 顶部统计栏（全宽） */}
         <div className="mb-6 rounded-3xl border border-white/10 bg-white/[0.03] px-5 py-4 shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_20px_60px_rgba(0,0,0,0.55)]">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

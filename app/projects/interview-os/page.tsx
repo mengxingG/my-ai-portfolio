@@ -171,7 +171,7 @@ function StepTimeline(props: {
 export default function InterviewOSCaseStudyPage() {
   return (
     <div className="relative">
-      <div className="mx-auto grid w-full max-w-6xl gap-6 lg:grid-cols-[1fr_240px]">
+      <div className="site-content-shell mx-auto grid w-full gap-6 lg:grid-cols-[1fr_240px]">
         <main className="min-w-0">
           <div id="top" className="scroll-mt-24">
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -203,7 +203,7 @@ export default function InterviewOSCaseStudyPage() {
               >
                 在线体验 →
               </a>
-              <Link href="/#featured" className="glow-btn glow-btn--secondary inline-flex">
+              <Link href="/#featured-projects" className="glow-btn glow-btn--secondary inline-flex">
                 返回首页项目区
               </Link>
             </div>

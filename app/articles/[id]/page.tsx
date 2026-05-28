@@ -333,7 +333,7 @@ export default async function ArticlePage({
           }}
         />
       ) : null}
-      <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="site-content-shell mx-auto w-full px-4 py-8 sm:px-6 lg:px-8">
         <header className="flex items-center justify-between border-b border-white/10 pb-6">
           <Link
             href="/"
