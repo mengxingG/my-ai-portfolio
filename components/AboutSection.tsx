@@ -165,7 +165,7 @@ export function AboutSection() {
           <span className="font-semibold text-violet-200/95">4 年花旗 Pre-Trade 系统与 AI 产品经验</span>
           ，Vibe Coding 重度实践者。在花旗主导 AI 合规智能助手 0→1，将风险识别从 T+1 前移至交易前 1 秒内；推动大模型基建与应用团队建立分层问责协议，跨团队问题定位从 3–5 天缩短至 1 天。离职后独立上线{" "}
           <span className="font-semibold text-cyan-200/90">5 款 AI 产品</span>
-          （InterviewOS、Job Engine、费曼学习、横纵分析法、AI HOT News）——不只是画 PRD 的 PM，我能把 OpenClaw Agent 做到飞书会话里，也能把产品部署到 Vercel 上。
+          （InterviewOS、Job Engine、费曼学习、横纵分析法、AI News Radar）——不只是画 PRD 的 PM，我能把 OpenClaw Agent 做到飞书会话里，也能把产品部署到 Vercel 上。
         </motion.p>
 
         <motion.div

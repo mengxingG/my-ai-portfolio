@@ -8,18 +8,20 @@ const AI_NEWS_CLASS = `
 /** 路径一：网站阅读（单独一行大图） */
 export const AI_NEWS_ARCHITECTURE_WEB = `
 flowchart LR
-  HOT_W["AI HOT 公开 API"]
-  FN["fetch-news<br/>定时入库"]
+  EA["ai-news-update<br/>Engine A API"]
+  FN["fetch-news<br/>npm run fetch-news"]
   NT[("Notion<br/>精选库")]
   PAGE["/ai-news 网页<br/>精选 · 全部 · 标星"]
+  HOT_D["AI HOT 日报 API"]
   DAILY_W["日报 Tab<br/>直连官方 · 不经 Notion"]
-  HOT_W --> FN --> NT --> PAGE
-  HOT_W --> DAILY_W
+  EA --> FN --> NT --> PAGE
+  HOT_D --> DAILY_W
 
 ${AI_NEWS_CLASS}
-  class HOT_W,FN api
+  class EA,FN api
   class NT store
   class PAGE,DAILY_W web
+  class HOT_D api
 `.trim();
 
 /** 路径二：飞书卡片（单独一行大图） */

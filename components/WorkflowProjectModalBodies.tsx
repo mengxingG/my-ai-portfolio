@@ -29,7 +29,8 @@ const proseCaptionTiny =
 export function NewsRadarModalBody() {
   const techItems = [
     "Next.js",
-    "AI HOT API",
+    "FastAPI",
+    "AI HOT",
     "Notion API",
     "Express",
     "Python",
@@ -56,7 +57,7 @@ export function NewsRadarModalBody() {
           className={`min-w-0 max-w-full flex-1 ${titleClass} break-words [overflow-wrap:anywhere]`}
           style={{ fontFamily: '"Geist", "SF Pro Text", system-ui, sans-serif' }}
         >
-          AI News Radar —— AI HOT 三视图 + 飞书菜单卡片引擎
+          AI News Radar —— Engine A 入库 + AI HOT 日报/飞书卡片
         </h3>
         <span className="shrink-0 rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-mono uppercase tracking-wide text-bento-muted">
           FEATURED
@@ -66,12 +67,10 @@ export function NewsRadarModalBody() {
       <section className="min-w-0">
         <h4 className="text-sm font-semibold text-bento-text">🚀 项目概述</h4>
         <p className={`mt-2 ${proseMuted}`}>
-          对接 AI HOT 官方 API 的情报雷达：Web 端「精选 / 全部 / AI 日报」三视图，精选与全量走 Notion
-          CMS，日报固定拉取最近 30 期官方杂志排版。飞书底部 6 条菜单暗号由 Job Engine 长连接门卫转发本地 Node
-          卡片引擎，推送 interactive 消息，支持 nohup 24 小时值守。
+          双引擎资讯雷达：Web 端「精选 / 全部 / AI 日报」三视图，精选与全量走 Notion（Engine A 经 fetch-news 入库），日报固定拉取 AI HOT 最近 30 期杂志排版。飞书底部 6 条菜单暗号由 Job Engine 长连接门卫转发本地 Node 卡片引擎。
         </p>
         <p className={`mt-3 ${proseMuted}`}>
-          🌟 核心流：AI HOT 精选入库 (fetch-news) ➔ Notion ➔ /ai-news | 日报直连 API | 飞书暗号 ➔ Python
+          🌟 核心流：Engine A (fetch-news) ➔ Notion ➔ /ai-news | AI HOT 日报 API | 飞书暗号 ➔ Python
           门卫 ➔ Node :3001 ➔ 飞书卡片
         </p>
       </section>
@@ -79,20 +78,18 @@ export function NewsRadarModalBody() {
       <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-2.5 lg:gap-3">
         <div className={`min-w-0 ${featureCardClass}`}>
           <div className="text-xs font-semibold leading-snug text-bento-text break-words">
-            特性 1：AI HOT 三视图与官方日报
+            特性 1：三视图与官方日报
           </div>
           <div className={`mt-2 ${proseMutedTight}`}>
-            精选 / 全部从 Notion 渲染；AI 日报 Tab 调用官方 /dailies 与 /daily/日期 接口，五大版块杂志排版，与
-            AI HOT 产品体验一致，不再用 Notion 条目拼日报。
+            精选 / 全部从 Notion 渲染（Engine A 入库）；AI 日报 Tab 调用 AI HOT /dailies 与 /daily/日期，杂志排版，不用 Notion 拼日报。
           </div>
         </div>
         <div className={`min-w-0 ${featureCardClass}`}>
           <div className="text-xs font-semibold leading-snug text-bento-text break-words">
-            特性 2：精选入库与标星
+            特性 2：Engine A 入库与标星
           </div>
           <div className={`mt-2 ${proseMutedTight}`}>
-            npm run fetch-news 拉取 AI HOT 精选（今/昨、URL 去重）写入 Notion；前端支持标星写回，便于筛选高价值资讯。无
-            Vercel Cron，适合本地或自建调度。
+            npm run fetch-news 调用 ai-news-update /api/news（今/昨、URL 去重）写入 Notion；前端标星写回。无 Vercel Cron，适合本地或自建调度。
           </div>
         </div>
         <div className={`min-w-0 ${featureCardClass}`}>
@@ -119,10 +116,10 @@ export function NewsRadarModalBody() {
           />
         </figure>
         <p className={proseCaption}>
-          AI HOT API · Notion 精选库 · /ai-news 三视图 · 飞书菜单卡片双引擎
+          Engine A · AI HOT 日报 · Notion 精选库 · /ai-news 三视图 · 飞书菜单双引擎
         </p>
         <p className={proseCaptionTiny}>
-          Next.js · AI HOT API · feishu_gateway · Node :3001 · Notion API
+          Next.js · FastAPI · AI HOT · feishu_gateway · Node :3001 · Notion API
         </p>
         <div className="flex flex-wrap gap-1.5">
           {techItems.map((t) => (

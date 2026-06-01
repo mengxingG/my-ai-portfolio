@@ -34,7 +34,7 @@ export const FEATURED_TECH_STACK: readonly FeaturedTechGroup[] = [
   {
     id: "ai",
     label: "AI 能力",
-    items: ["DeepSeek", "Gemini", "Claude", "Qwen", "Tavily", "AI HOT"],
+    items: ["DeepSeek", "Gemini", "Claude", "Qwen", "Tavily", "FastAPI", "AI HOT"],
   },
   {
     id: "deploy",

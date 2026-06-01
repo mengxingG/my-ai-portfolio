@@ -134,7 +134,7 @@ npm run generate-resume-pdf
 
 #### 路径 D · AI 资讯（本仓库 `my-ai-portfolio`）
 
-与求职链路 **共用同一飞书门卫**，但命中 6 条 AI HOT 菜单后立即 `POST http://127.0.0.1:3001/internal/news-card`，**不进入** `route_intent`，避免「看看」等词误触发背调。详见下文 [AI News Radar](#ai-news-radar--每日-ai-资讯)。
+与求职链路 **共用同一飞书门卫**，但命中 6 条资讯菜单暗号后立即 `POST http://127.0.0.1:3001/internal/news-card`，**不进入** `route_intent`，避免「看看」等词误触发背调。Web 精选入库走 Engine A（`ai-news-update`）；飞书菜单与日报 Tab 仍读 AI HOT API。详见下文 [AI News Radar](#ai-news-radar--每日-ai-资讯)。
 
 ### 本地启动双引擎
 
@@ -155,6 +155,8 @@ cd ~/interview/job_engine && ./start_feishu.sh
 > **双引擎采集 + 三视图阅读 + 飞书触达。** 精选入库由 [ai-news-update](https://github.com/mengxingG/ai-news-update) Engine A（HN / Polymarket / YouTube）经 `fetch-news` 写入 Notion；AI 日报 Tab 仍直连 AI HOT 官方 API；飞书 6 菜单与 Job Engine **共用** `feishu_gateway.py` 门卫（资讯最高优先级，与背调/爬虫隔离）。
 
 ### 产品截图
+
+文档用图位于仓库根目录 `images/`（站点内页面使用 `public/image/`）。
 
 | Web 资讯雷达 `/ai-news` | 飞书卡片 · 日报 | 飞书卡片 · 精选 |
 |:---:|:---:|:---:|

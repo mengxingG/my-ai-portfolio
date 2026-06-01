@@ -81,19 +81,20 @@ const TIMELINE_SECTIONS: readonly TimelineSectionData[] = [
   },
   {
     time: "09:00",
-    primaryTitle: "AI Hot News - 每日 AI 资讯模块",
+    primaryTitle: "AI News Radar · 每日 AI 资讯",
     tech: [
       "Next.js",
-      "AI HOT API",
+      "FastAPI",
+      "AI HOT",
       "Notion API",
       "Express",
       "Python",
       "飞书 SDK",
     ],
     overview:
-      "与 Job Engine **共用同一飞书门卫** `feishu_gateway.py`：6 条 AI 资讯底部菜单在消息入口最高优先级命中，POST 本地 Node `:3001` 拉 AI HOT 数据并渲染 interactive 卡片，**绝不误入**背调/爬虫路由。Web 端「精选 / 全部 / AI 日报」三视图：精选与全量走 Notion，`fetch-news` 定时入库；日报直连官方 `/daily` 接口。",
+      "与 Job Engine **共用同一飞书门卫** `feishu_gateway.py`：6 条 AI 资讯底部菜单最高优先级命中，POST 本地 Node `:3001` 拉 AI HOT 数据并渲染 interactive 卡片，**绝不误入**背调/爬虫路由。Web 端「精选 / 全部 / AI 日报」三视图：精选与全量走 Notion（Engine A 经 `fetch-news` 入库）；日报直连 AI HOT `/daily` 接口。",
     flow:
-      "🌟 AI HOT 入库 ➔ Notion / 日报 API ➔ /ai-news 阅读 | 飞书 6 菜单暗号 ➔ 同一 Python 门卫 ➔ Node 卡片 ➔ 飞书推送",
+      "🌟 Engine A 入库 ➔ Notion / 日报 API ➔ /ai-news 阅读 | 飞书 6 菜单暗号 ➔ Python 门卫 ➔ Node 卡片 ➔ 飞书推送",
     flowDiagram: "ai-news",
     heroImage: {
       src: "/image/news-dashboard.png",
@@ -103,12 +104,12 @@ const TIMELINE_SECTIONS: readonly TimelineSectionData[] = [
     },
     features: [
       {
-        title: "特性 1：AI HOT 三视图与官方日报",
-        body: "精选 / 全部 AI 动态从 Notion 读取，支持分类筛选与时间轴展示；AI 日报 Tab 调用 /dailies 归档与 /daily/{date} 正文，五大版块杂志排版，与官网产品体验对齐，不依赖 Notion 拼日报。",
+        title: "特性 1：三视图与官方日报",
+        body: "精选 / 全部 AI 动态从 Notion 读取（Engine A + Engine B 入库），支持分类筛选与时间轴展示；AI 日报 Tab 调用 AI HOT /dailies 归档与 /daily/{date} 正文，杂志排版，不依赖 Notion 拼日报。",
       },
       {
-        title: "特性 2：精选入库与标星闭环",
-        body: "lib/cron-fetch-news 按北京时区今/昨过滤 AI HOT 精选条目，URL 去重写入 Notion；npm run fetch-news 本地执行，无 Vercel Cron 依赖。前端标星写回 Notion，便于 HR/同行快速筛高价值资讯。",
+        title: "特性 2：Engine A 入库与标星闭环",
+        body: "lib/cron-fetch-news 调用 ai-news-update /api/news，按北京时区今/昨过滤、URL 去重写入 Notion；npm run fetch-news 本地执行。前端标星写回 Notion，便于筛高价值资讯。",
       },
       {
         title: "特性 3：飞书微服务（Python 门卫 × Node 渲染）",
@@ -346,15 +347,15 @@ function AiNewsRadarFlowDiagram() {
   return (
     <div className="mt-6 space-y-4">
       <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-bento-muted/70">
-        共用 feishu_gateway · AI HOT 三端数据流
+        共用 feishu_gateway · Engine A + AI HOT 双源数据流
       </p>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch sm:justify-between sm:gap-2">
         <div className="flex min-w-0 flex-1 flex-col rounded-2xl border border-white/15 bg-white/[0.06] p-3">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-cyan-400/90">
-            AI HOT 公开 API
+            Engine A · ai-news-update
           </p>
           <p className="mt-2 text-[11px] leading-snug text-bento-text/90">
-            精选 · 分类 · 官方日报 /daily
+            HN / Polymarket / YouTube → fetch-news 入库
           </p>
         </div>
         <div
@@ -365,10 +366,24 @@ function AiNewsRadarFlowDiagram() {
         </div>
         <div className="flex min-w-0 flex-1 flex-col rounded-2xl border border-white/15 bg-white/[0.06] p-3">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-cyan-400/90">
+            AI HOT 日报 / 飞书菜单
+          </p>
+          <p className="mt-2 text-[11px] leading-snug text-bento-text/90">
+            官方日报 · 分类 · 飞书 6 菜单卡片
+          </p>
+        </div>
+        <div
+          className="hidden shrink-0 items-center justify-center px-1 text-bento-muted/40 sm:flex"
+          aria-hidden
+        >
+          →
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col rounded-2xl border border-white/15 bg-white/[0.06] p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-cyan-400/90">
             Notion 精选库
           </p>
           <p className="mt-2 text-[11px] leading-snug text-bento-text/90">
-            fetch-news 入库 · 标星 · Headless CMS
+            今/昨去重 · 标星 · Headless CMS
           </p>
         </div>
       </div>

@@ -143,9 +143,9 @@ const FEATURED_PROJECTS_ALL: FeaturedProject[] = [
   {
     id: "ai-news-radar",
     category: "资讯",
-    title: "AI Hot News - 每日 AI 资讯模块",
+    title: "AI News Radar · 每日 AI 资讯",
     progressSummary:
-      "AI HOT 精选/日报/分类三视图 + 飞书六菜单卡片；精选入库 Notion，标星个人清单，与求职网关隔离。",
+      "Engine A 入库 Notion + AI HOT 日报/飞书菜单；三视图 Web + 六菜单卡片，与求职网关隔离。",
     star: {
       situation:
         "AI PM 需每日掌握模型与产品动态，信息源分散在网站、社群与日报产品，通过飞书实现「点菜单即看资讯」的方式，与求职工具共用同一机器人。",
@@ -156,9 +156,9 @@ const FEATURED_PROJECTS_ALL: FeaturedProject[] = [
         "用户可在飞书秒级获取日报/精选/分类动态，网站端支持深度阅读与标星，资讯与求职指令互不串线。",
     },
     technical:
-      "Next.js 三 Tab 分别对接精选库、全量列表与官方日报页；定时任务从 AI HOT API 拉取精选，经去重后写入 Notion 供网站标星与检索。飞书侧 Express 卡片服务接收网关转发的菜单指令，按场景拉取日报/精选/分类并渲染互动卡片。长连接网关优先匹配资讯关键词，与求职、背调类指令隔离，双服务协作保障 7×24 响应。",
-    flow: "🌟 内容入库 ➔ 网站三视图阅读 ➔ 飞书菜单触发 ➔ 卡片推送回会话",
-    tech: ["Next.js", "AI HOT", "Notion", "Express", "Node.js", "Python", "飞书"],
+      "Next.js 三 Tab 分别对接 Notion 精选库、全量列表与 AI HOT 官方日报；`npm run fetch-news` 调用 ai-news-update Engine A（HN / Polymarket / YouTube），经今/昨过滤与 URL 去重写入 Notion。飞书侧 Express 卡片服务接收网关转发的菜单指令，按场景拉取 AI HOT 日报/精选/分类并渲染互动卡片。长连接网关优先匹配资讯关键词，与求职、背调类指令隔离。",
+    flow: "🌟 Engine A 入库 ➔ Notion / 日报 API ➔ /ai-news 阅读 | 飞书 6 菜单 ➔ Node 卡片 ➔ 飞书推送",
+    tech: ["Next.js", "FastAPI", "AI HOT", "Notion", "Express", "Node.js", "Python", "飞书"],
     pipeline: {
       label: "产品全链路 · 资讯触达",
       entry: {
@@ -174,7 +174,7 @@ const FEATURED_PROJECTS_ALL: FeaturedProject[] = [
       paths: [
         {
           title: "路径 A · 精选沉淀",
-          body: "每日拉取权威精选 → 按日期与链接去重 → 写入 Notion 供网站展示与检索",
+          body: "Engine A 采集 HN / Polymarket / YouTube → 今/昨过滤 + URL 去重 → 写入 Notion",
           tone: "emerald",
         },
         {

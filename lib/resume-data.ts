@@ -44,7 +44,7 @@ export const RESUME_DATA: ResumeData = {
     github: "github.com/mengxingG",
   },
   summary:
-    "4 年花旗交易系统经验 + Vibe Coding 重度使用者，既能定义产品策略，也能独立 0→1 把产品做出来。在花旗主导设计 AI 合规智能助手，将风险识别从 T+1 后置发现前移至交易前 1 秒内（PRD→UI→试点→数据验证全程独立推动）；推动大模型基建团队与应用团队建立分层问责协议，将跨团队问题定位从 3–5 天缩短到 1 天闭环。独立开发并上线 5 款 AI 产品（InterviewOS 全链路面试教练、Job Engine 求职背调引擎、费曼学习系统、横纵分析法研报引擎、AI HOT 资讯雷达），使用 Cursor / Claude Code 独立完成架构→AI 工作流→前端交付。不只是画原型写文档的 PM——给我一个问题，我能交付一个跑在线上的产品。",
+    "4 年花旗交易系统经验 + Vibe Coding 重度使用者，既能定义产品策略，也能独立 0→1 把产品做出来。在花旗主导设计 AI 合规智能助手，将风险识别从 T+1 后置发现前移至交易前 1 秒内（PRD→UI→试点→数据验证全程独立推动）；推动大模型基建团队与应用团队建立分层问责协议，将跨团队问题定位从 3–5 天缩短到 1 天闭环。独立开发并上线 5 款 AI 产品（InterviewOS 全链路面试教练、Job Engine 求职背调引擎、费曼学习系统、横纵分析法研报引擎、AI News Radar 资讯雷达），使用 Cursor / Claude Code 独立完成架构→AI 工作流→前端交付。不只是画原型写文档的 PM——给我一个问题，我能交付一个跑在线上的产品。",
   skills: {
     product: [
       "AI 产品策略与 0→1 落地",
@@ -140,16 +140,16 @@ export const RESUME_DATA: ResumeData = {
       tech: "Next.js · DeepSeek · Claude · Tavily · Gemini · Notion · SSE",
     },
     {
-      title: "AI HOT News | 每日 AI 资讯模块",
+      title: "AI News Radar | 每日 AI 资讯模块",
       link: "mengxing-ai.it.com/ai-news",
       summary:
-        "Web 三视图（精选/全量/日报）+ 飞书六菜单卡片；精选入库 Notion，标星个人清单，与求职网关指令隔离。",
+        "Engine A 入库 Notion + AI HOT 日报/飞书菜单；Web 三视图 + 飞书六菜单卡片，与求职网关指令隔离。",
       bullets: [
-        "三视图内容策略分层：「精选」快速判断价值，「全部」检索复盘，「AI 日报」对齐官方杂志式排版，避免单列表认知过载。",
-        "定时任务从 AI HOT API 拉取精选，按日期与链接去重后写入 Notion；Web 端标星写回形成个人高价值清单。",
-        "飞书负责触达与摘要，网站负责深度阅读；网关层优先匹配资讯指令，与求职/背调类指令隔离，保障多产品共用同一机器人。",
+        "三视图内容策略分层：「精选」快速判断价值，「全部」检索复盘，「AI 日报」对齐 AI HOT 官方杂志式排版。",
+        "fetch-news 调用 ai-news-update Engine A（HN/Polymarket/YouTube），今/昨过滤与 URL 去重后写入 Notion；Web 端标星写回个人清单。",
+        "飞书负责触达与摘要，网站负责深度阅读；网关层优先匹配资讯指令，与求职/背调类指令隔离。",
       ],
-      tech: "Next.js · AI HOT API · Notion · Express · Node.js · Python · 飞书",
+      tech: "Next.js · FastAPI · AI HOT · Notion · Express · Node.js · Python · 飞书",
     },
   ],
   education: [

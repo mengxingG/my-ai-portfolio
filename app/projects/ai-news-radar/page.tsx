@@ -19,9 +19,9 @@ import { AI_NEWS_ARCHITECTURE_ROWS } from "@/lib/project-prd-diagrams";
 const project = getFeaturedProjectById("ai-news-radar")!;
 
 export const metadata = {
-  title: "AI Hot News · 产品 PRD",
+  title: "AI News Radar · 产品 PRD",
   description:
-    "AI HOT 三视图 + Notion 精选入库 + 飞书六菜单卡片；与 Job Engine 共用 feishu_gateway 门卫。",
+    "Engine A 精选入库 + AI HOT 日报/飞书菜单；三视图 Web + 六菜单卡片；与 Job Engine 共用 feishu_gateway 门卫。",
 };
 
 export default function AINewsRadarProjectPage() {
@@ -31,7 +31,7 @@ export default function AINewsRadarProjectPage() {
         <ProjectDetailHeader
           kicker="AI 产品 PRD"
           title={project.title}
-          description="Web 端深度阅读与飞书即时触达共用 AI HOT 公开 API。精选经 fetch-news 写入 Notion；日报 Tab 直连官方归档；飞书菜单由 job_engine 门卫最高优先级转发至本仓库 Node 卡片引擎。"
+          description="Web 端深度阅读与飞书即时触达：精选经 Engine A（ai-news-update）fetch-news 写入 Notion；日报 Tab 直连 AI HOT 官方归档；飞书菜单由 job_engine 门卫最高优先级转发至本仓库 Node 卡片引擎。"
         >
           <ProjectDetailActions startHref={project.startHref} />
         </ProjectDetailHeader>
@@ -65,8 +65,8 @@ export default function AINewsRadarProjectPage() {
         <PrdCallout id="ai-boundary" title="AI 能力边界（AI 产品 PRD 必填）">
           <PrdList
             items={[
-              "能做：拉取 AI HOT 精选/分类/日报并渲染为 Web 列表或飞书卡片；将精选条目去重写入 Notion；Web 端标星写回 Notion 字段。",
-              "不能做：不自行爬取非 AI HOT 源；不生成原创深度研报；飞书侧不负责求职采集/背调（由 job_engine 路由隔离）。",
+              "能做：Engine A 采集 HN/Polymarket/YouTube 经 fetch-news 入库 Notion；拉取 AI HOT 日报/分类渲染飞书卡片；Web 端标星写回 Notion。",
+              "不能做：不自行爬取非 Engine A / AI HOT 源；不生成原创深度研报；飞书侧不负责求职采集/背调（由 job_engine 路由隔离）。",
               "日报体验：AI 日报 Tab 读官方 API 归档正文，不经 Notion 二次拼装，保证与 AI HOT 产品一致。",
               "非训练：摘要与卡片文案为 API 数据 + 模板/路由逻辑，无离线训练流水线。",
             ]}
@@ -82,7 +82,7 @@ export default function AINewsRadarProjectPage() {
             [
               "精选入库",
               "高信噪比沉淀",
-              "npm run fetch-news → mode=selected；北京时区今/昨；URL 去重写 Notion",
+              "npm run fetch-news → Engine A /api/news；北京时区今/昨；URL 去重写 Notion",
             ],
             [
               "三视图 Web",
@@ -144,17 +144,18 @@ export default function AINewsRadarProjectPage() {
         <PrdSubheading id="data-requirements">数据要求（AI 产品 PRD 必填）</PrdSubheading>
         <PrdList
           items={[
-            "输入：AI HOT 公开 API（items/daily/dailies）；Notion 资讯库字段（标题、URL、时间、标星等）。",
-            "精选策略：mode=selected + 上海时区日期过滤 + URL 主键去重。",
+            "输入：Engine A JSON（Title/Source/Author/URL/OriginalText/Date）；AI HOT API（日报/飞书菜单）；Notion 资讯库字段。",
+            "精选策略：Engine A days=1 + 北京时区今/昨过滤 + URL 主键去重。",
             "输出：Notion 页面记录；飞书 interactive 卡片 JSON（feishu-card-builder）。",
-            "非训练：无标注训练集；质量依赖 AI HOT 源站 editorial 策略。",
+            "非训练：Engine A 依赖 DeepSeek/Gemini 在线翻译；飞书/日报依赖 AI HOT editorial 策略。",
           ]}
         />
         <PrdSubheading id="bad-cases">Bad Case 定义与处理（AI 产品 PRD 必填）</PrdSubheading>
         <PrdTable
           headers={["Bad Case", "预期表现", "处理策略"]}
           rows={[
-            ["AI HOT API 失败", "Web/卡片可读缓存", "Notion 已沉淀条目仍展示；飞书返回错误提示"],
+            ["Engine A API 失败", "Web 可读 Notion 缓存", "Notion 已沉淀条目仍展示；重试 fetch-news"],
+            ["AI HOT API 失败", "飞书卡片/日报降级", "飞书返回错误提示；日报 Tab 展示错误态"],
             ["Node :3001 未启动", "飞书菜单不可用", "README 要求双引擎联调；日志 node_api.log"],
             ["菜单文案不匹配", "无卡片", "严格对齐飞书后台与 aihot-router 暗号表"],
             ["误触背调", "不启动爬虫", "网关层资讯优先，不进入 route_intent"],
@@ -168,8 +169,9 @@ export default function AINewsRadarProjectPage() {
         <PrdTable
           headers={["场景", "技术", "说明"]}
           rows={[
-            ["内容源", "AI HOT 公开 REST", "精选/分类/日报"],
-            ["精选入库", "Node 脚本", "lib/cron-fetch-news.ts"],
+            ["内容源 · 精选", "ai-news-update Engine A", "HN / Polymarket / YouTube + DeepSeek 翻译"],
+            ["内容源 · 日报/飞书", "AI HOT 公开 REST", "日报归档 / 分类 / 飞书菜单"],
+            ["精选入库", "Node 脚本", "lib/cron-fetch-news.ts → Engine A /api/news"],
             ["Web", "Next.js App Router", "/ai-news、AINewsWidget、API Routes"],
             ["飞书卡片", "Express + feishu-local-api", "tools/aihot-router、feishu-card-builder"],
             ["持久化", "Notion API", "NOTION_AI_NEWS_DB_ID"],
@@ -178,7 +180,7 @@ export default function AINewsRadarProjectPage() {
         <PrdSubheading>数据处理</PrdSubheading>
         <PrdList
           items={[
-            "采集：AI HOT API → fetch-news → Notion（精选）；日报不经 Notion。",
+            "采集：Engine A API → fetch-news → Notion（精选）；日报不经 Notion。",
             "Web 读：fetchAINewsRadarFromNotion SSR；日报走 aihot-daily-api 封装。",
             "飞书：点菜单 → Python 门卫识别资讯指令 → Node :3001 拉 AI HOT 并生成卡片 → 门卫把卡片发回当前聊天（不触发求职爬虫/背调）。",
             "标星：PATCH /api/ai-news/star 更新 Notion 属性。",
