@@ -1,33 +1,55 @@
 # my-ai-portfolio
 
-AI PM 的数字工作流 · 个人独立开发项目集合。基于 **Next.js (App Router)** + **TypeScript** + **Tailwind CSS** 构建，数据持久化统一走 **Notion API**，长耗时 AI 任务采用 **Vercel AI SDK 流式** 响应。
-
-## Getting Started
-
-```bash
-npm install
-npm run dev
-```
-
-浏览器打开 [http://localhost:3000](http://localhost:3000)。
 
 ### 首页结构
 
-自上而下：**Hero** → **数字工作流**（`TimelineBento`）→ **AI 资讯雷达**（`#insights`）→ **关于我**（`#about`）。导航锚点「资讯收集」指向 `#insights`；「联系我」指向 `#about`。
+自上而下：**Hero** → **数字工作流**（`TimelineBento`）→ **AI 资讯雷达**（`#insights`）→ **关于我**（`#about`）。导航锚点「资讯收集」指向 `#insights`；「联系我」指向 `#about`。Hero 区「查看简历」与联系区简历图标均指向 `/resume`。
 
-生产构建：
+![首页](public/image.png)
 
-```bash
-npm run build
-npm start
+
+## 简历 (Resume)
+
+在线简历与 PDF 下载已集成至站点，内容根据首页 **特色项目**（`lib/featured-projects.ts`）同步维护。
+
+| 入口 | 路径 | 说明 |
+|------|------|------|
+| 在线查看 | `/resume` | 网页版简历，支持打印样式 |
+| 下载 PDF | `/resume/resume.pdf` | 静态 PDF，文件名 `龚梦星_AI产品经理_简历.pdf` |
+| Hero 按钮 | 首页「查看简历」 | 跳转 `/resume` |
+| 联系区 | `#contact` 简历图标 | `CONTACT_LINKS.resume` → `/resume` |
+
+### 文件结构
+
+```
+lib/resume-data.ts              # 简历数据源（网页与 PDF 共用）
+resume/resume.md                # Markdown 源稿（便于人工编辑对照）
+resume/resume-print.html        # PDF 用 HTML（npm run generate-resume-pdf 自动生成）
+app/resume/page.tsx             # 在线简历页
+public/resume/resume.pdf        # 可下载 PDF
+scripts/generate-resume-pdf.ts  # Puppeteer 生成脚本
 ```
 
-## 项目一览
+### 更新简历
+
+1. 修改 `lib/resume-data.ts`（单一事实来源；亦可同步编辑 `resume/resume.md` 作对照）
+2. 重新生成 PDF：
+
+```bash
+npm run generate-resume-pdf
+```
+
+首次运行需已安装 dev 依赖 `puppeteer`（`npm install` 会一并安装）。脚本会写入 `resume/resume-print.html` 与 `public/resume/resume.pdf`。
+
+简历独立 AI 产品部分覆盖 5 款特色项目：**InterviewOS**、**Job Engine**、**费曼学习工具**、**横纵分析法**、**AI News Radar**；花旗工作经历保持原有 ATS 表述。
+
+---
+
 
 | 时段 | 项目 | 路径 | 说明 |
 |------|------|------|------|
 | 05:00 | 全自动求职与背调引擎 | 外部站点 | 飞书 ChatOps 中枢 + OpenClaw 溯源背调 + 9 平台爬虫 → Notion（Job Engine） |
-| 09:00 | AI News Radar | `/ai-news` | 与 Job Engine **共用** `feishu_gateway`；AI HOT 三视图 + 飞书 6 菜单 → Node 卡片 |
+| 09:00 | AI News Radar | `/ai-news` | Engine A 入库 Notion + AI HOT 日报；与 Job Engine **共用** `feishu_gateway`；飞书 6 菜单 → Node 卡片 |
 | 14:00 | 费曼学习工具 | `/learning` | 双模态学习 + AI 面试官，掌握度写回 Notion |
 | 15:00 | InterviewOS | 外部站点 | 全链路 AI 面试教练，JD 解码与五维评分 |
 | 18:30 | **横纵分析法 (HV-Analysis)** | `/tools/hv-analysis` | 深度研究引擎，分章流式报告 + QA 审计 + Notion 归档 |
@@ -130,40 +152,55 @@ cd ~/interview/job_engine && ./start_feishu.sh
 
 ## AI News Radar · 每日 AI 资讯
 
-> Web 端阅读与飞书推送共用 **AI HOT API**；与 Job Engine **共用** `feishu_gateway.py` 长连接门卫（资讯菜单最高优先级，与 OpenClaw 背调/爬虫路由隔离）。
+> **双引擎采集 + 三视图阅读 + 飞书触达。** 精选入库由 [ai-news-update](https://github.com/mengxingG/ai-news-update) Engine A（HN / Polymarket / YouTube）经 `fetch-news` 写入 Notion；AI 日报 Tab 仍直连 AI HOT 官方 API；飞书 6 菜单与 Job Engine **共用** `feishu_gateway.py` 门卫（资讯最高优先级，与背调/爬虫隔离）。
 
-![AI News Radar 控制台](/image/news-dashboard.png)
+### 产品截图
+
+| Web 资讯雷达 `/ai-news` | 飞书卡片 · 日报 | 飞书卡片 · 精选 |
+|:---:|:---:|:---:|
+| ![AI News Radar 控制台](images/news-dashboard.png) | ![飞书卡片示例 1](images/news-feishu.png) | ![飞书卡片示例 2](images/news-feishu2.png) |
 
 ### 功能概览
 
-- **三视图前端**（`/ai-news`）：**精选** / **全部 AI 动态**（Notion CMS）+ **AI 日报**（AI HOT 最近 30 期归档 + 按日正文，杂志排版）
+- **三视图前端**（`/ai-news`）：**精选** / **全部 AI 动态**（Notion CMS，含 Engine A 入库）+ **AI 日报**（AI HOT 最近 30 期归档 + 按日正文，杂志排版）
 - **首页预览**（`/#insights` · `AINewsWidget`）：展示 Notion 全量资讯，按时间倒序，最多 **20** 条；右侧仅保留「完整雷达」链至 `/ai-news` 与条数统计（**无**「今日热门 / 本周精选 / 月度回顾」筛选）
-- **精选入库**：`npm run fetch-news` 拉取 `mode=selected`，按北京时区今/昨过滤，URL 去重写入 Notion
-- **飞书菜单卡片**：6 条底部子菜单暗号 → `interview/job_engine/feishu_gateway.py`（WebSocket 门卫）转发本地 Node → 飞书 interactive 卡片
+- **精选入库**：`npm run fetch-news` → `GET {AI_NEWS_UPDATE_API_URL}/api/news?topic=AI&days=1` → 北京时区今/昨过滤 → URL 去重写 Notion
+- **飞书菜单卡片**：6 条底部子菜单暗号 → `feishu_gateway.py` 转发本地 Node → 拉 AI HOT 数据 → 飞书 interactive 卡片
 - **标星**：Notion 字段同步，Web 端可收藏（`/api/ai-news/star`）
+
+### 双引擎与数据流
+
+| 引擎 | 仓库 / 平台 | 数据源 | 写入 Notion |
+|------|-------------|--------|-------------|
+| **Engine A** | `ai-news-update`（FastAPI） | HN / Polymarket / YouTube | `npm run fetch-news` |
+| **Engine B** | Coze 工作流 | X / 中文媒体 / RSS | Make.com（可选） |
+
+```
+ai-news-update Engine A
+  └─ GET /api/news?topic=AI&days=1
+        └─ my-ai-portfolio: npm run fetch-news → Notion
+              ├─ /ai-news 精选 · 全部
+              └─ 首页 AINewsWidget（最多 20 条）
+
+AI HOT 公开 API（日报 / 飞书分类菜单）
+  └─ feishu-local-api :3001 ← feishu_gateway.py
+        └─ aihot-router + feishu-card-builder → 飞书会话
+
+/ai-news · AI 日报 Tab：/api/ai-news/dailies + /daily/{date}（不经 Notion）
+```
 
 ### 飞书菜单暗号（须与飞书后台一字不差）
 
-| 菜单文案 | AI HOT 路由 |
-|----------|-------------|
-| 看今日日报 | `GET /api/public/daily` |
-| 看精选条目 | `GET /api/public/items?mode=selected` |
-| 看本周动态 | `GET /api/public/items?mode=selected&since=7d` |
-| 模型发布 | `category=ai-models` |
-| 产品发布 | `category=ai-products` |
-| 行业动态 | `category=industry` |
+| 菜单文案 | 数据源 |
+|----------|--------|
+| 看今日日报 | AI HOT `GET /api/public/daily` |
+| 看精选条目 | AI HOT `GET /api/public/items?mode=selected` |
+| 看本周动态 | AI HOT `GET /api/public/items?mode=selected&since=7d` |
+| 模型发布 | AI HOT `category=ai-models` |
+| 产品发布 | AI HOT `category=ai-products` |
+| 行业动态 | AI HOT `category=industry` |
 
-### 数据流
-
-```
-AI HOT 公开 API
-  ├─ fetch-news（本地/CI）→ Notion 精选库 → /ai-news 精选·全部
-  │                              └─ 首页 AINewsWidget（全量倒序，最多 20 条）
-  └─ feishu-local-api :3001 ← feishu_gateway.py（命中菜单暗号）
-        └─ tools/aihot-router + feishu-card-builder → 飞书会话
-
-/ai-news · AI 日报 Tab：/api/public/dailies?take=30 + /daily/{date}（不经 Notion）
-```
+> Web「精选 / 全部」读 Notion（Engine A + Engine B 入库）；飞书菜单与「AI 日报」Tab 仍读 AI HOT API。
 
 ### 环境变量
 
@@ -173,6 +210,12 @@ AI HOT 公开 API
 NOTION_API_KEY=
 NOTION_AI_NEWS_DB_ID=    # AI 资讯雷达数据库
 
+# Engine A 采集（ai-news-update FastAPI）
+AI_NEWS_UPDATE_API_URL=http://127.0.0.1:8000
+AI_NEWS_UPDATE_TOPIC=AI
+AI_NEWS_UPDATE_DAYS=1
+AI_NEWS_UPDATE_TIMEOUT_MS=180000
+
 # 飞书（Webhook 路由 / 本地联调；生产推送由 job_engine 门卫承担）
 FEISHU_APP_ID=
 FEISHU_APP_SECRET=
@@ -181,14 +224,17 @@ FEISHU_APP_SECRET=
 ### 本地开发
 
 ```bash
-# 前端
-npm run dev
+# 终端 1 — Engine A 采集服务（ai-news-update）
+cd ~/news/ai-news-update && python server.py
+
+# 终端 2 — 前端
+cd ~/my-ai-portfolio && npm run dev
 # 浏览器打开 http://localhost:3000/ai-news
 
-# 拉取 AI HOT 精选写入 Notion（无 Vercel Cron，手动或自建调度）
+# 终端 3 — 拉取 Engine A 写入 Notion（Engine A 就绪后执行）
 npm run fetch-news
 
-# Node 卡片引擎（供 Python 门卫调用，默认 127.0.0.1:3001，可用 FEISHU_LOCAL_API_PORT 覆盖）
+# 终端 4 — Node 卡片引擎（飞书联调；默认 127.0.0.1:3001）
 npm run feishu-local-api
 ```
 
@@ -231,7 +277,7 @@ app/HomePageClient.tsx            # 首页布局（资讯雷达 #insights 在关
 app/components/AINewsWidget.tsx   # 首页资讯预览（无时间 Tab，最多 20 条）
 app/ai-news/                      # 资讯雷达完整页（三视图）
 app/components/ai-news/           # AiNewsGeekHub、DailyPanel、侧栏等
-lib/cron-fetch-news.ts            # AI HOT → Notion 入库
+lib/cron-fetch-news.ts            # Engine A (ai-news-update) → Notion 入库
 lib/aihot-daily-api.ts            # 日报 API 封装
 utils/ai-news-time-range.ts       # 上海时区日期工具（飞书/分组等；首页 Widget 不再使用 Tab 过滤）
 utils/ai-news-grouping.ts         # sortNewsNewestFirst 等列表工具
@@ -239,6 +285,7 @@ tools/aihot-router.ts             # 菜单暗号 → API + 卡片 payload
 tools/feishu-card-builder.ts      # 飞书 interactive 卡片
 feishu-local-api.ts               # 本地 HTTP 卡片引擎（POST /internal/news-card）
 scripts/run-fetch-news.ts         # npm run fetch-news 入口
+../news/ai-news-update/server.py  # Engine A FastAPI（HN / Polymarket / YouTube）
 start_feishu.sh / stop_feishu.sh # 转发至 job_engine 双引擎脚本
 ../interview/job_engine/feishu_gateway.py   # 飞书 WebSocket 门卫（转发 Node）
 ../interview/job_engine/start_feishu.sh      # nohup 双引擎点火
@@ -249,8 +296,9 @@ start_feishu.sh / stop_feishu.sh # 转发至 job_engine 双引擎脚本
 | 命令 | 说明 |
 |------|------|
 | `npm run dev` | 本地站点（含首页资讯预览） |
-| `npm run fetch-news` | AI HOT 精选 → Notion |
+| `npm run fetch-news` | Engine A → Notion 入库（依赖 ai-news-update 服务） |
 | `npm run feishu-local-api` | 飞书卡片引擎（需与 Python 门卫联调） |
+| `npm run generate-resume-pdf` | 从 `lib/resume-data.ts` 生成 `public/resume/resume.pdf` |
 
 ---
 

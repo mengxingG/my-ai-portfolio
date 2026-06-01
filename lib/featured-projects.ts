@@ -25,6 +25,8 @@ export type FeaturedProject = {
   id: string;
   category: string;
   title: string;
+  /** 首页进度条一句话（≤80 字） */
+  progressSummary: string;
   star: FeaturedProjectStar;
   /** 技术实现描述，约 150 字 */
   technical: string;
@@ -40,11 +42,21 @@ export type FeaturedProject = {
   icon: LucideIcon;
 };
 
-export const FEATURED_PROJECTS: FeaturedProject[] = [
+export const FEATURED_PROJECT_ORDER = [
+  "interview-os",
+  "job-engine",
+  "feynman-hub",
+  "hv-analysis",
+  "ai-news-radar",
+] as const;
+
+const FEATURED_PROJECTS_ALL: FeaturedProject[] = [
   {
     id: "job-engine",
     category: "求职",
     title: "Job Engine - 全自动求职与背调引擎",
+    progressSummary:
+      "飞书 ChatOps 驱动九路岗位采集、AI 五维评分与 OpenClaw 可溯源背调，Notion 数据中台与 Web 看板统一阅读。",
     star: {
       situation:
         "同时跟踪 BOSS、猎聘及多家 AI 公司官网岗位，情报分散、手动背调耗时长，且定时全量爬取曾导致本机内存溢出。",
@@ -57,7 +69,17 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
     technical:
       "飞书侧通过企业自建应用长连接接收消息与菜单事件，Python 网关解析意图并串行调度爬虫与背调，避免多任务占满本机内存。采集结果规范为统一 JSON，由 DeepSeek 做岗位五维匹配评分后同步 Notion。背调调用 OpenClaw 联网检索并结合在招 JD 生成可溯源报告，Next.js 与 Electron 读取 Notion 渲染看板与筛选。",
     flow: "🌟 飞书下达指令 ➔ 智能识别场景 ➔ 采集 / 背调 / 简报 ➔ 写入 Notion ➔ 看板呈现",
-    tech: ["Python", "OpenClaw", "DeepSeek", "Notion", "飞书", "Next.js"],
+    tech: [
+      "Python",
+      "DrissionPage",
+      "Playwright",
+      "DeepSeek",
+      "OpenClaw",
+      "Notion",
+      "飞书",
+      "Next.js",
+      "Electron",
+    ],
     pipeline: {
       label: "产品全链路 · 飞书 × 智能背调",
       entry: {
@@ -113,7 +135,7 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
       width: 1200,
       height: 600,
     },
-    caseStudyHref: "/#featured-projects",
+    caseStudyHref: "/projects/job-engine",
     startHref: "https://interview.mengxing-ai.it.com/job-analysis?tab=monitor",
     startExternal: true,
     icon: Briefcase,
@@ -122,6 +144,8 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
     id: "ai-news-radar",
     category: "资讯",
     title: "AI Hot News - 每日 AI 资讯模块",
+    progressSummary:
+      "AI HOT 精选/日报/分类三视图 + 飞书六菜单卡片；精选入库 Notion，标星个人清单，与求职网关隔离。",
     star: {
       situation:
         "AI PM 需每日掌握模型与产品动态，信息源分散在网站、社群与日报产品，通过飞书实现「点菜单即看资讯」的方式，与求职工具共用同一机器人。",
@@ -134,7 +158,7 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
     technical:
       "Next.js 三 Tab 分别对接精选库、全量列表与官方日报页；定时任务从 AI HOT API 拉取精选，经去重后写入 Notion 供网站标星与检索。飞书侧 Express 卡片服务接收网关转发的菜单指令，按场景拉取日报/精选/分类并渲染互动卡片。长连接网关优先匹配资讯关键词，与求职、背调类指令隔离，双服务协作保障 7×24 响应。",
     flow: "🌟 内容入库 ➔ 网站三视图阅读 ➔ 飞书菜单触发 ➔ 卡片推送回会话",
-    tech: ["Next.js", "AI HOT", "Notion", "Express", "飞书", "Node"],
+    tech: ["Next.js", "AI HOT", "Notion", "Express", "Node.js", "Python", "飞书"],
     pipeline: {
       label: "产品全链路 · 资讯触达",
       entry: {
@@ -182,7 +206,7 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
       },
       {
         title: "特性 2：精选入库与标星闭环",
-        body: "入库规则聚焦「今昨 + 去重」，控制噪音与存储成本。标星写回 Notion 形成个人高价值清单，便于 HR 场景筛选或二次分享，形成从消费到标注的产品闭环。",
+        body: "入库规则聚焦「今昨 + 去重」，控制噪音与存储成本。标星写回 Notion 形成个人高价值清单，Web 端「个人清单」筛选仅看标星条目，便于 HR 场景筛选或二次分享，形成从消费到标注的产品闭环。",
       },
       {
         title: "特性 3：飞书与网站职责分离",
@@ -203,6 +227,8 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
     id: "feynman-hub",
     category: "学习",
     title: "费曼学习工具 - 深度学习引擎",
+    progressSummary:
+      "NotebookLM 双栏：材料解析与概念图、费曼 5 轮复述、AI 面试官压力测试；掌握度与复习队列写回 Notion。",
     star: {
       situation:
         "学习复杂材料时常见「看过即忘」，传统笔记难检验是否真懂，面试前又缺乏低成本演练环境。",
@@ -215,7 +241,7 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
     technical:
       "基于 Next.js App Router：左侧材料区支持上传 PDF/粘贴文本，解析上传材料生成总结文档解析与 Mermaid 概念图，右侧费曼与 AI 面试官分别调用 Gemini、DeepSeek 流式对话，追问按掌握度分级。学习状态、笔记与复习队列经 Notion API 写回用户工作区，服务端路由保护密钥；复习调度按间隔重复生成待练列表，正计时与轻量任务降低启动门槛。",
     flow: "🌟 材料导入 ➔ 结构化拆解 ➔ 费曼讲解 ➔ AI 面试考核 ➔ 复习队列 ➔ 掌握度画像",
-    tech: ["Gemini", "DeepSeek", "Next.js", "Notion", "Mermaid"],
+    tech: ["Next.js", "Gemini", "DeepSeek", "Notion", "Mermaid", "Vercel"],
     pipeline: {
       label: "产品全链路 · 学考一体",
       entry: {
@@ -279,6 +305,8 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
     id: "interview-os",
     category: "面试",
     title: "InterviewOS - AI 面试教练",
+    progressSummary:
+      "作战中枢 + 四阶段 15+ 模块：故事库、JD 解码、Prep、Mock 五维评分到 Debrief；职业资产沉淀 Notion。",
     star: {
       situation:
         "候选人常陷入背八股与模板答案，真实面试中的追问与压力难以自助练习，聊天记录也难以沉淀为可复盘资产。",
@@ -288,9 +316,9 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
         "用户获得接近真实面试的节奏训练，能定位表达与结构漏洞，并形成可追踪的成长档案而非一次性对话。",
     },
     technical:
-      "DeepSeek 解析 JD 与简历结构化字段，再从 Notion 故事库检索 STAR 素材做对齐建议。模拟面试维持多轮上下文，追问模块绑定五维评分 rubric 并流式输出雷达图。场次转录与复盘报告写回 Notion，部署于 Vercel，API Route 统一鉴权与限流，前端支持跨场次分数对比与再次演练入口。",
+      "Next.js 15 作战中枢 + 四阶段 15+ 子模块：简历底本/定位/故事库 Copilot 与防御者拷问 → 岗位分析三 Tab（调研·解码·监控）/简历优化/求职沟通 → 题库·SM-2 知识·Prep 万字战报·Mock 四轮+八阶段闯关·Warm-up 3×3 → Debrief/谈薪/Progress 趋势。Qwen 3.7 Max 润色简历；Claude Sonnet 4.6 模拟面试；DeepSeek V4-Pro 日常刷题。五维 rubric 贯通 Mock/题库/复盘，Notion page_id 双向同步 Block 树。",
     flow: "🌟 读懂 JD ➔ 匹配故事 ➔ 模拟面试 ➔ 高压追问 ➔ 五维评分 ➔ 复盘入库",
-    tech: ["DeepSeek", "Gemini", "Next.js", "Notion", "Vercel"],
+    tech: ["Next.js", "Qwen", "Claude", "DeepSeek", "Notion", "Vercel"],
     pipeline: {
       label: "产品全链路 · 面试教练",
       entry: {
@@ -354,7 +382,9 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
   {
     id: "hv-analysis",
     category: "研究",
-    title: "横纵分析法 (HV-Analysis) - 深度研究引擎",
+    title: "横纵分析法 - 深度研究引擎（深度调研 ｜  竞品分析）",
+    progressSummary:
+      "纵轴时间叙事 + 横轴竞品对照；Tavily 预检索、分章流式万字研报、14 条军规 QA 与 Notion 历史舱归档。",
     star: {
       situation:
         "行业研究常停留在资料堆砌，缺乏纵轴时间叙事与横轴竞品对照的系统方法，长报告还易受单次模型上下文限制。",
@@ -365,7 +395,7 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
     technical:
       "Next.js API 编排研究流水线：Tavily 预检索素材后分章调用 DeepSeek、Claude 流式生成，纵向章节走时间线模板、横向走竞品矩阵。14 条规则质检未通过章节可定向重写，SSE 推送章节进度。定稿经用户确认后归档 Notion 历史舱，支持导出 Markdown 与按时间检索元数据。",
     flow: "🌟 定题配置 ➔ 联网检索 ➔ 纵向叙事 ➔ 横向对比 ➔ 洞察交汇 ➔ 质检修正 ➔ 研报归档",
-    tech: ["DeepSeek", "Tavily", "Claude", "Next.js", "Notion"],
+    tech: ["Next.js", "DeepSeek", "Tavily", "Claude", "Gemini", "Notion", "SSE"],
     pipeline: {
       label: "产品全链路 · 深度研究",
       entry: {
@@ -421,8 +451,16 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
       width: 1920,
       height: 1080,
     },
-    caseStudyHref: "/tools/hv-analysis",
+    caseStudyHref: "/projects/hv-analysis",
     startHref: "/tools/hv-analysis",
     icon: BarChart3,
   },
 ];
+
+export const FEATURED_PROJECTS: FeaturedProject[] = FEATURED_PROJECT_ORDER.map(
+  (id) => FEATURED_PROJECTS_ALL.find((p) => p.id === id)!,
+);
+
+export function getFeaturedProjectById(id: string): FeaturedProject | undefined {
+  return FEATURED_PROJECTS.find((p) => p.id === id);
+}

@@ -17,6 +17,7 @@ import {
   CATEGORY_FILTER_PILLS,
   filterByCategory,
   filterBySourceType,
+  filterByStarred,
   getCuratedSelectedItems,
   SOURCE_TYPE_PILLS,
   sortNewsNewestFirst,
@@ -31,6 +32,7 @@ import {
   FilterPillRow,
   RecommendReasonBar,
   SourceRow,
+  StarredOnlyFilterButton,
 } from "@/app/components/ai-news/AiNewsHubChrome";
 import { AiNewsDailyPanel } from "@/app/components/ai-news/AiNewsDailyPanel";
 import { AiNewsTimelineFeed } from "@/app/components/ai-news/AiNewsTimelineFeed";
@@ -110,8 +112,14 @@ function SelectedPanel({
   showBackToHome?: boolean;
 }) {
   const [cat, setCat] = useState<CategoryFilter>("all");
+  const [starredOnly, setStarredOnly] = useState(false);
+  const starredCount = useMemo(() => items.filter((i) => i.starred).length, [items]);
   const base = useMemo(() => getCuratedSelectedItems(items), [items]);
-  const filtered = useMemo(() => filterByCategory(base, cat), [base, cat]);
+  const filtered = useMemo(() => {
+    let list = filterByCategory(base, cat);
+    list = filterByStarred(list, starredOnly);
+    return list;
+  }, [base, cat, starredOnly]);
 
   return (
     <>
@@ -120,11 +128,17 @@ function SelectedPanel({
         subtitle="AI 自动挑选的最佳价值内容"
         showBackToHome={showBackToHome}
       />
-      <div className="mb-6">
+      <div className="mb-6 flex flex-wrap items-center gap-2">
+        <StarredOnlyFilterButton
+          active={starredOnly}
+          onChange={setStarredOnly}
+          count={starredCount}
+        />
         <FilterPillRow items={CATEGORY_FILTER_PILLS} value={cat} onChange={setCat} />
       </div>
       <AiNewsTimelineFeed
         items={filtered}
+        emptyMessage={starredOnly ? "暂无标星资讯，点击卡片右上角星标即可加入个人清单" : undefined}
         renderCard={(item) => (
           <NewsFeedCard item={item} onToggleStar={onToggleStar}>
             <RecommendReasonBar reason={getRecommendReason(item)} />
@@ -147,13 +161,16 @@ function AllPanel({
 }) {
   const [sourceType, setSourceType] = useState<SourceTypeFilter>("all");
   const [cat, setCat] = useState<CategoryFilter>("all");
+  const [starredOnly, setStarredOnly] = useState(false);
+  const starredCount = useMemo(() => items.filter((i) => i.starred).length, [items]);
 
   const filtered = useMemo(() => {
     let list = sortNewsNewestFirst(items);
     list = filterBySourceType(list, sourceType);
     list = filterByCategory(list, cat);
+    list = filterByStarred(list, starredOnly);
     return list;
-  }, [items, sourceType, cat]);
+  }, [items, sourceType, cat, starredOnly]);
 
   return (
     <>
@@ -163,11 +180,19 @@ function AllPanel({
         showBackToHome={showBackToHome}
       />
       <div className="mb-4 space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <StarredOnlyFilterButton
+            active={starredOnly}
+            onChange={setStarredOnly}
+            count={starredCount}
+          />
+        </div>
         <FilterPillRow items={SOURCE_TYPE_PILLS} value={sourceType} onChange={setSourceType} />
         <FilterPillRow items={CATEGORY_FILTER_PILLS} value={cat} onChange={setCat} />
       </div>
       <AiNewsTimelineFeed
         items={filtered}
+        emptyMessage={starredOnly ? "暂无标星资讯，点击卡片右上角星标即可加入个人清单" : undefined}
         renderCard={(item) => <NewsFeedCard item={item} onToggleStar={onToggleStar} />}
       />
     </>

@@ -1,35 +1,44 @@
 import type { Client } from "@notionhq/client";
 import { createNotionClient } from "@/lib/notion-client";
 
-export const AIHOT_NEWS_URL =
-  "https://aihot.virxact.com/api/public/items?mode=selected&take=30";
-
+/** 供 AI HOT 日报 API 复用（与 Engine A 采集无关） */
 export const AIHOT_USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
+export const AI_NEWS_UPDATE_API_URL =
+  process.env.AI_NEWS_UPDATE_API_URL?.trim() || "http://127.0.0.1:8000";
+
+export const AI_NEWS_UPDATE_TOPIC =
+  process.env.AI_NEWS_UPDATE_TOPIC?.trim() || "AI";
+
+export const AI_NEWS_UPDATE_DAYS = Math.min(
+  366,
+  Math.max(1, Number(process.env.AI_NEWS_UPDATE_DAYS ?? "1") || 1),
+);
+
+const FETCH_TIMEOUT_MS = Number(process.env.AI_NEWS_UPDATE_TIMEOUT_MS ?? "180000");
 const BEIJING_TZ = "Asia/Shanghai";
-const AUTHOR_FIXED = "AI HOT 精选";
+const ENGINE_A_AUTHOR_PREFIX = "Engine A";
 const NOTION_RICH_TEXT_MAX = 2000;
 
-export type AihotRawItem = {
-  id?: string;
-  title?: string;
-  url?: string;
-  source?: string;
-  publishedAt?: string;
-  summary?: string | null;
-  category?: string | null;
+export type AiNewsUpdateRow = {
+  Title?: string;
+  Source?: string;
+  Author?: string;
+  URL?: string;
+  OriginalText?: string;
+  Date?: string;
+  TimeRange?: string;
 };
 
 export type NormalizedNewsItem = {
-  id?: string;
   title?: string;
   summary?: string | null;
   source?: string;
+  author?: string;
   url: string;
   dateYmd: string;
   publishedAt: string;
-  category?: string | null;
 };
 
 export type CronFetchNewsResult = {
@@ -69,35 +78,19 @@ function truncateTitle(text?: string): string {
   return t.length > 2000 ? t.slice(0, 2000) : t;
 }
 
+function formatAuthor(rawAuthor?: string): string {
+  const author = String(rawAuthor ?? "").trim();
+  if (!author || author === "Unknown") return ENGINE_A_AUTHOR_PREFIX;
+  if (author.startsWith(ENGINE_A_AUTHOR_PREFIX)) return author;
+  return `${ENGINE_A_AUTHOR_PREFIX} · ${author}`;
+}
+
 export function formatCronFetchError(err: unknown): string {
   if (err instanceof Error) return err.message;
   try {
     return JSON.stringify(err);
   } catch {
     return String(err);
-  }
-}
-
-async function notionPageExistsByUrl(
-  notion: Client,
-  databaseId: string,
-  url: string,
-): Promise<boolean> {
-  try {
-    const res = await notion.dataSources.query({
-      data_source_id: databaseId,
-      filter: {
-        property: "URL",
-        url: { equals: url },
-      },
-      page_size: 1,
-    });
-    return (res.results?.length ?? 0) > 0;
-  } catch (err) {
-    console.warn(
-      `[cron-fetch-news] URL 去重查询失败，将继续尝试写入: ${formatCronFetchError(err)}`,
-    );
-    return false;
   }
 }
 
@@ -130,61 +123,74 @@ export function buildNotionNewsProperties(item: NormalizedNewsItem) {
       date: { start: item.publishedAt || `${item.dateYmd}T12:00:00+08:00` },
     },
     Author: {
-      rich_text: [{ type: "text" as const, text: { content: AUTHOR_FIXED } }],
+      rich_text: [
+        {
+          type: "text" as const,
+          text: { content: formatAuthor(item.author).slice(0, NOTION_RICH_TEXT_MAX) },
+        },
+      ],
     },
   };
 }
 
-export async function fetchAihotItems(): Promise<AihotRawItem[]> {
-  const res = await fetch(AIHOT_NEWS_URL, {
-    method: "GET",
-    headers: {
-      "User-Agent": AIHOT_USER_AGENT,
-      Accept: "application/json",
-    },
-  });
+export async function fetchEngineAItems(): Promise<AiNewsUpdateRow[]> {
+  const base = AI_NEWS_UPDATE_API_URL.replace(/\/$/, "");
+  const url = `${base}/api/news?topic=${encodeURIComponent(AI_NEWS_UPDATE_TOPIC)}&days=${AI_NEWS_UPDATE_DAYS}`;
 
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(
-      `AI HOT API 请求失败: HTTP ${res.status} ${res.statusText}${body ? ` — ${body.slice(0, 300)}` : ""}`,
-    );
-  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
-  const data = (await res.json()) as { items?: AihotRawItem[] };
-  if (!data?.items || !Array.isArray(data.items)) {
-    throw new Error("AI HOT API 返回格式异常：缺少 items 数组");
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(
+        `Engine A API 请求失败: HTTP ${res.status} ${res.statusText}${body ? ` — ${body.slice(0, 300)}` : ""}`,
+      );
+    }
+
+    const data = (await res.json()) as unknown;
+    if (!Array.isArray(data)) {
+      throw new Error("Engine A API 返回格式异常：期望 JSON 数组");
+    }
+    return data as AiNewsUpdateRow[];
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error(`Engine A API 请求超时（${FETCH_TIMEOUT_MS}ms）: ${url}`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
   }
-  return data.items;
 }
 
-export function filterAihotItemsByBeijingTodayYesterday(
-  items: AihotRawItem[],
+export function filterEngineAItemsByBeijingTodayYesterday(
+  items: AiNewsUpdateRow[],
 ): NormalizedNewsItem[] {
   const { today, yesterday } = getBeijingTodayAndYesterday();
   const filtered: NormalizedNewsItem[] = [];
 
   for (const raw of items) {
     try {
-      const publishedAt = raw.publishedAt;
-      if (!publishedAt) continue;
-
-      const dateYmd = toBeijingYmd(publishedAt);
-      if (!dateYmd) continue;
-      if (dateYmd !== today && dateYmd !== yesterday) continue;
-
-      const url = typeof raw.url === "string" ? raw.url.trim() : "";
+      const url = typeof raw.URL === "string" ? raw.URL.trim() : "";
       if (!url) continue;
 
+      const dateYmd = raw.Date?.slice(0, 10) ?? "";
+      if (!dateYmd || (dateYmd !== today && dateYmd !== yesterday)) continue;
+
       filtered.push({
-        id: raw.id,
-        title: raw.title,
-        summary: raw.summary,
-        source: raw.source,
+        title: raw.Title,
+        summary: raw.OriginalText,
+        source: raw.Source,
+        author: raw.Author,
         url,
         dateYmd,
-        publishedAt: String(publishedAt),
-        category: raw.category,
+        publishedAt: `${dateYmd}T12:00:00+08:00`,
       });
     } catch (err) {
       console.warn(
@@ -197,7 +203,7 @@ export function filterAihotItemsByBeijingTodayYesterday(
 }
 
 /**
- * 拉取 AI HOT → 今/昨过滤 → 按 URL 去重写入 Notion。
+ * 拉取 ai-news-update Engine A → 今/昨过滤 → 按 URL 去重写入 Notion。
  * @throws 环境变量缺失、API 拉取失败等致命错误
  */
 export async function runCronFetchNews(): Promise<CronFetchNewsResult> {
@@ -212,8 +218,8 @@ export async function runCronFetchNews(): Promise<CronFetchNewsResult> {
   }
 
   const notion = createNotionClient(notionApiKey);
-  const rawItems = await fetchAihotItems();
-  const filtered = filterAihotItemsByBeijingTodayYesterday(rawItems);
+  const rawItems = await fetchEngineAItems();
+  const filtered = filterEngineAItemsByBeijingTodayYesterday(rawItems);
 
   let created = 0;
   let skippedDup = 0;
@@ -253,4 +259,47 @@ export async function runCronFetchNews(): Promise<CronFetchNewsResult> {
     skippedDup,
     failed,
   };
+}
+
+let _cachedDataSourceId: string | null = null;
+
+async function getDataSourceId(notion: Client, databaseId: string): Promise<string | null> {
+  if (_cachedDataSourceId) return _cachedDataSourceId;
+  try {
+    const db = await notion.databases.retrieve({ database_id: databaseId });
+    const ds = (db as any).data_sources?.[0];
+    _cachedDataSourceId = ds?.id ?? null;
+    return _cachedDataSourceId;
+  } catch {
+    return null;
+  }
+}
+
+export async function notionPageExistsByUrl(
+  notion: Client,
+  databaseId: string,
+  url: string,
+): Promise<boolean> {
+  try {
+    const dataSourceId = await getDataSourceId(notion, databaseId);
+    if (!dataSourceId) {
+      console.warn("[cron-fetch-news] 数据库没有关联的数据源，跳过去重");
+      return false;
+    }
+
+    const res = await notion.dataSources.query({
+      data_source_id: dataSourceId,
+      filter: {
+        property: "URL",
+        url: { equals: url },
+      },
+      page_size: 1,
+    });
+    return (res.results?.length ?? 0) > 0;
+  } catch (err) {
+    console.warn(
+      `[cron-fetch-news] URL 去重查询失败，将继续尝试写入: ${formatCronFetchError(err)}`,
+    );
+    return false;
+  }
 }

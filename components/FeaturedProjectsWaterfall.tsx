@@ -138,6 +138,7 @@ function FeaturedProjectRow({
 }) {
   return (
     <motion.article
+      id={`featured-project-${project.id}`}
       variants={itemVariants}
       whileHover={
         reducedMotion
@@ -148,7 +149,7 @@ function FeaturedProjectRow({
               transition: { type: "spring", stiffness: 420, damping: 28 },
             }
       }
-      className="featured-apple-card group/card mb-10 last:mb-0 sm:mb-12"
+      className="featured-apple-card group/card mb-10 scroll-mt-28 last:mb-0 sm:mb-12"
     >
       <div className="featured-apple-card__sheen pointer-events-none absolute inset-0 rounded-[inherit] opacity-0 transition-opacity duration-500 group-hover/card:opacity-100" />
 

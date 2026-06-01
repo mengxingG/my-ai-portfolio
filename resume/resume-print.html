@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>龚梦星 - AI 产品经理 (AI Product Manager)</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      font-size: 10.5pt;
+      line-height: 1.55;
+      color: #1a1a1a;
+    }
+    h1 { margin: 0 0 4px; font-size: 20pt; }
+    h2 {
+      margin: 18px 0 8px;
+      font-size: 11pt;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #5b21b6;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 4px;
+    }
+    h3 { margin: 0; font-size: 11pt; }
+    .header .subtitle { margin: 0; color: #4b5563; font-size: 12pt; }
+    .contact { margin: 8px 0 0; font-size: 9.5pt; color: #6b7280; }
+    .contact span { margin-right: 14px; }
+    .block { margin-top: 12px; }
+    .row { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+    .muted, .link { font-size: 9.5pt; color: #6b7280; white-space: nowrap; }
+    .role { margin: 4px 0 0; font-weight: 600; }
+    .context { margin: 6px 0 0; font-style: italic; color: #6b7280; font-size: 9.5pt; }
+    .summary { margin: 6px 0 0; color: #374151; }
+    .tech { margin: 6px 0 0; font-size: 9pt; color: #6b7280; }
+    p { margin: 6px 0; }
+    ul { margin: 6px 0 0; padding-left: 18px; }
+    li { margin-bottom: 4px; }
+    .project { padding-top: 10px; border-top: 1px solid #f3f4f6; }
+    .project:first-of-type { border-top: 0; padding-top: 0; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <h1>龚梦星</h1>
+    <p class="subtitle">AI 产品经理 (AI Product Manager)</p>
+    <p class="contact">
+      <span>邮箱: 1149427072@qq.com</span>
+      <span>作品集: mengxing-ai.it.com</span>
+      <span>GitHub: github.com/mengxingG</span>
+    </p>
+  </header>
+
+  <h2>个人简介</h2>
+  <p>4 年花旗交易系统经验 + Vibe Coding 重度使用者，既能定义产品策略，也能独立 0→1 把产品做出来。在花旗主导设计 AI 合规智能助手，将风险识别从 T+1 后置发现前移至交易前 1 秒内（PRD→UI→试点→数据验证全程独立推动）；推动大模型基建团队与应用团队建立分层问责协议，将跨团队问题定位从 3–5 天缩短到 1 天闭环。独立开发并上线 5 款 AI 产品（InterviewOS 全链路面试教练、Job Engine 求职背调引擎、费曼学习系统、横纵分析法研报引擎、AI HOT 资讯雷达），使用 Cursor / Claude Code 独立完成架构→AI 工作流→前端交付。不只是画原型写文档的 PM——给我一个问题，我能交付一个跑在线上的产品。</p>
+
+  <h2>核心能力</h2>
+  <p><strong>产品能力：</strong>AI 产品策略与落地 | 0→1 产品全生命周期管理 | Agentic Workflow 与 ChatOps 产品化 | 跨团队依赖治理与冲突解决 | 高风险场景合规产品化 | AI 上线质量门槛与评测设计</p>
+  <p><strong>AI 能力：</strong>LLM 应用架构（RAG / Agent / Workflow） | 多模型场景路由与选型 | 可解释与可溯源 AI 设计 | Prompt Engineering | Semantic Cache | 多模态文档解析 | 流式长任务编排（SSE / Streaming）</p>
+  <p><strong>技术能力：</strong>Vibe Coding（Cursor / Claude Code） | 全栈交付（Next.js / TypeScript / Python / Node.js） | Notion API 数据中台 | 飞书 Open API 集成 | Git / Vercel 部署</p>
+
+  <h2>工作经历</h2>
+  
+    <section class="block">
+      <div class="row">
+        <h3>花旗金融信息服务 (Citi Financial Information Services)</h3>
+        <span class="muted">2021.07 – 2025.09</span>
+      </div>
+      <p class="role">经理 | AI 产品负责人</p>
+      <p class="context">前期 2 年参与 Pre-Trade 数据平台现代化重构（数据校验、Angular 迁移、API 重构），建立交易流程与 Trader 决策模式的系统理解。</p>
+      <ul><li>【Pre-Trade AI 合规智能助手】主导 0→1 AI 产品转型，定位「合规副驾驶」（辅助决策 + fail-open 策略，不替代风控系统）。设计 L0 规则引擎 + L1 RAG 语义引擎混合架构：L0 处理约 80% 确定性违规（&lt;50ms），L1 处理语义灰区（Hybrid Search BM25 0.4 + Dense 0.6，召回率 &gt;98%）。</li><li>引入 Semantic Cache（语义哈希 + Redis 24h），将约 40% 重复查询延迟从 ~1.5s 降至 ~200ms，月度 LLM 推理成本节省约 $120K。设计红黄绿三级信号 + Override 必填理由机制，构建「Trader 反馈→专家标注→模型优化」数据飞轮。</li><li>P2 单 desk 试点 4 周（约 800–1200 笔 RFQ），误报率从约 20%–30% 降至 10%–15%，执行采纳率 65%–70%。推动大模型基建团队与应用团队建立分层问责协议（检索层→模型层→数据层逐层排查），通过 MVP API 方案（12→3 个 endpoint）打破排期僵局，2 周完成联调。</li><li>【AI 合规知识库与法规情报系统】设计面向合规团队的「法规变化感知 + 可追溯问答」平台。RBAC 权限在检索阶段前置过滤，从架构层杜绝跨团队数据泄露；多模态文档解析链路（PyMuPDF→结构化布局分析→Gemini Vision）专项解决金融 PDF 跨页表格、嵌套结构抽取。</li><li>回答强制附带法规原文引用（不允许无来源回答），设定 Golden Dataset 上线门槛（F1&gt;90%）与专家复核机制。</li><li>【Vantage Match Engine 推荐流优化】在覆盖 Credit/Mortgage/Short Team 三大资产类别的 Pre-Sales 平台上，将跨模块人工比对改造为单页实时推荐 + 匹配原因可视化，决策耗时 5–8min→1–2min，采用率首月 50%→次月 65–70%，此经验直接驱动后续 AI 合规助手的可解释推理链设计。</li></ul>
+    </section>
+
+  <h2>独立 AI 产品</h2>
+  
+    <section class="block project">
+      <div class="row">
+        <h3>InterviewOS | 全链路 AI 面试教练</h3>
+        <span class="link">interview.mengxing-ai.it.com</span>
+      </div>
+      <p class="summary">作战中枢 + 四阶段 15+ 子模块，覆盖求职定位→JD 解码/简历优化→模拟面试与 Prep→复盘谈薪；用该产品准备面试，形成「产品即证据」闭环。</p>
+      <ul><li>设计故事库与 JD 对齐机制：先拆 JD 核心能力项，再从 Notion 故事库检索高匹配案例，减少盲目投递与答非所问。</li><li>模拟面试 + 高压追问：多轮真实节奏对话，追问绑定五维评分模型（结构/深度/业务判断等），定位表达与逻辑漏洞。</li><li>三模型按场景分流：Qwen 3.7 Max 简历/JD 中文润色；Claude Sonnet 4.6 模拟面试与结构化反馈；DeepSeek V4-Pro 日常刷题。</li><li>Notion 活文档双向同步：转录、评分与复盘报告自动归档，支持跨场次对比与成长趋势追踪。</li></ul>
+      <p class="tech"><em>技术栈：</em>Next.js 15 · Vercel AI SDK · Qwen / Claude / DeepSeek · Notion API</p>
+    </section>
+    <section class="block project">
+      <div class="row">
+        <h3>Job Engine | 全自动求职与背调引擎</h3>
+        <span class="link">interview.mengxing-ai.it.com/job-analysis</span>
+      </div>
+      <p class="summary">飞书 ChatOps 驱动九路岗位采集、AI 五维评分与 OpenClaw 可溯源背调，Notion 数据中台与 Web 看板统一阅读。</p>
+      <ul><li>构建九路采集管道（BOSS、猎聘及多家 AI 公司官网），串行调度避免多任务并发导致本机 OOM；DeepSeek 五维匹配评分后增量入库 Notion。</li><li>设计飞书 ChatOps + OpenClaw Agent 意图路由：区分资讯查询、岗位采集、今日简报、公司背调；背调强制挂载 web_search/web_fetch，结论标注 URL 来源消除幻觉。</li><li>Notion 作为唯一事实源：采集结果带评分与标签，可按入库时间生成 24h 简报；Web/Electron 看板支持筛选与背调长文阅读。</li><li>飞书仅推送核心结论，长篇背调报告写入岗位页，兼顾移动阅读与深度复盘。</li></ul>
+      <p class="tech"><em>技术栈：</em>Python · Playwright / DrissionPage · DeepSeek · OpenClaw · 飞书 · Notion · Next.js · Electron</p>
+    </section>
+    <section class="block project">
+      <div class="row">
+        <h3>费曼学习工具 | 深度学习引擎</h3>
+        <span class="link">mengxing-ai.it.com/knowledge</span>
+      </div>
+      <p class="summary">NotebookLM 风格双栏产品：左栏材料解析与概念图，右栏费曼复述 + AI 面试官压力测试，掌握度与复习队列写回 Notion。</p>
+      <ul><li>学—讲—考—复习闭环：PDF/文本入库→多模态解析与概念拆解→费曼复述→AI 面试官加压考核→盲点进入 SM-2 间隔复习队列。</li><li>追问按掌握度分级，Gemini 负责材料解析，DeepSeek 负责费曼对话与面试考核，学习数据沉淀至用户自有 Notion 知识库。</li><li>ADHD 友好设计：「只学 5 分钟」短任务默认、正计时与正向激励，降低启动门槛，提高材料完成率。</li></ul>
+      <p class="tech"><em>技术栈：</em>Next.js · Gemini · DeepSeek · Notion · Mermaid · Vercel</p>
+    </section>
+    <section class="block project">
+      <div class="row">
+        <h3>横纵分析法 | 深度研究引擎</h3>
+        <span class="link">mengxing-ai.it.com/tools/hv-analysis</span>
+      </div>
+      <p class="summary">将「纵轴时间叙事 + 横轴竞品对照」产品化：定题后自动检索、分章流式生成万字研报，14 条军规 QA 与 Notion 历史舱归档。</p>
+      <ul><li>研究流水线：Tavily 预检索素材→分章流式生成（纵向时间线 + 横向竞品矩阵）→洞察交汇章节，SSE 推送章节进度突破单次上下文上限。</li><li>14 条规则质检未通过章节可定向重写，形成「生成—评估—修正」闭环，显著提升研报可用率与专业感。</li><li>定稿经用户确认后归档 Notion 历史舱，支持导出 Markdown 与按时间检索元数据，把一次性对话变为可积累的研究资产。</li></ul>
+      <p class="tech"><em>技术栈：</em>Next.js · DeepSeek · Claude · Tavily · Gemini · Notion · SSE</p>
+    </section>
+    <section class="block project">
+      <div class="row">
+        <h3>AI HOT News | 每日 AI 资讯模块</h3>
+        <span class="link">mengxing-ai.it.com/ai-news</span>
+      </div>
+      <p class="summary">Web 三视图（精选/全量/日报）+ 飞书六菜单卡片；精选入库 Notion，标星个人清单，与求职网关指令隔离。</p>
+      <ul><li>三视图内容策略分层：「精选」快速判断价值，「全部」检索复盘，「AI 日报」对齐官方杂志式排版，避免单列表认知过载。</li><li>定时任务从 AI HOT API 拉取精选，按日期与链接去重后写入 Notion；Web 端标星写回形成个人高价值清单。</li><li>飞书负责触达与摘要，网站负责深度阅读；网关层优先匹配资讯指令，与求职/背调类指令隔离，保障多产品共用同一机器人。</li></ul>
+      <p class="tech"><em>技术栈：</em>Next.js · AI HOT API · Notion · Express · Node.js · Python · 飞书</p>
+    </section>
+
+  <h2>教育背景</h2>
+  <ul><li><strong>软件工程 硕士</strong> | 中南大学 | 2021</li><li><strong>物联网工程 学士</strong> | 湖南农业大学 | 2018</li></ul>
+</body>
+</html>

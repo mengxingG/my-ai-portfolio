@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
-import { ChevronDown, Newspaper, Radio, Sparkles } from "lucide-react";
+import { ChevronDown, Newspaper, Radio, Sparkles, Star } from "lucide-react";
 import type { AiNewsHubTab } from "@/app/components/ai-news/types";
 
 const SERIF = '"Georgia", "Noto Serif SC", "Songti SC", serif';
@@ -37,6 +37,38 @@ export function FilterPillRow<T extends string>({
         </button>
       ))}
     </div>
+  );
+}
+
+/** 个人清单：仅展示已标星资讯 */
+export function StarredOnlyFilterButton({
+  active,
+  onChange,
+  count,
+}: {
+  active: boolean;
+  onChange: (active: boolean) => void;
+  count?: number;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!active)}
+      aria-pressed={active}
+      className={[
+        "inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all",
+        active ? CATEGORY_PILL_ACTIVE : CATEGORY_PILL_IDLE,
+      ].join(" ")}
+    >
+      <Star
+        className={`h-3.5 w-3.5 ${active ? "fill-amber-300 text-amber-300" : "text-slate-500"}`}
+        strokeWidth={active ? 0 : 1.75}
+      />
+      个人清单
+      {typeof count === "number" ? (
+        <span className="tabular-nums text-[10px] opacity-80">({count})</span>
+      ) : null}
+    </button>
   );
 }
 

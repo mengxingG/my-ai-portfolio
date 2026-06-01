@@ -44,6 +44,12 @@ export function filterBySourceType(items: AINews[], type: SourceTypeFilter): AIN
   return items.filter((i) => inferSourceType(i) === type);
 }
 
+/** 仅保留已标星条目（个人清单） */
+export function filterByStarred(items: AINews[], starredOnly: boolean): AINews[] {
+  if (!starredOnly) return items;
+  return items.filter((i) => i.starred);
+}
+
 export function sortNewsNewestFirst(items: AINews[]): AINews[] {
   return [...items].sort((a, b) => getNewsSortMs(b) - getNewsSortMs(a));
 }
@@ -92,9 +98,14 @@ export function groupItemsByShanghaiDate(items: AINews[]): DateGroupedItems[] {
     }));
 }
 
+const CURATED_AUTHOR_MARKERS = ["Engine A", "AI HOT"] as const;
+
 export function getCuratedSelectedItems(items: AINews[]): AINews[] {
   const curated = items.filter(
-    (i) => i.starred || i.author?.includes("AI HOT") || Boolean(i.summary?.trim() && i.summary !== "无摘要"),
+    (i) =>
+      i.starred ||
+      CURATED_AUTHOR_MARKERS.some((m) => i.author?.includes(m)) ||
+      Boolean(i.summary?.trim() && i.summary !== "无摘要" && i.summary !== "摘要生成失败"),
   );
   if (curated.length > 0) return sortNewsNewestFirst(curated);
   return sortNewsNewestFirst(items).slice(0, Math.min(20, items.length));

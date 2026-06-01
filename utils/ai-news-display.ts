@@ -20,8 +20,8 @@ export function getRecommendReason(item: AINews): string {
   if (explicit) return explicit;
   const summary = getNewsSummary(item);
   if (summary) return summary;
-  if (item.author?.includes("AI HOT")) {
-    return "AI HOT 编辑精选：来自今日行业高关注度动态。";
+  if (item.author?.includes("Engine A") || item.author?.includes("AI HOT")) {
+    return "Engine A 社区共识精选：来自 HN / Polymarket / YouTube 等高信噪比信号。";
   }
   return "编辑精选：该条资讯与当前 AI 产品、模型或行业趋势高度相关，建议优先阅读。";
 }

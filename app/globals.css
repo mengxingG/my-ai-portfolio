@@ -82,6 +82,23 @@ body::-webkit-scrollbar {
   max-width: var(--site-content-max);
 }
 
+/* Hero · 个人 Slogan 艺术字 */
+.portfolio-hero-slogan {
+  letter-spacing: 0.08em;
+  background: linear-gradient(
+    120deg,
+    #f5e6ff 0%,
+    #e9d5ff 22%,
+    #c084fc 52%,
+    #a78bfa 78%,
+    #ddd6fe 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 28px rgba(167, 139, 250, 0.22));
+}
+
 /* 特色项目 · Apple 风格立体卡片 */
 .featured-apple-card {
   position: relative;
@@ -689,5 +706,261 @@ body::-webkit-scrollbar {
 @media (prefers-reduced-motion: reduce) {
   .cosmic-portal-particle {
     animation-duration: calc(var(--portal-duration) * 1.8);
+  }
+}
+
+/* About section — colored pillar cards */
+.about-shell {
+  position: relative;
+  overflow: hidden;
+}
+
+.about-intro {
+  text-wrap: pretty;
+}
+
+.about-pillar-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1rem;
+  padding: 1.125rem 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  transition:
+    border-color 0.4s ease,
+    box-shadow 0.4s ease,
+    transform 0.4s ease;
+}
+
+.about-pillar-card--violet {
+  background: linear-gradient(
+    145deg,
+    rgba(76, 29, 149, 0.22) 0%,
+    rgba(24, 24, 27, 0.72) 55%,
+    rgba(12, 10, 18, 0.88) 100%
+  );
+  border-color: rgba(167, 139, 250, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 12px 32px -12px rgba(91, 33, 182, 0.35);
+}
+
+.about-pillar-card--cyan {
+  background: linear-gradient(
+    145deg,
+    rgba(8, 145, 178, 0.18) 0%,
+    rgba(24, 24, 27, 0.72) 55%,
+    rgba(12, 10, 18, 0.88) 100%
+  );
+  border-color: rgba(34, 211, 238, 0.2);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 12px 32px -12px rgba(8, 145, 178, 0.3);
+}
+
+.about-pillar-card--emerald {
+  background: linear-gradient(
+    145deg,
+    rgba(5, 150, 105, 0.18) 0%,
+    rgba(24, 24, 27, 0.72) 55%,
+    rgba(12, 10, 18, 0.88) 100%
+  );
+  border-color: rgba(52, 211, 153, 0.2);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 12px 32px -12px rgba(5, 150, 105, 0.28);
+}
+
+.about-pillar-card__glow {
+  position: absolute;
+  inset: -40% -20% auto;
+  height: 70%;
+  opacity: 0.45;
+  filter: blur(28px);
+  transition: opacity 0.45s ease;
+}
+
+.about-pillar-card--violet .about-pillar-card__glow {
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.35) 0%, transparent 70%);
+}
+
+.about-pillar-card--cyan .about-pillar-card__glow {
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.28) 0%, transparent 70%);
+}
+
+.about-pillar-card--emerald .about-pillar-card__glow {
+  background: radial-gradient(circle, rgba(52, 211, 153, 0.28) 0%, transparent 70%);
+}
+
+.about-pillar-card__sheen {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.06) 50%,
+    transparent 65%
+  );
+  transform: translateX(-120%);
+  transition: transform 0.8s ease;
+}
+
+.about-pillar-card:hover .about-pillar-card__sheen {
+  transform: translateX(120%);
+}
+
+.about-pillar-card:hover .about-pillar-card__glow {
+  opacity: 0.75;
+}
+
+.about-pillar-card--violet:hover {
+  border-color: rgba(196, 181, 253, 0.38);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 18px 40px -12px rgba(91, 33, 182, 0.45),
+    0 0 0 1px rgba(139, 92, 246, 0.12);
+}
+
+.about-pillar-card--cyan:hover {
+  border-color: rgba(103, 232, 249, 0.35);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 18px 40px -12px rgba(8, 145, 178, 0.4),
+    0 0 0 1px rgba(34, 211, 238, 0.1);
+}
+
+.about-pillar-card--emerald:hover {
+  border-color: rgba(110, 231, 183, 0.35);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 18px 40px -12px rgba(5, 150, 105, 0.38),
+    0 0 0 1px rgba(52, 211, 153, 0.1);
+}
+
+.about-stack-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1rem;
+  padding: 1.25rem 1.375rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(
+    160deg,
+    rgba(59, 130, 246, 0.08) 0%,
+    rgba(139, 92, 246, 0.1) 45%,
+    rgba(24, 24, 27, 0.75) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 14px 36px -14px rgba(59, 130, 246, 0.25);
+  transition: border-color 0.4s ease, box-shadow 0.4s ease;
+}
+
+.about-stack-card:hover {
+  border-color: rgba(167, 139, 250, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 18px 44px -14px rgba(139, 92, 246, 0.32);
+}
+
+.about-stack-tag {
+  display: inline-flex;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  padding: 0.35rem 0.72rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.about-stack-tag--purple {
+  border-color: rgba(167, 139, 250, 0.35);
+  background: rgba(91, 33, 182, 0.22);
+  color: rgba(233, 213, 255, 0.95);
+}
+
+.about-stack-tag--blue {
+  border-color: rgba(96, 165, 250, 0.35);
+  background: rgba(37, 99, 235, 0.18);
+  color: rgba(191, 219, 254, 0.95);
+}
+
+.about-stack-tag--cyan {
+  border-color: rgba(34, 211, 238, 0.32);
+  background: rgba(8, 145, 178, 0.18);
+  color: rgba(165, 243, 252, 0.95);
+}
+
+.about-stack-tag:hover {
+  box-shadow: 0 0 18px rgba(139, 92, 246, 0.22);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .about-pillar-card__sheen {
+    display: none;
+  }
+
+  .about-pillar-card:hover {
+    transform: none;
+  }
+}
+
+/* Resume page */
+.resume-prose .featured-apple-card,
+.resume-prose header.featured-apple-card {
+  position: relative;
+}
+
+.resume-bullet {
+  position: relative;
+  padding-left: 1rem;
+}
+
+.resume-bullet::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: rgb(167 139 250);
+}
+
+.resume-link {
+  word-break: break-word;
+}
+
+@media print {
+  body {
+    background: white !important;
+    color: #111 !important;
+  }
+
+  .featured-apple-card {
+    break-inside: avoid;
+    border: 1px solid #e5e7eb !important;
+    background: white !important;
+    box-shadow: none !important;
+    margin-bottom: 1rem;
+  }
+
+  .featured-apple-card__sheen {
+    display: none !important;
+  }
+
+  .reflect-section-kicker {
+    color: #5b21b6 !important;
+    border-color: #c4b5fd !important;
+  }
+
+  .resume-bullet::before {
+    color: #6d28d9 !important;
+  }
+
+  .resume-link {
+    color: #1d4ed8 !important;
+  }
+
+  header a,
+  .print\\:hidden {
+    display: none !important;
   }
 }

@@ -9,14 +9,17 @@ import { DateSectionHeader } from "@/app/components/ai-news/AiNewsHubChrome";
 type Props = {
   items: AINews[];
   renderCard: (item: AINews) => ReactNode;
+  emptyMessage?: string;
 };
 
-export function AiNewsTimelineFeed({ items, renderCard }: Props) {
+export function AiNewsTimelineFeed({ items, renderCard, emptyMessage }: Props) {
   const groups = groupItemsByShanghaiDate(items);
 
   if (!groups.length) {
     return (
-      <p className="py-16 text-center text-sm text-slate-500">暂无内容</p>
+      <p className="py-16 text-center text-sm text-slate-500">
+        {emptyMessage ?? "暂无内容"}
+      </p>
     );
   }
 

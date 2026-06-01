@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import {
   motion,
   useMotionTemplate,
@@ -12,24 +11,17 @@ import {
 } from "framer-motion";
 import { AINewsWidget } from "@/app/components/AINewsWidget";
 import { FeaturedProjectsWaterfall } from "@/components/FeaturedProjectsWaterfall";
+import { FeaturedProjectsProgressBar } from "@/components/FeaturedProjectsProgressBar";
 import { FontSizeSwitcher } from "@/app/components/FontSizeSwitcher";
-import { MagneticWrap } from "@/app/components/MagneticWrap";
-import { CosmicPortalHero } from "@/app/components/CosmicPortalHero";
+import { PortfolioHeroIntro } from "@/components/PortfolioHeroIntro";
+import { HomeTechStack } from "@/components/HomeTechStack";
+import { ContactSection } from "@/components/ContactSection";
+import { AboutSection } from "@/components/AboutSection";
+import { HOMEPAGE_TECH_STACK_NAMES } from "@/lib/featured-project-tech-stack";
 import BreathingParticles from "@/components/BreathingParticles";
-import MeteorShower from "@/components/MeteorShower";
 import ReflectBackground from "@/components/ReflectBackground";
-import WallOfLoveBackground from "@/components/WallOfLoveBackground";
 import type { AINews } from "@/utils/notion";
 
-const HERO_SUBLINE = "4年经验 AI 项目经理 | Vibe Coding 重度实践者";
-/** 与 Hero 展示文案一致（仅去掉单独大标题「Mengxing」，其余保留） */
-const HERO_BODY =
-  "Deep practice in OpenClaw & Claude Code (CC). Building AI-native agents for rapid business validation.";
-
-/** 分词 stagger：保留空格与竖线 */
-function splitForStagger(text: string): string[] {
-  return text.split(/(\s+)/).filter((p) => p.length > 0);
-}
 
 export default function HomePageClient({ news }: { news: AINews[] }) {
   const prefersReducedMotion = useReducedMotion();
@@ -107,57 +99,6 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
   const navBorder = useMotionTemplate`1px solid rgba(255, 255, 255, ${navBorderAlpha})`;
   const navShadow = useMotionTemplate`0 12px 40px rgba(0, 0, 0, ${navShadowAlpha})`;
 
-  const sublineParts = React.useMemo(() => splitForStagger(HERO_SUBLINE), []);
-
-  const staggerListContainer = {
-    hidden: {},
-    show: {
-      transition: {
-        staggerChildren: hydrateSafeReducedMotion ? 0 : 0.11,
-        delayChildren: hydrateSafeReducedMotion ? 0 : 0.06,
-      },
-    },
-  };
-
-  const staggerListItem = {
-    hidden: {
-      opacity: 0,
-      y: hydrateSafeReducedMotion ? 0 : 28,
-      scale: hydrateSafeReducedMotion ? 1 : 0.94,
-      filter: hydrateSafeReducedMotion ? "blur(0px)" : "blur(14px)",
-    },
-    show: {
-      opacity: 1,
-      y: 0,
-      scale: 1,
-      filter: "blur(0px)",
-      transition: SPRING_GENTLE,
-    },
-  };
-
-  const sublineWordVariants = {
-    hidden: {
-      opacity: 0,
-      y: hydrateSafeReducedMotion ? 0 : 16,
-      filter: hydrateSafeReducedMotion ? "blur(0px)" : "blur(10px)",
-    },
-    show: {
-      opacity: 1,
-      y: 0,
-      filter: "blur(0px)",
-      transition: SPRING_GENTLE,
-    },
-  };
-
-  const sublineContainerVariants = {
-    hidden: {},
-    show: {
-      transition: {
-        staggerChildren: hydrateSafeReducedMotion ? 0 : 0.035,
-        delayChildren: hydrateSafeReducedMotion ? 0 : 0.15,
-      },
-    },
-  };
 
   /** 卡片进入视口：模糊 → 清晰 + spring */
   const cardRevealVariants = {
@@ -203,6 +144,7 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
               <a href="#featured-projects" className="nav-link text-bento-muted hover:text-bento-text">特色项目</a>
               <a href="#insights" className="nav-link text-bento-muted hover:text-bento-text">资讯收集</a>
               <a href="#about" className="nav-link text-bento-muted hover:text-bento-text">关于我</a>
+              <a href="#contact" className="nav-link text-bento-muted hover:text-bento-text">联系我</a>
             </motion.nav>
             <FontSizeSwitcher />
           </div>
@@ -210,135 +152,25 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
 
         <motion.section
           id="hero"
-          className="reflect-stage reflect-stage--hero relative isolate overflow-hidden scroll-mt-20 flex flex-col items-center py-12 text-center sm:py-16"
+          className="reflect-stage reflect-stage--hero relative isolate overflow-hidden scroll-mt-20 flex flex-col items-center py-10 text-center sm:py-14 md:py-16"
           initial="hidden"
           whileInView="show"
           viewport={{ once: true, amount: 0.25 }}
           variants={sectionVariants}
         >
-          <CosmicPortalHero />
-
-          <div
-            className="pointer-events-none absolute left-1/2 top-0 z-[5] h-[min(520px,60vh)] w-screen max-w-[100vw] -translate-x-1/2"
-            aria-hidden
-          >
-            <MeteorShower />
-          </div>
-
-          <motion.div
-            className="relative z-10 flex w-full flex-col items-center"
-          >
-          <motion.div
-            variants={itemVariants}
-            className="profile-neon-breath relative mb-5 h-24 w-24 shrink-0 overflow-hidden rounded-full border-2 border-white/10 sm:h-28 sm:w-28"
-          >
-            <Image
-              src="/screenshot-20251105-214648.jpg"
-              alt="龚梦星 Gong Mengxing"
-              fill
-              className="object-cover"
-              sizes="(max-width: 640px) 96px, 112px"
-              priority
-            />
-          </motion.div>
-
-          {/* 徽章在主标题上方，与圈选示意一致；仅曾删除「Mengxing」大字，未删徽章/英文/按钮 */}
-          <motion.div variants={itemVariants} className="neon-purple-breath mt-2 inline-flex items-center rounded-full border border-purple-400/35 bg-purple-500/10 px-4 py-1.5 text-xs font-mono tracking-widest text-purple-200/95">
-            4-Year AI PM
-          </motion.div>
-
-          <motion.h2
-            className="mt-3 max-w-3xl text-lg font-semibold leading-snug text-bento-text sm:text-xl md:text-2xl"
-            style={{ fontFamily: '"Geist", "Inter", "SF Pro Text", system-ui, sans-serif' }}
-            variants={sublineContainerVariants}
-            initial="hidden"
-            animate="show"
-          >
-            {sublineParts.map((part, i) => (
-              <motion.span
-                key={`sub-${i}-${part === " " ? "sp" : part}`}
-                variants={sublineWordVariants}
-                className="inline-block"
-                style={{ whiteSpace: part.trim() === "" ? "pre" : undefined }}
-              >
-                {part}
-              </motion.span>
-            ))}
-          </motion.h2>
-
-          <motion.p
-            variants={itemVariants}
-            className="mt-4 max-w-2xl text-base font-light leading-relaxed text-bento-text/90 sm:text-lg"
-            style={{ fontFamily: '"Geist", "Inter", "SF Pro Text", system-ui, sans-serif' }}
-          >
-            {HERO_BODY}
-          </motion.p>
-
-          <motion.p variants={itemVariants} className="mt-2 text-xs text-bento-muted sm:text-sm">
-            Agentic Workflow · Rapid Validation · Production-ready Delivery
-          </motion.p>
-
-          <motion.div variants={itemVariants} className="mt-6 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
-            <MagneticWrap strength={0.42} padding={48}>
-              <motion.a
-                href="/resume.pdf"
-                whileHover={hydrateSafeReducedMotion ? undefined : { scale: 1.04 }}
-                whileTap={{ scale: 0.98 }}
-                transition={SPRING_SNAPPY}
-                className="glow-btn glow-btn--primary glow-btn--resume"
-              >
-                查看简历
-              </motion.a>
-            </MagneticWrap>
-            <MagneticWrap strength={0.38} padding={48}>
-              <motion.a
-                href="#about"
-                whileHover={hydrateSafeReducedMotion ? undefined : { scale: 1.03 }}
-                whileTap={{ scale: 0.98 }}
-                transition={SPRING_SNAPPY}
-                className="glow-btn glow-btn--secondary"
-              >
-                联系我
-              </motion.a>
-            </MagneticWrap>
-            <Link href="/#featured-projects" className="glow-btn glow-btn--secondary">
-              特色项目
-            </Link>
-            <Link href="/#insights" className="glow-btn glow-btn--secondary">
-              资讯收集
-            </Link>
-          </motion.div>
-
-          <motion.div
-            variants={itemVariants}
-            className="liquid-glass-card mt-8 w-full max-w-4xl rounded-2xl p-4 sm:p-5"
-          >
-            <div className="mb-3 text-center text-[11px] font-mono uppercase tracking-[0.2em] text-slate-400">
-              Tech Stack
-            </div>
-            <motion.div
-              className="flex flex-wrap justify-center gap-2 sm:gap-3"
-              variants={staggerListContainer}
-              initial="hidden"
-              whileInView="show"
-              viewport={{ once: true, amount: 0.4 }}
-            >
-              {["OpenClaw", "Claude Code (CC)", "Cursor", "Vercel", "Windsurf", "LangChain", "Next.js", "Tailwind CSS"].map((s) => (
-                <motion.span key={s} variants={staggerListItem} className="tech-tag">
-                  {s}
-                </motion.span>
-              ))}
+          <motion.div className="relative z-10 flex w-full flex-col items-center">
+            <motion.div variants={itemVariants} className="w-full">
+              <PortfolioHeroIntro />
             </motion.div>
-            <div className="stack-marquee mt-3 border-t border-white/5 pt-3">
-              <div className="stack-marquee-track">
-                {["OpenClaw", "Claude Code", "Vibe Coding", "Next.js", "Cursor", "LangChain", "Vercel"].map((s) => (
-                  <span key={`hm-a-${s}`} className="tech-tag">{s}</span>
-                ))}
-                {["OpenClaw", "Claude Code", "Vibe Coding", "Next.js", "Cursor", "LangChain", "Vercel"].map((s) => (
-                  <span key={`hm-b-${s}`} className="tech-tag">{s}</span>
-                ))}
-              </div>
-            </div>
+
+          <motion.div
+            variants={itemVariants}
+            className="mt-8 -mx-4 w-[calc(100%+2rem)] sm:mt-10 sm:-mx-6 sm:w-[calc(100%+3rem)]"
+          >
+            <HomeTechStack
+              items={HOMEPAGE_TECH_STACK_NAMES}
+              reducedMotion={hydrateSafeReducedMotion}
+            />
           </motion.div>
           </motion.div>
         </motion.section>
@@ -361,8 +193,9 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
               AI PM 的数字工作流· 个人独立开发项目
             </h2>
             <p className="mt-2 max-w-2xl text-sm font-light text-bento-muted">
-              岗位收集分析 ｜ AI 资讯收集 ｜ 费曼学习工具 ｜ 深度研究引擎
+              面试教练 ｜ 岗位采集背调 ｜ 费曼学习 ｜ 深度研究 ｜ AI 资讯
             </p>
+            <FeaturedProjectsProgressBar />
             <FeaturedProjectsWaterfall className="mt-10 sm:mt-14" />
             <div className="mt-8 flex justify-center sm:mt-10">
               <Link href="/projects/featured" className="glow-btn glow-btn--secondary text-sm">
@@ -392,71 +225,9 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
           </motion.div>
         </motion.section>
 
-        <motion.section
-          id="about"
-          className="reflect-stage scroll-mt-20 py-10"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.2 }}
-          transition={{ duration: 0.62, type: "spring", stiffness: 78, damping: 24, mass: 0.85 }}
-        >
-          <WallOfLoveBackground />
-          <span className="reflect-section-kicker">About</span>
-          <h2 className="mt-3 text-2xl font-bold tracking-tight text-bento-text sm:text-3xl" style={{ fontFamily: '"Geist", "Inter", "SF Pro Display", system-ui, sans-serif' }}>
-            关于我
-          </h2>
-          <p className="mt-2 text-sm font-light text-bento-muted">About · New Paradigm</p>
-          <motion.div
-            variants={cardRevealVariants}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, amount: 0.22, margin: "-0px 0px -8% 0px" }}
-            className="bento-card mt-5 rounded-2xl p-5 sm:p-7"
-          >
-            <p className="text-sm font-light leading-relaxed text-bento-muted">
-              我专注将 Agentic Workflow 与业务闭环深度结合，持续用 Vibe Coding + Rapid Validation 模式，把复杂想法快速转化为可运行、可验证、可迭代的商业级 AI 产品。
-            </p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              <div className="liquid-glass-card rounded-xl p-4">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-bento-text">Vibe Coding 深度实践</h3>
-                <p className="mt-2 text-sm leading-relaxed text-bento-muted">
-                  能熟练利用 Claude Code (CC) 与 Cursor 完成产品从 0 到 1 的全流程。独立完成需求梳理、UI 设计、前后端开发及 Vercel 自动化部署。
-                </p>
-              </div>
-              <div className="liquid-glass-card rounded-xl p-4">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-bento-text">AI Agent 提效专家</h3>
-                <p className="mt-2 text-sm leading-relaxed text-bento-muted">
-                  深度使用 OpenClaw、Claude Code 等前沿 Agent 工具优化业务流。具备通过 AI 自动化工作流提升团队 5-10 倍交付效率的实战经验。
-                </p>
-              </div>
-              <div className="liquid-glass-card rounded-xl p-4">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-bento-text">快速原型验证</h3>
-                <p className="mt-2 text-sm leading-relaxed text-bento-muted">
-                  拥有在 24 小时内将商业想法转化为可运行产品的“极速交付”能力，快速验证需求与价值闭环。
-                </p>
-              </div>
-            </div>
-            <div className="liquid-glass-card mt-4 rounded-xl p-4">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-bento-text">AI-Native Stack</h3>
-              <p className="mt-2 text-sm text-bento-muted">
-                Tools
-              </p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {["Claude Code (CC)", "OpenClaw", "Cursor", "Vercel", "Windsurf"].map((item) => (
-                  <span key={item} className="tech-tag">{item}</span>
-                ))}
-              </div>
-              <p className="mt-3 text-sm text-bento-muted">
-                Frameworks
-              </p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {["LangChain", "Next.js (App Router)", "Tailwind CSS"].map((item) => (
-                  <span key={item} className="tech-tag">{item}</span>
-                ))}
-              </div>
-            </div>
-          </motion.div>
-        </motion.section>
+        <AboutSection />
+
+        <ContactSection />
 
         <motion.div
           className="mt-8 overflow-hidden border-y border-white/10 py-2.5"
@@ -557,14 +328,16 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
         .stack-marquee {
           position: relative;
           overflow: hidden;
-          mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
-          -webkit-mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+          mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent);
+          -webkit-mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent);
         }
         .stack-marquee-track {
           display: flex;
-          gap: 0.5rem;
+          align-items: center;
+          gap: 0.625rem;
           width: max-content;
-          animation: stack-scroll 32s linear infinite;
+          padding-block: 0.125rem;
+          animation: stack-scroll 36s linear infinite;
           will-change: transform;
         }
         @keyframes stack-scroll {
@@ -573,6 +346,31 @@ export default function HomePageClient({ news }: { news: AINews[] }) {
         }
         @media (prefers-reduced-motion: reduce) {
           .stack-marquee-track { animation: none !important; }
+        }
+        .contact-social-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 3.25rem;
+          height: 3.25rem;
+          border-radius: 9999px;
+          border: 1px solid rgba(168, 85, 247, 0.45);
+          background: rgba(0, 0, 0, 0.35);
+          box-shadow: 0 0 0 1px rgba(168, 85, 247, 0.15), 0 0 22px rgba(168, 85, 247, 0.22);
+          transition: border-color 0.2s ease, box-shadow 0.25s ease, transform 0.2s ease;
+        }
+        .contact-social-btn:hover {
+          border-color: rgba(192, 132, 252, 0.65);
+          box-shadow: 0 0 0 1px rgba(168, 85, 247, 0.35), 0 0 28px rgba(168, 85, 247, 0.38);
+          transform: translateY(-2px);
+        }
+        .contact-social-btn--pending {
+          opacity: 0.72;
+          cursor: default;
+        }
+        .contact-social-btn--pending:hover {
+          transform: none;
+          box-shadow: 0 0 0 1px rgba(168, 85, 247, 0.15), 0 0 22px rgba(168, 85, 247, 0.22);
         }
         .status-badge {
           display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.25rem 0.75rem; font-size: 0.75rem; font-weight: 600;

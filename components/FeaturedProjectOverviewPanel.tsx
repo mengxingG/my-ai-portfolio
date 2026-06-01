@@ -2,8 +2,8 @@
 
 import type { FeaturedProject } from "@/lib/featured-projects";
 import {
-  FEATURED_TECH_ITEMS,
   featuredTechPillClass,
+  resolveProjectTechItems,
 } from "@/lib/featured-project-tech-stack";
 
 const OVERVIEW_TEXT =
@@ -19,10 +19,12 @@ function BracketParagraph({ label, children }: { label: string; children: string
 }
 
 export function FeaturedProjectOverviewPanel({ project }: { project: FeaturedProject }) {
+  const techItems = resolveProjectTechItems(project.tech);
+
   return (
     <div className="mt-4 border-t border-white/[0.06] pt-5">
       <div className="flex flex-wrap gap-1.5">
-        {FEATURED_TECH_ITEMS.map(({ name, category }) => (
+        {techItems.map(({ name, category }) => (
           <span key={name} className={featuredTechPillClass(category)}>
             {name}
           </span>

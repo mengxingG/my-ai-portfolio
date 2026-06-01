@@ -10,9 +10,12 @@ function nowId() {
 export function MermaidSimple({
   code,
   className,
+  fitContainer = false,
 }: {
   code: string;
   className?: string;
+  /** 流程图横向铺满容器宽度（useMaxWidth） */
+  fitContainer?: boolean;
 }) {
   const [svg, setSvg] = useState<string>("");
   const [err, setErr] = useState<string | null>(null);
@@ -34,6 +37,9 @@ export function MermaidSimple({
           startOnLoad: false,
           securityLevel: "strict",
           theme: "dark",
+          ...(fitContainer
+            ? { flowchart: { useMaxWidth: true, htmlLabels: true, curve: "basis" } }
+            : {}),
         });
         const { svg: out } = await mermaid.render(renderId, src);
         if (!active) return;
@@ -51,7 +57,7 @@ export function MermaidSimple({
     return () => {
       active = false;
     };
-  }, [code]);
+  }, [code, fitContainer]);
 
   if (err) {
     return (
@@ -73,7 +79,9 @@ export function MermaidSimple({
     <div
       className={[
         "overflow-x-auto rounded-2xl border border-white/10 bg-black/20 p-3",
-        "[&_svg]:block [&_svg]:max-w-none [&_svg]:h-auto",
+        fitContainer
+          ? "[&_svg]:mx-auto [&_svg]:block [&_svg]:h-auto [&_svg]:w-full [&_svg]:max-w-full"
+          : "[&_svg]:block [&_svg]:h-auto [&_svg]:max-w-none",
         className ?? "",
       ]
         .filter(Boolean)
