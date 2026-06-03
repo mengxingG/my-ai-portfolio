@@ -30,7 +30,7 @@ export type AssembleReportOptions = {
   objectType?: string;
 };
 
-/** 报告封面 H1 + 元信息引用块（md_to_pdf 会提取到封面） */
+/** 报告封面 H1 + 元信息引用块（PDF 封面会提取到封面） */
 export function buildReportHeader(opts: AssembleReportOptions): string {
   const date = new Date().toISOString().slice(0, 10);
   const domain = opts.competitor?.trim()
@@ -81,7 +81,7 @@ ${sourcesBlock}
 `;
 }
 
-/** 组装符合 md_to_pdf 规范的完整稿件 */
+/** 组装符合 PDF 导出规范的完整稿件 */
 export function assembleHvReportMarkdown(opts: AssembleReportOptions): string {
   const body = stripProtocolLines(opts.body);
   const header = buildReportHeader(opts);

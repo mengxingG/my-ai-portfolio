@@ -449,7 +449,7 @@ export async function POST(req: Request) {
         await pushStream(reportFooter);
         await pushProtocol(
           "INFO",
-          "完整 Markdown 稿件已就绪，可下载 .md 或使用「导出 PDF」调用 md_to_pdf 排版",
+          "完整 Markdown 稿件已就绪，可下载 .md 或使用「导出 PDF」一键排版",
         );
 
         // 先 [DONE]：前端立刻进入 success，展示导出按钮；质检在流未关闭时继续

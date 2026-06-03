@@ -1,25 +1,17 @@
 /**
- * HV-Analysis — Markdown → PDF（WeasyPrint）
- * 调用 app/api/hv-analysis/md_to_pdf.py
+ * HV-Analysis — Markdown → PDF（Node.js / Puppeteer + @sparticuz/chromium）
+ * 兼容 Vercel Serverless，无需 Python / WeasyPrint
  */
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
+import { convertMarkdownToPdfBuffer } from "@/lib/hv-analysis/convert-markdown-to-pdf";
 import {
   finalizeReportMarkdown,
   sanitizeReportFilename,
 } from "@/lib/hv-analysis/report-markdown";
-import { execFile } from "node:child_process";
-import fs from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
-import { promisify } from "node:util";
 import { NextResponse } from "next/server";
-
-const execFileAsync = promisify(execFile);
-
-const PDF_SCRIPT = path.join(process.cwd(), "app/api/hv-analysis/md_to_pdf.py");
 
 type PdfRequestBody = {
   /** 完整 Markdown 或仅正文（将与 header/footer 组装） */
@@ -34,38 +26,6 @@ type PdfRequestBody = {
   timeRange?: string;
   objectType?: string;
 };
-
-async function convertMarkdownToPdf(
-  md: string,
-  targetName: string,
-  author: string,
-): Promise<{ buffer: Buffer; filename: string }> {
-  const safe = sanitizeReportFilename(targetName);
-  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "hv-report-"));
-  const base = `${safe}_横纵分析报告`;
-  const mdPath = path.join(tmpDir, `${base}.md`);
-  const pdfPath = path.join(tmpDir, `${base}.pdf`);
-
-  try {
-    await fs.writeFile(mdPath, md, "utf-8");
-
-    await execFileAsync(
-      "python3",
-      [PDF_SCRIPT, mdPath, pdfPath, "--title", targetName, "--author", author],
-      {
-        timeout: 110_000,
-        maxBuffer: 10 * 1024 * 1024,
-        env: { ...process.env, PYTHONUTF8: "1" },
-      },
-    );
-
-    const buffer = await fs.readFile(pdfPath);
-
-    return { buffer, filename: `${base}.pdf` };
-  } finally {
-    await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
-  }
-}
 
 export async function POST(req: Request) {
   try {
@@ -99,8 +59,13 @@ export async function POST(req: Request) {
         });
 
     const author = body.author?.trim() || "数字生命卡兹克 · HV-Analysis";
+    const safe = sanitizeReportFilename(targetName);
+    const filename = `${safe}_横纵分析报告.pdf`;
 
-    const { buffer, filename } = await convertMarkdownToPdf(md, targetName, author);
+    const buffer = await convertMarkdownToPdfBuffer(md, {
+      targetName,
+      author,
+    });
 
     return new NextResponse(new Uint8Array(buffer), {
       status: 200,
@@ -113,12 +78,9 @@ export async function POST(req: Request) {
   } catch (err) {
     console.error("[hv-analysis/pdf] error:", err);
     const message = err instanceof Error ? err.message : String(err);
-    const hint =
-      message.includes("ENOENT") && message.includes("python3")
-        ? "未找到 python3，请在服务器安装 Python 3。"
-        : message.includes("weasyprint") || message.includes("No module named")
-          ? "请安装依赖: pip install weasyprint markdown --break-system-packages"
-          : message;
-    return NextResponse.json({ error: `PDF 生成失败: ${hint}` }, { status: 500 });
+    return NextResponse.json(
+      { error: `PDF 生成失败: ${message}` },
+      { status: 500 },
+    );
   }
 }

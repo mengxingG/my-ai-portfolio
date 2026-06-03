@@ -62,7 +62,7 @@ export default function HvAnalysisProjectPage() {
           <PrdList
             items={[
               "能做：基于公开网页检索（Tavily）+ 大模型分章生成纵向/横向/交汇章节；14 条规则 QA；未通过章节 Actor-Critic 定向重写。",
-              "不能做：不替代实地调研与保密内幕；不保证实时股价/未公开融资；PDF 导出依赖本机 WeasyPrint。",
+              "不能做：不替代实地调研与保密内幕；不保证实时股价/未公开融资；PDF 导出为 Node.js Puppeteer 排版。",
               "定稿：用户确认后手动「存入 Notion」，非自动全量同步。",
               "模型：主生成 DeepSeek；QA/Refine 可选 Claude/Gemini 经 gptsapi 中转。",
             ]}
@@ -106,7 +106,7 @@ export default function HvAnalysisProjectPage() {
             ["篇幅", "纵向约 6k–15k 字，横向约 3k–10k 字，总计可达 1–3 万字"],
             ["质检", "14 条军规，含叙事体、竞品深度、套话比例等"],
             ["归档", "Notion 保留 Score、QA_Data、CreatedAt 等元数据"],
-            ["导出", "Markdown 下载；PDF 需 Python weasyprint"],
+            ["导出", "Markdown 下载；PDF 一键导出（Puppeteer）"],
           ]}
         />
         <ProjectDetailFigure

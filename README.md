@@ -317,7 +317,7 @@ start_feishu.sh / stop_feishu.sh # 转发至 job_engine 双引擎脚本
 - **分章流式流水线**：定义 → 纵向（6k–15k 字）→ 横向（3k–10k 字）→ 横纵交汇，总篇幅可达 1–3 万字
 - **14 条军规 QA 审计**：叙事体、竞品深度、套话禁区、万字体量等自动质检
 - **Actor-Critic Auto-Refine**：未通过项一键触发 Claude 流式重写并 re-QA
-- **导出**：Markdown 下载 / WeasyPrint PDF
+- **导出**：Markdown 下载 / Puppeteer PDF（Node.js，兼容 Vercel）
 - **Notion 研报库**：手动「存入 Notion」，左侧历史舱按时间倒序恢复正文与质检结果
 
 ### 研究闭环
@@ -372,10 +372,11 @@ NOTION_HV_PROP_CREATED_AT=CreatedAt
 
 ### PDF 导出依赖
 
-PDF 路由调用 `app/api/hv-analysis/md_to_pdf.py`（WeasyPrint），需本机安装 Python 3 与依赖：
+PDF 导出使用 **Puppeteer + @sparticuz/chromium**（纯 Node.js，Vercel Serverless 可用）。本地开发需安装 Google Chrome，或通过 `PUPPETEER_EXECUTABLE_PATH` 指定浏览器路径：
 
 ```bash
-pip install weasyprint markdown
+# 可选：自定义 Chrome 路径
+PUPPETEER_EXECUTABLE_PATH=/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome
 ```
 
 ### API 路由
@@ -396,8 +397,8 @@ pip install weasyprint markdown
 ```
 app/tools/hv-analysis/page.tsx       # 前端主页面
 components/hv-analysis/            # ConfigForm、QaInspector、HistoryReportSidebar 等
-lib/hv-analysis/                   # notion-save、run-hv-qa、refine-prompt、style-guidelines
-app/api/hv-analysis/               # 主路由 + md_to_pdf.py
+lib/hv-analysis/                   # notion-save、run-hv-qa、report-pdf-html、convert-markdown-to-pdf
+app/api/hv-analysis/               # 主路由 + pdf/route.ts
 src/prompts/hv-analysis.md         # 分章 Prompt 模板
 lib/skills/hv-analysis/SKILL.md    # Cursor Agent Skill（方法论与写作规范）
 ```

@@ -201,7 +201,7 @@ const TIMELINE_SECTIONS: readonly TimelineSectionData[] = [
       "Next.js",
       "Notion API",
       "TransformStream",
-      "WeasyPrint",
+      "Puppeteer",
     ],
     overview:
       "数字生命卡兹克提出的横纵分析法深度研究引擎：纵轴沿时间追溯产品/公司/概念的完整生命史，横轴在当下截面与竞品系统性对比，在交汇处产出独到判断。配置研究对象与视角后，AI 自动联网检索、分章流式生成万字级 Markdown 报告，并经由 14 条军规 QA 审计与 Actor-Critic 定向修复闭环，最终一键归档至 Notion。",
