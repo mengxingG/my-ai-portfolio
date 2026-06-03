@@ -1,16 +1,20 @@
 import { createOpenAI } from "@ai-sdk/openai";
-import { generateObject, generateText, type LanguageModel } from "ai";
+import { generateText, type LanguageModel } from "ai";
 import { z } from "zod";
 import type { HvQaItem, HvQaResult } from "@/lib/hv-analysis/qa-types";
 
-/** gptsapi.net 中转站（OPENAI_API_KEY）允许的质检模型 */
+/**
+ * gptsapi 中转站实测可用的质检模型。
+ * 注意：gemini-3.5-flash 在控制台可见，但 API 会返回 not support，勿加入白名单。
+ */
 export const HV_QA_MODEL_IDS = [
-  "gemini-3.5-flash",
+  "gemini-2.5-flash",
+  "gemini-3-flash-preview",
   "claude-sonnet-4-6",
   "gpt-5.4",
 ] as const;
 export type HvQaModelId = (typeof HV_QA_MODEL_IDS)[number];
-export const DEFAULT_QA_MODEL: HvQaModelId = "gemini-3.5-flash";
+export const DEFAULT_QA_MODEL: HvQaModelId = "gemini-2.5-flash";
 
 const GPTSAPI_RELAY_BASE_URL = "https://api.gptsapi.net/v1";
 
@@ -115,11 +119,36 @@ function normalizeQaResult(raw: z.infer<typeof qaResultSchema>): HvQaResult {
   return { overallScore, items };
 }
 
+/** 将中转站 / SDK 错误转为可读中文提示 */
+export function formatHvQaError(err: unknown, modelId: string): string {
+  const msg = err instanceof Error ? err.message : String(err);
+  const lower = msg.toLowerCase();
+
+  if (
+    lower.includes("not support") ||
+    lower.includes("not_support") ||
+    lower.includes("not supported")
+  ) {
+    return `模型「${modelId}」在当前中转站 API 不可用（返回 not support）。请将环境变量 HV_QA_MODEL_ID 设为 ${HV_QA_MODEL_IDS.join("、")} 之一后重试。`;
+  }
+  if (lower.includes("usage limit") || lower.includes("forbidden")) {
+    return `中转站 API Key 额度不足或无权调用模型「${modelId}」，请检查 OPENAI_API_KEY 余额或更换模型。`;
+  }
+  if (lower.includes("missing openai_api_key")) {
+    return "服务端未配置 OPENAI_API_KEY（gptsapi 中转站密钥）。";
+  }
+  return msg;
+}
+
 function resolveQaModel(modelId?: string) {
-  const chosen = (modelId?.trim() || DEFAULT_QA_MODEL) as string;
+  const raw = modelId?.trim() || process.env.HV_QA_MODEL_ID?.trim() || DEFAULT_QA_MODEL;
+  /** 历史配置兼容：3.5-flash 在 gptsapi API 会 not support */
+  const chosen =
+    raw === "gemini-3.5-flash" ? DEFAULT_QA_MODEL : raw;
+
   if (!HV_QA_MODEL_IDS.includes(chosen as HvQaModelId)) {
     return {
-      error: `不支持的 modelId: ${chosen}，可选: ${HV_QA_MODEL_IDS.join(", ")}`,
+      error: `不支持的 modelId: ${raw}，可选: ${HV_QA_MODEL_IDS.join(", ")}`,
     } as const;
   }
   if (!process.env.OPENAI_API_KEY) {
@@ -140,7 +169,11 @@ export type RunHvQaOptions = {
   modelId?: string;
 };
 
-async function runQaWithTextFallback(args: {
+/**
+ * 使用 generateText + JSON 解析（兼容 gptsapi；避免 generateObject 在不支持
+ * json_schema 的模型上重试 3 次后报 "not support"）。
+ */
+async function runQaViaTextJson(args: {
   model: LanguageModel;
   modelId: string;
   reportChars: number;
@@ -149,60 +182,33 @@ async function runQaWithTextFallback(args: {
   const system = buildQaSystemPrompt();
   const prompt = `请对以下完整横纵分析报告执行 14 条军规质检（报告约 ${args.reportChars} 字）：\n\n---\n${args.reportForModel}\n---`;
 
-  try {
-    const { object } = await generateObject({
-      model: args.model,
-      schema: qaResultSchema,
-      schemaName: "HvQaResult",
-      schemaDescription: "横纵分析报告14条军规质检结果",
-      system,
-      prompt,
-      temperature: 0.2,
-    });
-    const result = normalizeQaResult(object);
-    return {
-      ...result,
-      meta: {
-        modelId: args.modelId,
-        reportChars: args.reportChars,
-        passCount: result.items.filter((i) => i.pass).length,
-      },
-    };
-  } catch (objectErr) {
-    console.warn(
-      "[runHvReportQa] generateObject failed, trying generateText + JSON extract:",
-      objectErr instanceof Error ? objectErr.message : objectErr,
+  const { text } = await generateText({
+    model: args.model,
+    system,
+    prompt: `${prompt}\n\n再次强调：只输出一个 JSON 对象，以 { 开头、以 } 结尾，禁止 markdown 代码块与任何解释文字。`,
+    temperature: 0.1,
+    /** 2.5-flash 会消耗 reasoning tokens，需留足输出预算 */
+    maxOutputTokens: 8192,
+  });
+
+  const jsonStr = extractJsonObjectFromModelText(text);
+  if (!jsonStr) {
+    throw new Error(
+      `模型未返回可解析的 JSON（${args.modelId}）。请重试或更换 HV_QA_MODEL_ID。`,
     );
-
-    const { text } = await generateText({
-      model: args.model,
-      system,
-      prompt: `${prompt}\n\n再次强调：只输出一个 JSON 对象，以 { 开头、以 } 结尾，禁止 markdown 代码块与任何解释文字。`,
-      temperature: 0.1,
-    });
-
-    const jsonStr = extractJsonObjectFromModelText(text);
-    if (!jsonStr) {
-      throw objectErr instanceof Error ? objectErr : new Error(String(objectErr));
-    }
-
-    try {
-      const parsed = parseQaJsonText(jsonStr);
-      const result = normalizeQaResult(parsed);
-      return {
-        ...result,
-        meta: {
-          modelId: args.modelId,
-          reportChars: args.reportChars,
-          passCount: result.items.filter((i) => i.pass).length,
-          parseFallback: "generateText",
-        },
-      };
-    } catch (parseErr) {
-      console.warn("[runHvReportQa] JSON parse failed:", parseErr);
-      throw objectErr instanceof Error ? objectErr : new Error(String(objectErr));
-    }
   }
+
+  const parsed = parseQaJsonText(jsonStr);
+  const result = normalizeQaResult(parsed);
+  return {
+    ...result,
+    meta: {
+      modelId: args.modelId,
+      reportChars: args.reportChars,
+      passCount: result.items.filter((i) => i.pass).length,
+      parseFallback: "generateText",
+    },
+  };
 }
 
 /**
@@ -226,10 +232,14 @@ export async function runHvReportQa(options: RunHvQaOptions): Promise<HvQaResult
       ? `${reportText.slice(0, 120_000)}\n\n[…报告已截断，原文共 ${reportChars} 字，请基于已给部分质检]`
       : reportText;
 
-  return runQaWithTextFallback({
-    model,
-    modelId,
-    reportChars,
-    reportForModel,
-  });
+  try {
+    return await runQaViaTextJson({
+      model,
+      modelId,
+      reportChars,
+      reportForModel,
+    });
+  } catch (err) {
+    throw new Error(formatHvQaError(err, modelId));
+  }
 }

@@ -1,4 +1,8 @@
-import { access } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { access as accessAsync } from "node:fs/promises";
+import { createRequire } from "node:module";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { Browser } from "puppeteer-core";
 import {
   buildPdfHeaderTemplate,
@@ -16,13 +20,37 @@ function isServerlessRuntime(): boolean {
   );
 }
 
+const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+const requireFromModule = createRequire(import.meta.url);
+
 async function pathExists(filePath: string): Promise<boolean> {
   try {
-    await access(filePath);
+    await accessAsync(filePath);
     return true;
   } catch {
     return false;
   }
+}
+
+/** 解析 @sparticuz/chromium/bin（Vercel 需配合 next.config outputFileTracingIncludes） */
+function resolveSparticuzBinDirectory(): string | null {
+  const candidates = [
+    path.join(process.cwd(), "node_modules", "@sparticuz", "chromium", "bin"),
+    (() => {
+      try {
+        const pkgJson = requireFromModule.resolve("@sparticuz/chromium/package.json");
+        return path.join(path.dirname(pkgJson), "bin");
+      } catch {
+        return null;
+      }
+    })(),
+    path.join(moduleDir, "..", "..", "node_modules", "@sparticuz", "chromium", "bin"),
+  ].filter(Boolean) as string[];
+
+  for (const dir of candidates) {
+    if (existsSync(dir)) return dir;
+  }
+  return null;
 }
 
 async function resolveLocalChromePath(): Promise<string | null> {
@@ -54,10 +82,19 @@ async function launchSparticuzBrowser(): Promise<Browser> {
 
   chromium.setGraphicsMode = false;
 
+  const binDir = resolveSparticuzBinDirectory();
+  if (!binDir) {
+    throw new Error(
+      "未找到 @sparticuz/chromium/bin。若在 Vercel 部署，请确认 next.config 已配置 outputFileTracingIncludes 并重新部署。",
+    );
+  }
+
+  const executablePath = await chromium.executablePath(binDir);
+
   return puppeteer.launch({
     args: chromium.args,
     defaultViewport: chromium.defaultViewport,
-    executablePath: await chromium.executablePath(),
+    executablePath,
     headless: chromium.headless as "shell" | boolean,
   });
 }

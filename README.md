@@ -343,7 +343,7 @@ NOTION_DATABASE_ID_HV_ANALYSIS=  # hvSearch 研报数据库 ID
 
 # 可选 — 质检 / Auto-Refine 经 gptsapi.net 中转（需 OPENAI_API_KEY）
 OPENAI_API_KEY=
-HV_QA_MODEL_ID=gemini-3.5-flash
+HV_QA_MODEL_ID=gemini-2.5-flash
 HV_REFINE_MODEL_ID=claude-sonnet-4-6
 
 # 可选 — Notion 列名映射（默认见下表）
@@ -372,7 +372,7 @@ NOTION_HV_PROP_CREATED_AT=CreatedAt
 
 ### PDF 导出依赖
 
-PDF 导出使用 **Puppeteer + @sparticuz/chromium**（纯 Node.js，Vercel Serverless 可用）。本地开发需安装 Google Chrome，或通过 `PUPPETEER_EXECUTABLE_PATH` 指定浏览器路径：
+PDF 导出使用 **Puppeteer + @sparticuz/chromium**（纯 Node.js，Vercel Serverless 可用）。`next.config.ts` 已配置 `outputFileTracingIncludes` 将 `chromium/bin` 打入部署包；`vercel.json` 为 PDF 路由分配 1024MB 内存（Pro 可改为 3008）。本地开发需安装 Google Chrome，或通过 `PUPPETEER_EXECUTABLE_PATH` 指定浏览器路径：
 
 ```bash
 # 可选：自定义 Chrome 路径

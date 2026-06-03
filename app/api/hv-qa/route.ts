@@ -27,6 +27,6 @@ export async function POST(req: Request) {
   } catch (err) {
     console.error("[hv-qa] error:", err);
     const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: `质检失败: ${message}` }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
